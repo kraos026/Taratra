@@ -1,0 +1,84 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  schemas  = ["public"]
+}
+
+enum OrganizationRole {
+  owner
+  admin
+  consultant
+  viewer
+
+  @@map("organization_role")
+  @@schema("public")
+}
+
+model Organization {
+  id        String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name      String
+  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt DateTime?            @map("deleted_at") @db.Timestamptz(6)
+  members   OrganizationMember[]
+  companies Company[]
+  audits    Audit[]
+
+  @@map("organizations")
+  @@schema("public")
+}
+
+model OrganizationMember {
+  organizationId String           @map("organization_id") @db.Uuid
+  userId         String           @map("user_id") @db.Uuid
+  role           OrganizationRole @default(consultant)
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization  Organization     @relation(fields: [organizationId], references: [id])
+
+  @@id([organizationId, userId])
+  @@index([userId], map: "organization_members_user_idx")
+  @@index([organizationId, role], map: "organization_members_role_idx")
+  @@map("organization_members")
+  @@schema("public")
+}
+
+model Company {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  name           String
+  sectorId       String?      @map("sector_id")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  audits         Audit[]
+
+  @@index([organizationId], map: "companies_organization_idx")
+  @@unique([organizationId, id], map: "companies_organization_id_id_key")
+  @@map("companies")
+  @@schema("public")
+}
+
+model Audit {
+  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String       @map("organization_id") @db.Uuid
+  companyId            String       @map("company_id") @db.Uuid
+  status               String       @default("draft")
+  questionnaireVersion String?      @map("questionnaire_version")
+  ruleSetVersion       String?      @map("rule_set_version")
+  validatedAt          DateTime?    @map("validated_at") @db.Timestamptz(6)
+  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt            DateTime?    @map("deleted_at") @db.Timestamptz(6)
+  organization         Organization @relation(fields: [organizationId], references: [id])
+  company              Company      @relation(fields: [organizationId, companyId], references: [organizationId, id])
+
+  @@index([organizationId, companyId], map: "audits_organization_company_idx")
+  @@map("audits")
+  @@schema("public")
+}

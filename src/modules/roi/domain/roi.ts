@@ -15,7 +15,13 @@ export interface RoiProjection {
 }
 
 export function projectRoi(a: RoiAssumptions): RoiProjection {
-  if ([a.hoursPerMonth, a.hourlyCost, a.monthlyOperatingCost, a.implementationCost].some((v) => v < 0) || a.automationRate < 0 || a.automationRate > 1) {
+  if (
+    [a.hoursPerMonth, a.hourlyCost, a.monthlyOperatingCost, a.implementationCost].some(
+      (v) => v < 0,
+    ) ||
+    a.automationRate < 0 ||
+    a.automationRate > 1
+  ) {
     throw new Error("Invalid ROI assumptions");
   }
   const monthlyGrossSavings = a.hoursPerMonth * a.hourlyCost * a.automationRate;
