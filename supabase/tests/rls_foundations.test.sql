@@ -74,23 +74,23 @@ select is(
   'a consultant cannot read companies in organization B'
 );
 
-select is(
-  (with changed as (
+select results_eq(
+  $$with changed as (
     update public.companies set name = 'Company A updated'
     where companies.id = 'a1000000-0000-0000-0000-000000000001'
     returning 1
-  ) select count(*)::integer from changed),
-  1,
+  ) select count(*)::integer from changed$$,
+  array[1],
   'a consultant can update a company in the same organization'
 );
 
-select is(
-  (with changed as (
+select results_eq(
+  $$with changed as (
     update public.companies set name = 'Forbidden update'
     where companies.id = 'b1000000-0000-0000-0000-000000000001'
     returning 1
-  ) select count(*)::integer from changed),
-  0,
+  ) select count(*)::integer from changed$$,
+  array[0],
   'a consultant cannot update a company in another organization'
 );
 
@@ -115,13 +115,13 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000004', true);
 
-select is(
-  (with changed as (
+select results_eq(
+  $$with changed as (
     update public.companies set name = 'Viewer update'
     where companies.id = 'a1000000-0000-0000-0000-000000000001'
     returning 1
-  ) select count(*)::integer from changed),
-  0,
+  ) select count(*)::integer from changed$$,
+  array[0],
   'a viewer cannot update a company'
 );
 
@@ -150,24 +150,24 @@ reset role;
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-0000-0000-000000000001', true);
 
-select is(
-  (with changed as (
+select results_eq(
+  $$with changed as (
     update public.organization_members set role = 'consultant'
     where organization_members.organization_id = 'a0000000-0000-0000-0000-000000000001'
       and organization_members.user_id = '40000000-0000-0000-0000-000000000001'
     returning 1
-  ) select count(*)::integer from changed),
-  1,
+  ) select count(*)::integer from changed$$,
+  array[1],
   'an owner can update a member in the same organization'
 );
 
-select is(
-  (with changed as (
+select results_eq(
+  $$with changed as (
     update public.organization_members set role = 'viewer'
     where organization_members.organization_id = 'b0000000-0000-0000-0000-000000000001'
     returning 1
-  ) select count(*)::integer from changed),
-  0,
+  ) select count(*)::integer from changed$$,
+  array[0],
   'an owner cannot update members of another organization'
 );
 
