@@ -96,18 +96,29 @@ $$;
 create trigger rules_enforce_category_scope before insert or update of category_id, organization_id on public.rules
 for each row execute function private.enforce_rule_category_scope();
 
-create function private.enforce_rule_execution_scope()
+create function private.enforce_audit_rule_match_scope()
 returns trigger language plpgsql security definer set search_path = '' as $$
 begin
   if not exists (
     select 1 from public.audits as a
     where a.id = new.audit_id and a.organization_id = new.organization_id
   ) then raise exception 'Rule execution audit must belong to the organization' using errcode = '23514'; end if;
-  if tg_table_name = 'audit_rule_matches' and not exists (
+  if not exists (
     select 1 from public.rules as r
     where r.id = new.rule_id and (r.organization_id is null or r.organization_id = new.organization_id)
   ) then raise exception 'Rule is not available to the audit organization' using errcode = '23514'; end if;
-  if tg_table_name = 'audit_scores' and new.category_id is not null and not exists (
+  return new;
+end;
+$$;
+
+create function private.enforce_audit_score_scope()
+returns trigger language plpgsql security definer set search_path = '' as $$
+begin
+  if not exists (
+    select 1 from public.audits as a
+    where a.id = new.audit_id and a.organization_id = new.organization_id
+  ) then raise exception 'Rule execution audit must belong to the organization' using errcode = '23514'; end if;
+  if new.category_id is not null and not exists (
     select 1 from public.rule_categories as rc
     where rc.id = new.category_id and (rc.organization_id is null or rc.organization_id = new.organization_id)
   ) then raise exception 'Rule category is not available to the audit organization' using errcode = '23514'; end if;
@@ -115,9 +126,9 @@ begin
 end;
 $$;
 create trigger audit_rule_matches_enforce_scope before insert or update on public.audit_rule_matches
-for each row execute function private.enforce_rule_execution_scope();
+for each row execute function private.enforce_audit_rule_match_scope();
 create trigger audit_scores_enforce_scope before insert or update on public.audit_scores
-for each row execute function private.enforce_rule_execution_scope();
+for each row execute function private.enforce_audit_score_scope();
 
 create trigger rule_categories_set_updated_at before update on public.rule_categories for each row execute function private.set_updated_at();
 create trigger rules_set_updated_at before update on public.rules for each row execute function private.set_updated_at();
