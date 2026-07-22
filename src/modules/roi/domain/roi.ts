@@ -1,36 +1,35 @@
-export interface RoiAssumptions {
-  readonly hoursPerMonth: number;
-  readonly hourlyCost: number;
-  readonly automationRate: number;
-  readonly monthlyOperatingCost: number;
-  readonly implementationCost: number;
-}
+export type RoiInput = {
+  hoursMonth: number;
+  hourlyCost: number;
+  implementationCost: number;
+  additionalAnnualSavings?: number;
+};
+export type RoiResult = {
+  hoursYear: number;
+  annualSavings: number;
+  roiPercentage: number;
+  paybackMonths: number | null;
+};
 
-export interface RoiProjection {
-  readonly monthlyGrossSavings: number;
-  readonly monthlyNetSavings: number;
-  readonly annualNetSavings: number;
-  readonly paybackMonths: number | null;
-  readonly assumptions: RoiAssumptions;
-}
-
-export function projectRoi(a: RoiAssumptions): RoiProjection {
-  if (
-    [a.hoursPerMonth, a.hourlyCost, a.monthlyOperatingCost, a.implementationCost].some(
-      (v) => v < 0,
-    ) ||
-    a.automationRate < 0 ||
-    a.automationRate > 1
-  ) {
-    throw new Error("Invalid ROI assumptions");
+export class RoiEngine {
+  calculate(input: RoiInput): RoiResult {
+    if (
+      Object.values(input).some(
+        (value) => value !== undefined && (!Number.isFinite(value) || value < 0),
+      )
+    )
+      throw new Error("ROI inputs must be finite and non-negative");
+    const hoursYear = input.hoursMonth * 12;
+    const annualSavings = hoursYear * input.hourlyCost + (input.additionalAnnualSavings ?? 0);
+    const roiPercentage =
+      input.implementationCost === 0
+        ? annualSavings > 0
+          ? Number.POSITIVE_INFINITY
+          : 0
+        : ((annualSavings - input.implementationCost) / input.implementationCost) * 100;
+    const monthlySavings =
+      input.hoursMonth * input.hourlyCost + (input.additionalAnnualSavings ?? 0) / 12;
+    const paybackMonths = monthlySavings > 0 ? input.implementationCost / monthlySavings : null;
+    return { hoursYear, annualSavings, roiPercentage, paybackMonths };
   }
-  const monthlyGrossSavings = a.hoursPerMonth * a.hourlyCost * a.automationRate;
-  const monthlyNetSavings = monthlyGrossSavings - a.monthlyOperatingCost;
-  return {
-    monthlyGrossSavings,
-    monthlyNetSavings,
-    annualNetSavings: monthlyNetSavings * 12,
-    paybackMonths: monthlyNetSavings > 0 ? a.implementationCost / monthlyNetSavings : null,
-    assumptions: a,
-  };
 }
