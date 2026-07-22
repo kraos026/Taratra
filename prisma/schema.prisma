@@ -18,6 +18,29 @@ enum OrganizationRole {
   @@schema("public")
 }
 
+enum CompanySize {
+  micro
+  small
+  medium
+  large
+  enterprise
+
+  @@map("company_size")
+  @@schema("public")
+}
+
+enum CompanyStatus {
+  prospect
+  contacted
+  audit_scheduled
+  audit_in_progress
+  client
+  archived
+
+  @@map("company_status")
+  @@schema("public")
+}
+
 model Organization {
   id        String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String
@@ -48,17 +71,34 @@ model OrganizationMember {
 }
 
 model Company {
-  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String       @map("organization_id") @db.Uuid
-  name           String
-  sectorId       String?      @map("sector_id")
-  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
-  deletedAt      DateTime?    @map("deleted_at") @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  audits         Audit[]
+  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String        @map("organization_id") @db.Uuid
+  name               String
+  sectorId           String?       @map("sector_id")
+  employeeCount      Int?          @map("employee_count")
+  companySize        CompanySize?  @map("company_size")
+  primaryContactName String?       @map("primary_contact_name")
+  primaryContactRole String?       @map("primary_contact_role")
+  phone              String?
+  email              String?
+  website            String?
+  address            String?
+  city               String?
+  country            String?
+  description        String?
+  internalNotes      String?       @map("internal_notes")
+  status             CompanyStatus @default(prospect)
+  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime?     @map("deleted_at") @db.Timestamptz(6)
+  organization       Organization  @relation(fields: [organizationId], references: [id])
+  audits             Audit[]
 
   @@index([organizationId], map: "companies_organization_idx")
+  @@index([organizationId, status], map: "companies_status_idx")
+  @@index([organizationId, companySize], map: "companies_size_idx")
+  @@index([organizationId, sectorId], map: "companies_sector_idx")
+  @@index([organizationId, createdAt(sort: Desc)], map: "companies_created_at_idx")
   @@unique([organizationId, id], map: "companies_organization_id_id_key")
   @@map("companies")
   @@schema("public")

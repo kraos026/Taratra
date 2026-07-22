@@ -35,4 +35,7 @@ npm run test:rls
 
 Consultez `docs/data-access.md` avant d'ajouter un accès Prisma ou une migration.
 
+Le fonctionnement du CRM, ses permissions et ses contrats HTTP sont décrits dans
+[`docs/companies.md`](docs/companies.md).
+
 Les questions d'audit, règles, recommandations et hypothèses ROI métier doivent être fournies et validées avant leur intégration.

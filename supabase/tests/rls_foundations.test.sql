@@ -94,9 +94,13 @@ select results_eq(
   'a consultant cannot update a company in another organization'
 );
 
-select throws_like(
-  $$delete from public.companies where companies.id = 'b1000000-0000-0000-0000-000000000001'$$,
-  '%permission denied%companies%',
+select results_eq(
+  $$with removed as (
+    delete from public.companies
+    where companies.id = 'b1000000-0000-0000-0000-000000000001'
+    returning 1
+  ) select count(*)::integer from removed$$,
+  array[0],
   'a consultant cannot delete a company in another organization'
 );
 
