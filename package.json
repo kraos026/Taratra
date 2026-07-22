@@ -6,27 +6,50 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "test:rls": "supabase test db",
+    "db:generate": "prisma generate",
+    "db:migrate": "supabase db push",
+    "db:migrate:local": "supabase migration up --local"
   },
   "dependencies": {
-    "@supabase/ssr": "0.7.0",
-    "@supabase/supabase-js": "2.86.0",
+    "@prisma/adapter-pg": "7.9.0",
+    "@prisma/client": "7.9.0",
+    "@supabase/ssr": "0.12.3",
+    "@supabase/supabase-js": "2.110.7",
+    "class-variance-authority": "0.7.1",
+    "clsx": "2.1.1",
     "lucide-react": "0.468.0",
-    "next": "16.2.6",
+    "next": "16.2.11",
+    "pg": "8.16.3",
     "react": "19.1.0",
     "react-dom": "19.1.0",
+    "tailwind-merge": "3.4.0",
     "zod": "3.24.1"
   },
   "devDependencies": {
-    "@types/node": "22.10.1",
+    "@tailwindcss/postcss": "4.3.3",
+    "@types/node": "22.18.0",
+    "@types/pg": "8.15.5",
     "@types/react": "19.0.3",
     "@types/react-dom": "19.0.2",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.2.11",
+    "prettier": "3.9.6",
+    "prettier-plugin-tailwindcss": "0.8.1",
+    "prisma": "7.9.0",
+    "supabase": "2.109.1",
+    "tailwindcss": "4.3.3",
     "typescript": "5.7.2",
-    "vitest": "2.1.8"
+    "vitest": "4.1.10"
   },
   "overrides": {
-    "postcss": "8.5.10"
+    "postcss": "8.5.10",
+    "sharp": "0.35.3"
   }
 }
