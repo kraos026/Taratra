@@ -73,6 +73,16 @@ enum AuditStatus {
   @@schema("public")
 }
 
+enum RuleSeverity {
+  info
+  low
+  medium
+  high
+  critical
+  @@map("rule_severity")
+  @@schema("public")
+}
+
 model Organization {
   id        String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String
@@ -84,6 +94,10 @@ model Organization {
   audits    Audit[]
   questionnaireTemplates QuestionnaireTemplate[]
   auditAnswers AuditAnswer[]
+  ruleCategories RuleCategory[]
+  rules Rule[]
+  auditRuleMatches AuditRuleMatch[]
+  auditScores AuditScore[]
 
   @@map("organizations")
   @@schema("public")
@@ -158,6 +172,8 @@ model Audit {
   questionnaireVersion QuestionnaireVersion? @relation(fields: [questionnaireVersionId], references: [id])
   currentSection       QuestionnaireSection? @relation(fields: [currentSectionId], references: [id])
   answers              AuditAnswer[]
+  ruleMatches          AuditRuleMatch[]
+  scores               AuditScore[]
 
   @@index([organizationId, companyId], map: "audits_organization_company_idx")
   @@index([questionnaireVersionId], map: "audits_questionnaire_version_idx")
@@ -258,5 +274,103 @@ model AuditAnswer {
   @@index([auditId], map: "audit_answers_audit_idx")
   @@index([organizationId], map: "audit_answers_organization_idx")
   @@map("audit_answers")
+  @@schema("public")
+}
+
+model RuleCategory {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String? @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  description    String?
+  active         Boolean @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rules          Rule[]
+  auditScores    AuditScore[]
+  @@map("rule_categories")
+  @@schema("public")
+}
+
+model Rule {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String? @map("organization_id") @db.Uuid
+  categoryId     String @map("category_id") @db.Uuid
+  code           String
+  name           String
+  description    String?
+  priority       Int @default(100)
+  severity       RuleSeverity @default(medium)
+  weight         Decimal @default(1) @db.Decimal(12, 4)
+  conditionJson  Json @map("condition_json")
+  resultJson     Json @default("{}") @map("result_json")
+  active         Boolean @default(true)
+  version        Int @default(1)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category       RuleCategory @relation(fields: [categoryId], references: [id])
+  results        RuleResult[]
+  auditMatches   AuditRuleMatch[]
+  @@index([categoryId, active, priority], map: "rules_category_active_idx")
+  @@map("rules")
+  @@schema("public")
+}
+
+model RuleResult {
+  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ruleId       String @map("rule_id") @db.Uuid
+  resultKey    String @map("result_key")
+  label        String
+  description  String?
+  score        Decimal @default(0) @db.Decimal(12, 4)
+  metadataJson Json @default("{}") @map("metadata_json")
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  rule         Rule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  @@unique([ruleId, resultKey])
+  @@map("rule_results")
+  @@schema("public")
+}
+
+model AuditRuleMatch {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  auditId        String @map("audit_id") @db.Uuid
+  ruleId         String @map("rule_id") @db.Uuid
+  evaluationId   String @map("evaluation_id") @db.Uuid
+  matched        Boolean
+  score          Decimal @default(0) @db.Decimal(12, 4)
+  detailsJson    Json @default("{}") @map("details_json")
+  evaluatedAt    DateTime @default(now()) @map("evaluated_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  audit          Audit @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  rule           Rule @relation(fields: [ruleId], references: [id])
+  @@unique([auditId, ruleId])
+  @@index([organizationId, auditId], map: "audit_rule_matches_organization_audit_idx")
+  @@map("audit_rule_matches")
+  @@schema("public")
+}
+
+model AuditScore {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  auditId        String @map("audit_id") @db.Uuid
+  categoryId     String? @map("category_id") @db.Uuid
+  evaluationId   String @map("evaluation_id") @db.Uuid
+  score          Decimal @default(0) @db.Decimal(12, 4)
+  total          Decimal @default(0) @db.Decimal(12, 4)
+  percentage     Decimal @default(0) @db.Decimal(7, 4)
+  evaluatedAt    DateTime @default(now()) @map("evaluated_at") @db.Timestamptz(6)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  audit          Audit @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  category       RuleCategory? @relation(fields: [categoryId], references: [id])
+  @@index([organizationId, auditId], map: "audit_scores_organization_audit_idx")
+  @@map("audit_scores")
   @@schema("public")
 }

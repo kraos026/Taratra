@@ -41,4 +41,7 @@ Le fonctionnement du CRM, ses permissions et ses contrats HTTP sont décrits dan
 Le versionnement des questionnaires et le cycle des audits sont documentés dans
 [`docs/audit-questionnaires.md`](docs/audit-questionnaires.md).
 
+Le moteur de règles déterministe et son DSL sont documentés dans
+[`docs/rule-engine.md`](docs/rule-engine.md).
+
 Les questions d'audit, règles, recommandations et hypothèses ROI métier doivent être fournies et validées avant leur intégration.
