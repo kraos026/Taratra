@@ -275,10 +275,62 @@ export function VersionEditor({
   versionId: string;
 }) {
   const [data, setData] = useState<Detail>();
+  const [error, setError] = useState<string>();
+  const load = () =>
+    void json<Detail>(`/api/questionnaires/${templateId}`)
+      .then(setData)
+      .catch((e: Error) => setError(e.message));
   useEffect(() => {
-    void json<Detail>(`/api/questionnaires/${templateId}`).then(setData);
+    void json<Detail>(`/api/questionnaires/${templateId}`)
+      .then(setData)
+      .catch((caught: Error) => setError(caught.message));
   }, [templateId]);
   const version = data?.item.versions.find((v) => v.id === versionId);
+  async function addSection(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    try {
+      await json(`/api/questionnaire-versions/${versionId}/sections`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ ...values, position: Number(values.position) }),
+      });
+      event.currentTarget.reset();
+      load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Erreur");
+    }
+  }
+  async function addQuestion(event: FormEvent<HTMLFormElement>, sectionId: string) {
+    event.preventDefault();
+    const values = Object.fromEntries(new FormData(event.currentTarget));
+    const choice = ["single_choice", "multiple_choice"].includes(String(values.questionType));
+    try {
+      await json(`/api/questionnaire-sections/${sectionId}/questions`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          code: values.code,
+          label: values.label,
+          questionType: values.questionType,
+          required: values.required === "on",
+          position: Number(values.position),
+          optionsJson: choice
+            ? String(values.options)
+                .split(",")
+                .map((v) => v.trim())
+                .filter(Boolean)
+            : undefined,
+          validationJson: {},
+          metadataJson: {},
+        }),
+      });
+      event.currentTarget.reset();
+      load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Erreur");
+    }
+  }
   if (!version) return <p>Chargement…</p>;
   return (
     <div className="space-y-5">
@@ -289,6 +341,11 @@ export function VersionEditor({
         <h1 className="text-3xl font-bold">Version {version.versionNumber}</h1>
         <Badge>{version.status}</Badge>
       </div>
+      {error && (
+        <p className="text-red-600" role="alert">
+          {error}
+        </p>
+      )}
       {version.sections.map((section) => (
         <Card key={section.id}>
           <CardHeader>
@@ -310,14 +367,64 @@ export function VersionEditor({
                 </li>
               ))}
             </ol>
+            {version.status === "draft" && data?.permissions.canManage && (
+              <form
+                className="mt-5 grid gap-3 border-t pt-5 md:grid-cols-5"
+                onSubmit={(e) => void addQuestion(e, section.id)}
+              >
+                <Input name="code" placeholder="Code unique" required />
+                <Input name="label" placeholder="Libellé" required />
+                <select
+                  name="questionType"
+                  className="h-10 rounded-md border bg-white px-3"
+                  required
+                >
+                  <option value="short_text">Texte court</option>
+                  <option value="long_text">Texte long</option>
+                  <option value="number">Nombre</option>
+                  <option value="boolean">Booléen</option>
+                  <option value="single_choice">Choix unique</option>
+                  <option value="multiple_choice">Choix multiples</option>
+                  <option value="percentage">Pourcentage</option>
+                  <option value="currency">Devise</option>
+                  <option value="date">Date</option>
+                </select>
+                <Input name="options" placeholder="Options séparées par virgules" />
+                <div className="flex gap-2">
+                  <Input
+                    name="position"
+                    type="number"
+                    min={1}
+                    defaultValue={section.questions.length + 1}
+                    required
+                  />
+                  <Button size="sm">Ajouter</Button>
+                </div>
+                <label className="flex items-center gap-2 text-sm">
+                  <input name="required" type="checkbox" /> Obligatoire
+                </label>
+              </form>
+            )}
           </CardContent>
         </Card>
       ))}
-      {version.sections.length === 0 && (
+      {version.status === "draft" && data?.permissions.canManage && (
         <Card>
-          <CardContent className="py-12 text-center">
-            Cette version ne contient aucune section. Utilisez l’API d’administration pour ajouter
-            les premières sections.
+          <CardHeader>
+            <CardTitle>Ajouter une section</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form className="grid gap-3 md:grid-cols-[1fr_8rem_auto]" onSubmit={addSection}>
+              <Input name="title" placeholder="Titre de la section" required />
+              <Input
+                name="position"
+                type="number"
+                min={1}
+                defaultValue={version.sections.length + 1}
+                required
+              />
+              <Button>Ajouter</Button>
+            </form>
           </CardContent>
         </Card>
       )}
