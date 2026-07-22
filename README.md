@@ -38,4 +38,7 @@ Consultez `docs/data-access.md` avant d'ajouter un accès Prisma ou une migratio
 Le fonctionnement du CRM, ses permissions et ses contrats HTTP sont décrits dans
 [`docs/companies.md`](docs/companies.md).
 
+Le versionnement des questionnaires et le cycle des audits sont documentés dans
+[`docs/audit-questionnaires.md`](docs/audit-questionnaires.md).
+
 Les questions d'audit, règles, recommandations et hypothèses ROI métier doivent être fournies et validées avant leur intégration.

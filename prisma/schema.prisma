@@ -41,6 +41,38 @@ enum CompanyStatus {
   @@schema("public")
 }
 
+enum QuestionnaireVersionStatus {
+  draft
+  published
+  archived
+  @@map("questionnaire_version_status")
+  @@schema("public")
+}
+
+enum QuestionType {
+  short_text
+  long_text
+  number
+  boolean
+  single_choice
+  multiple_choice
+  percentage
+  currency
+  date
+  @@map("question_type")
+  @@schema("public")
+}
+
+enum AuditStatus {
+  draft
+  in_progress
+  completed
+  validated
+  archived
+  @@map("audit_status")
+  @@schema("public")
+}
+
 model Organization {
   id        String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String
@@ -50,6 +82,8 @@ model Organization {
   members   OrganizationMember[]
   companies Company[]
   audits    Audit[]
+  questionnaireTemplates QuestionnaireTemplate[]
+  auditAnswers AuditAnswer[]
 
   @@map("organizations")
   @@schema("public")
@@ -108,17 +142,121 @@ model Audit {
   id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizationId       String       @map("organization_id") @db.Uuid
   companyId            String       @map("company_id") @db.Uuid
-  status               String       @default("draft")
-  questionnaireVersion String?      @map("questionnaire_version")
+  status               AuditStatus  @default(draft)
+  questionnaireVersionId String?    @map("questionnaire_version_id") @db.Uuid
   ruleSetVersion       String?      @map("rule_set_version")
+  startedAt            DateTime?    @map("started_at") @db.Timestamptz(6)
+  completedAt          DateTime?    @map("completed_at") @db.Timestamptz(6)
+  progressPercentage   Int          @default(0) @map("progress_percentage")
+  currentSectionId     String?      @map("current_section_id") @db.Uuid
   validatedAt          DateTime?    @map("validated_at") @db.Timestamptz(6)
   createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt            DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
   deletedAt            DateTime?    @map("deleted_at") @db.Timestamptz(6)
   organization         Organization @relation(fields: [organizationId], references: [id])
   company              Company      @relation(fields: [organizationId, companyId], references: [organizationId, id])
+  questionnaireVersion QuestionnaireVersion? @relation(fields: [questionnaireVersionId], references: [id])
+  currentSection       QuestionnaireSection? @relation(fields: [currentSectionId], references: [id])
+  answers              AuditAnswer[]
 
   @@index([organizationId, companyId], map: "audits_organization_company_idx")
+  @@index([questionnaireVersionId], map: "audits_questionnaire_version_idx")
+  @@index([organizationId, status], map: "audits_status_idx")
+  @@unique([id, organizationId])
+  @@unique([id, questionnaireVersionId])
   @@map("audits")
+  @@schema("public")
+}
+
+model QuestionnaireTemplate {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String? @map("organization_id") @db.Uuid
+  name           String
+  description    String?
+  category       String
+  isSystem       Boolean @default(false) @map("is_system")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  versions       QuestionnaireVersion[]
+  @@index([organizationId], map: "questionnaire_templates_organization_idx")
+  @@map("questionnaire_templates")
+  @@schema("public")
+}
+
+model QuestionnaireVersion {
+  id                      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionnaireTemplateId String @map("questionnaire_template_id") @db.Uuid
+  versionNumber           Int @map("version_number")
+  status                  QuestionnaireVersionStatus @default(draft)
+  publishedAt             DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  template                QuestionnaireTemplate @relation(fields: [questionnaireTemplateId], references: [id])
+  sections                QuestionnaireSection[]
+  audits                  Audit[]
+  @@unique([questionnaireTemplateId, versionNumber])
+  @@unique([id, questionnaireTemplateId])
+  @@index([questionnaireTemplateId, versionNumber(sort: Desc)], map: "questionnaire_versions_template_idx")
+  @@map("questionnaire_versions")
+  @@schema("public")
+}
+
+model QuestionnaireSection {
+  id                     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionnaireVersionId String @map("questionnaire_version_id") @db.Uuid
+  title                  String
+  description            String?
+  position               Int
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  version                QuestionnaireVersion @relation(fields: [questionnaireVersionId], references: [id], onDelete: Cascade)
+  questions              QuestionnaireQuestion[]
+  currentAudits          Audit[]
+  @@unique([questionnaireVersionId, position])
+  @@unique([id, questionnaireVersionId])
+  @@map("questionnaire_sections")
+  @@schema("public")
+}
+
+model QuestionnaireQuestion {
+  id                     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionnaireSectionId String @map("questionnaire_section_id") @db.Uuid
+  code                   String
+  label                  String
+  description            String?
+  questionType           QuestionType @map("question_type")
+  required               Boolean @default(false)
+  position               Int
+  optionsJson            Json? @map("options_json")
+  validationJson         Json @default("{}") @map("validation_json")
+  metadataJson           Json @default("{}") @map("metadata_json")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  section                QuestionnaireSection @relation(fields: [questionnaireSectionId], references: [id], onDelete: Cascade)
+  answers                AuditAnswer[]
+  @@unique([questionnaireSectionId, position])
+  @@index([questionnaireSectionId, position], map: "questionnaire_questions_section_idx")
+  @@map("questionnaire_questions")
+  @@schema("public")
+}
+
+model AuditAnswer {
+  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  auditId        String @map("audit_id") @db.Uuid
+  questionId     String @map("question_id") @db.Uuid
+  valueJson      Json @map("value_json")
+  answeredBy     String @map("answered_by") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  audit          Audit @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  question       QuestionnaireQuestion @relation(fields: [questionId], references: [id])
+  @@unique([auditId, questionId])
+  @@index([auditId], map: "audit_answers_audit_idx")
+  @@index([organizationId], map: "audit_answers_organization_idx")
+  @@map("audit_answers")
   @@schema("public")
 }

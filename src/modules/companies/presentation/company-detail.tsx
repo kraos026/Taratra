@@ -94,6 +94,11 @@ export function CompanyDetail({ id }: { id: string }) {
         </div>
         <div className="flex gap-2">
           {permissions.canWrite && !company.deletedAt && (
+            <Button variant="outline" onClick={() => router.push(`/companies/${id}/audits/new`)}>
+              Nouvel audit
+            </Button>
+          )}
+          {permissions.canWrite && !company.deletedAt && (
             <Button variant="outline" onClick={() => router.push(`/companies/${id}/edit`)}>
               <Pencil size={16} /> Modifier
             </Button>
