@@ -17,6 +17,7 @@ function repository(overrides: Record<string, unknown> = {}) {
       .mockResolvedValue({ questionType: "number", optionsJson: null, validationJson: { min: 0 } }),
     upsertAnswer: vi.fn(),
     recalculate: vi.fn().mockResolvedValue({ progressPercentage: 50 }),
+    sectionBelongsToAudit: vi.fn().mockResolvedValue({ id: "section" }),
     complete: vi.fn().mockResolvedValue({ status: "completed" }),
     validate: vi.fn().mockResolvedValue({ status: "validated" }),
     ...overrides,
@@ -73,5 +74,11 @@ describe("AuditService", () => {
         questionnaireVersionId: "version",
       }),
     ).rejects.toMatchObject({ code: "AUDIT_FORBIDDEN" });
+  });
+  it("rejects a current section outside the audit questionnaire", async () => {
+    const repo = repository({ sectionBelongsToAudit: vi.fn().mockResolvedValue(null) });
+    await expect(
+      new AuditService(repo, "user").update("audit", { currentSectionId: "other-section" }),
+    ).rejects.toMatchObject({ code: "AUDIT_SECTION_MISMATCH", status: 422 });
   });
 });

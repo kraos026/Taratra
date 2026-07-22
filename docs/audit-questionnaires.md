@@ -68,3 +68,18 @@ npm run build
 supabase start
 supabase test db
 ```
+
+## Durcissement post-revue
+
+Les lectures RLS sont autorisées sur la version exacte : un viewer ne voit que les versions
+publiées, y compris pour les questionnaires système. Les sections et questions héritent de cette
+autorisation exacte et ne deviennent jamais visibles parce qu'une autre version du modèle est
+publiée.
+
+`current_section_id` est nul ou référence une section de la version attachée à l'audit. Cette
+contrainte est vérifiée par le service applicatif et par un trigger PostgreSQL. La complétion exige
+les réponses obligatoires mais conserve la progression réelle sur toutes les questions ; elle
+n'atteint 100 % que lorsque toutes les questions sont répondues.
+
+L'éditeur permet de modifier, supprimer et réordonner les sections et questions d'un brouillon.
+Les échanges de position sont effectués dans la transaction authentifiée et protégée par RLS.

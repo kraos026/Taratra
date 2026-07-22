@@ -11,6 +11,16 @@ function repository(overrides: Record<string, unknown> = {}) {
     duplicate: vi.fn().mockResolvedValue({ id: "copy" }),
     publish: vi.fn().mockResolvedValue({ id: "version", status: "published" }),
     archive: vi.fn(),
+    getSection: vi.fn().mockResolvedValue({
+      id: "section",
+      version: { status: "draft", template: { isSystem: false } },
+    }),
+    getQuestion: vi.fn().mockResolvedValue({
+      id: "question",
+      section: { version: { status: "draft", template: { isSystem: false } } },
+    }),
+    moveSection: vi.fn().mockResolvedValue({ id: "section", position: 2 }),
+    moveQuestion: vi.fn().mockResolvedValue({ id: "question", position: 2 }),
     ...overrides,
   } as unknown as PrismaQuestionnaireRepository;
 }
@@ -40,5 +50,22 @@ describe("QuestionnaireService", () => {
     await expect(
       new QuestionnaireService(repo, "user").create({ name: "Audit", category: "ops" }),
     ).rejects.toMatchObject({ code: "QUESTIONNAIRE_FORBIDDEN" });
+  });
+  it("reorders draft sections and questions through the repository", async () => {
+    const repo = repository();
+    await new QuestionnaireService(repo, "user").moveSection("section", 2);
+    await new QuestionnaireService(repo, "user").moveQuestion("question", 2);
+    expect(repo.moveSection).toHaveBeenCalledWith("section", 2);
+    expect(repo.moveQuestion).toHaveBeenCalledWith("question", 2);
+  });
+  it("rejects reordering immutable questionnaire content", async () => {
+    const repo = repository({
+      getSection: vi.fn().mockResolvedValue({
+        version: { status: "published", template: { isSystem: false } },
+      }),
+    });
+    await expect(
+      new QuestionnaireService(repo, "user").moveSection("section", 2),
+    ).rejects.toMatchObject({ code: "QUESTIONNAIRE_IMMUTABLE" });
   });
 });

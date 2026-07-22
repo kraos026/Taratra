@@ -27,3 +27,12 @@ export class AuditIncompleteError extends AuditError {
     super("AUDIT_INCOMPLETE", "All required questions must have a valid answer", 422);
   }
 }
+export class AuditSectionMismatchError extends AuditError {
+  constructor() {
+    super(
+      "AUDIT_SECTION_MISMATCH",
+      "Current section must belong to the audit questionnaire version",
+      422,
+    );
+  }
+}

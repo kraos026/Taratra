@@ -3,6 +3,7 @@ import {
   AuditForbiddenError,
   AuditIncompleteError,
   AuditNotFoundError,
+  AuditSectionMismatchError,
   AuditStateError,
 } from "../domain/audit-errors";
 import type { PrismaAuditRepository } from "../infrastructure/prisma-audit-repository";
@@ -57,6 +58,11 @@ export class AuditService {
     const current = (await this.get(id)).item;
     if (["validated", "archived"].includes(current.status))
       throw new AuditStateError("Validated and archived audits are read-only");
+    if (
+      input.currentSectionId &&
+      !(await this.repository.sectionBelongsToAudit(c.organizationId, id, input.currentSectionId))
+    )
+      throw new AuditSectionMismatchError();
     return this.repository.update(c.organizationId, id, input);
   }
   async answer(id: string, questionId: string, value: unknown) {

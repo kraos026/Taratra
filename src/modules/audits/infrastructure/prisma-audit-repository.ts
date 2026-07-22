@@ -1,5 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
+import { calculateProgress, evaluateCompletion } from "../domain/progress";
 export class PrismaAuditRepository {
   constructor(private readonly db: TransactionClient) {}
   context(userId: string) {
@@ -60,6 +61,15 @@ export class PrismaAuditRepository {
   update(organizationId: string, id: string, data: { currentSectionId?: string | null }) {
     return this.db.audit.update({ where: { id, organizationId }, data });
   }
+  sectionBelongsToAudit(organizationId: string, auditId: string, sectionId: string) {
+    return this.db.questionnaireSection.findFirst({
+      where: {
+        id: sectionId,
+        version: { audits: { some: { id: auditId, organizationId } } },
+      },
+      select: { id: true },
+    });
+  }
   findQuestion(auditId: string, questionId: string) {
     return this.db.questionnaireQuestion.findFirst({
       where: { id: questionId, section: { version: { audits: { some: { id: auditId } } } } },
@@ -90,7 +100,7 @@ export class PrismaAuditRepository {
     const total =
       audit.questionnaireVersion?.sections.reduce((sum, s) => sum + s.questions.length, 0) ?? 0;
     const answered = new Set(audit.answers.map((a) => a.questionId)).size;
-    const progress = total === 0 ? 0 : Math.round((Math.min(answered, total) / total) * 100);
+    const progress = calculateProgress(total, answered);
     return this.db.audit.update({
       where: { id, organizationId },
       data: {
@@ -103,14 +113,21 @@ export class PrismaAuditRepository {
   async complete(organizationId: string, id: string) {
     const audit = await this.get(organizationId, id);
     if (!audit) return null;
-    const required =
-      audit.questionnaireVersion?.sections.flatMap((s) => s.questions).filter((q) => q.required) ??
-      [];
+    const questions = audit.questionnaireVersion?.sections.flatMap((s) => s.questions) ?? [];
     const answered = new Set(audit.answers.map((a) => a.questionId));
-    if (required.some((q) => !answered.has(q.id))) return false;
+    const completion = evaluateCompletion(
+      questions.map((question) => question.id),
+      questions.filter((question) => question.required).map((question) => question.id),
+      answered,
+    );
+    if (!completion.canComplete) return false;
     return this.db.audit.update({
       where: { id, organizationId },
-      data: { status: "completed", completedAt: new Date(), progressPercentage: 100 },
+      data: {
+        status: "completed",
+        completedAt: new Date(),
+        progressPercentage: completion.progress,
+      },
     });
   }
   validate(organizationId: string, id: string) {

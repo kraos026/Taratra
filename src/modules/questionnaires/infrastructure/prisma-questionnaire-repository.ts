@@ -154,6 +154,34 @@ export class PrismaQuestionnaireRepository {
   updateSection(id: string, input: { title?: string; description?: string; position?: number }) {
     return this.db.questionnaireSection.update({ where: { id }, data: input });
   }
+  getSection(id: string) {
+    return this.db.questionnaireSection.findUnique({
+      where: { id },
+      include: { version: { include: { template: true } } },
+    });
+  }
+  async moveSection(id: string, position: number) {
+    const source = await this.db.questionnaireSection.findUnique({ where: { id } });
+    if (!source || source.position === position) return source;
+    const target = await this.db.questionnaireSection.findUnique({
+      where: {
+        questionnaireVersionId_position: {
+          questionnaireVersionId: source.questionnaireVersionId,
+          position,
+        },
+      },
+    });
+    if (!target) return null;
+    await this.db.questionnaireSection.update({
+      where: { id: source.id },
+      data: { position: 2147483647 },
+    });
+    await this.db.questionnaireSection.update({
+      where: { id: target.id },
+      data: { position: source.position },
+    });
+    return this.db.questionnaireSection.update({ where: { id: source.id }, data: { position } });
+  }
   deleteSection(id: string) {
     return this.db.questionnaireSection.delete({ where: { id } });
   }
@@ -207,5 +235,33 @@ export class PrismaQuestionnaireRepository {
   }
   deleteQuestion(id: string) {
     return this.db.questionnaireQuestion.delete({ where: { id } });
+  }
+  getQuestion(id: string) {
+    return this.db.questionnaireQuestion.findUnique({
+      where: { id },
+      include: { section: { include: { version: { include: { template: true } } } } },
+    });
+  }
+  async moveQuestion(id: string, position: number) {
+    const source = await this.db.questionnaireQuestion.findUnique({ where: { id } });
+    if (!source || source.position === position) return source;
+    const target = await this.db.questionnaireQuestion.findUnique({
+      where: {
+        questionnaireSectionId_position: {
+          questionnaireSectionId: source.questionnaireSectionId,
+          position,
+        },
+      },
+    });
+    if (!target) return null;
+    await this.db.questionnaireQuestion.update({
+      where: { id: source.id },
+      data: { position: 2147483647 },
+    });
+    await this.db.questionnaireQuestion.update({
+      where: { id: target.id },
+      data: { position: source.position },
+    });
+    return this.db.questionnaireQuestion.update({ where: { id: source.id }, data: { position } });
   }
 }

@@ -15,14 +15,19 @@ type Version = {
   sections: Array<{
     id: string;
     title: string;
+    description: string | null;
     position: number;
     questions: Array<{
       id: string;
       code: string;
       label: string;
+      description: string | null;
       questionType: string;
       required: boolean;
       position: number;
+      optionsJson: unknown[] | null;
+      validationJson: Record<string, unknown>;
+      metadataJson: Record<string, unknown>;
     }>;
   }>;
 };
@@ -276,6 +281,8 @@ export function VersionEditor({
 }) {
   const [data, setData] = useState<Detail>();
   const [error, setError] = useState<string>();
+  const [message, setMessage] = useState<string>();
+  const [pending, setPending] = useState(false);
   const load = () =>
     void json<Detail>(`/api/questionnaires/${templateId}`)
       .then(setData)
@@ -286,6 +293,66 @@ export function VersionEditor({
       .catch((caught: Error) => setError(caught.message));
   }, [templateId]);
   const version = data?.item.versions.find((v) => v.id === versionId);
+  async function mutate(url: string, init: RequestInit, success: string) {
+    setPending(true);
+    setError(undefined);
+    try {
+      await json(url, {
+        ...init,
+        headers: { "content-type": "application/json", ...init.headers },
+      });
+      setMessage(success);
+      load();
+    } catch (caught) {
+      setError(caught instanceof Error ? caught.message : "Erreur");
+    } finally {
+      setPending(false);
+    }
+  }
+  function move(kind: "sections" | "questions", id: string, position: number) {
+    void mutate(
+      `/api/questionnaire-${kind}/${id}`,
+      { method: "PATCH", body: JSON.stringify({ operation: "move", position }) },
+      "Ordre mis à jour.",
+    );
+  }
+  function remove(kind: "sections" | "questions", id: string, label: string) {
+    if (!window.confirm(`Supprimer ${label} ? Cette action est définitive.`)) return;
+    void mutate(`/api/questionnaire-${kind}/${id}`, { method: "DELETE" }, `${label} supprimée.`);
+  }
+  function editSection(section: Version["sections"][number]) {
+    const title = window.prompt("Titre de la section", section.title)?.trim();
+    if (!title) return;
+    void mutate(
+      `/api/questionnaire-sections/${section.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          title,
+          description: section.description ?? undefined,
+          position: section.position,
+        }),
+      },
+      "Section modifiée.",
+    );
+  }
+  function editQuestion(question: Version["sections"][number]["questions"][number]) {
+    const label = window.prompt("Libellé de la question", question.label)?.trim();
+    if (!label) return;
+    void mutate(
+      `/api/questionnaire-questions/${question.id}`,
+      {
+        method: "PATCH",
+        body: JSON.stringify({
+          ...question,
+          label,
+          description: question.description ?? undefined,
+          optionsJson: question.optionsJson ?? undefined,
+        }),
+      },
+      "Question modifiée.",
+    );
+  }
   async function addSection(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const values = Object.fromEntries(new FormData(event.currentTarget));
@@ -346,12 +413,57 @@ export function VersionEditor({
           {error}
         </p>
       )}
+      {message && (
+        <p className="text-sm text-emerald-700" role="status">
+          {message}
+        </p>
+      )}
       {version.sections.map((section) => (
         <Card key={section.id}>
           <CardHeader>
-            <CardTitle>
-              {section.position}. {section.title}
-            </CardTitle>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <CardTitle>
+                {section.position}. {section.title}
+              </CardTitle>
+              {version.status === "draft" && data?.permissions.canManage && (
+                <div className="flex flex-wrap gap-2" aria-label={`Actions pour ${section.title}`}>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pending || section.position === 1}
+                    aria-label={`Monter ${section.title}`}
+                    onClick={() => move("sections", section.id, section.position - 1)}
+                  >
+                    ↑
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pending || section.position === version.sections.length}
+                    aria-label={`Descendre ${section.title}`}
+                    onClick={() => move("sections", section.id, section.position + 1)}
+                  >
+                    ↓
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={() => editSection(section)}
+                  >
+                    Modifier
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={pending}
+                    onClick={() => remove("sections", section.id, "la section")}
+                  >
+                    Supprimer
+                  </Button>
+                </div>
+              )}
+            </div>
           </CardHeader>
           <CardContent>
             <ol className="space-y-2">
@@ -364,6 +476,47 @@ export function VersionEditor({
                     {q.questionType}
                     {q.required ? " · obligatoire" : ""}
                   </span>
+                  {version.status === "draft" && data?.permissions.canManage && (
+                    <div
+                      className="mt-3 flex flex-wrap gap-2"
+                      aria-label={`Actions pour ${q.label}`}
+                    >
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending || q.position === 1}
+                        aria-label={`Monter ${q.label}`}
+                        onClick={() => move("questions", q.id, q.position - 1)}
+                      >
+                        ↑
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending || q.position === section.questions.length}
+                        aria-label={`Descendre ${q.label}`}
+                        onClick={() => move("questions", q.id, q.position + 1)}
+                      >
+                        ↓
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => editQuestion(q)}
+                      >
+                        Modifier
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={pending}
+                        onClick={() => remove("questions", q.id, "la question")}
+                      >
+                        Supprimer
+                      </Button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ol>

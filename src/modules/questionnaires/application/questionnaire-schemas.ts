@@ -32,6 +32,10 @@ export const sectionInputSchema = z.object({
   description: optionalText(5000),
   position: z.coerce.number().int().positive(),
 });
+export const moveInputSchema = z.object({
+  operation: z.literal("move"),
+  position: z.coerce.number().int().positive(),
+});
 export const questionInputSchema = z
   .object({
     code: z

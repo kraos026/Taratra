@@ -91,30 +91,42 @@ export class QuestionnaireService {
     id: string,
     input: { title?: string; description?: string; position?: number },
   ) {
-    await this.admin();
+    await this.requireManagedSection(id);
     return this.repository.updateSection(id, input);
   }
+  async moveSection(id: string, position: number) {
+    await this.requireManagedSection(id);
+    const moved = await this.repository.moveSection(id, position);
+    if (!moved) throw new QuestionnaireNotFoundError();
+    return moved;
+  }
   async deleteSection(id: string) {
-    await this.admin();
+    await this.requireManagedSection(id);
     return this.repository.deleteSection(id);
   }
   async addQuestion(
     sectionId: string,
     input: Parameters<PrismaQuestionnaireRepository["createQuestion"]>[1],
   ) {
-    await this.admin();
+    await this.requireManagedSection(sectionId);
     return this.repository.createQuestion(sectionId, input);
   }
   async updateQuestion(
     id: string,
     input: Parameters<PrismaQuestionnaireRepository["createQuestion"]>[1],
   ) {
-    await this.admin();
+    await this.requireManagedQuestion(id);
     return this.repository.updateQuestion(id, input);
   }
   async deleteQuestion(id: string) {
-    await this.admin();
+    await this.requireManagedQuestion(id);
     return this.repository.deleteQuestion(id);
+  }
+  async moveQuestion(id: string, position: number) {
+    await this.requireManagedQuestion(id);
+    const moved = await this.repository.moveQuestion(id, position);
+    if (!moved) throw new QuestionnaireNotFoundError();
+    return moved;
   }
   private async requireManagedTemplate(id: string) {
     await this.admin();
@@ -129,5 +141,21 @@ export class QuestionnaireService {
     if (!version) throw new QuestionnaireNotFoundError();
     if (version.template.isSystem) throw new QuestionnaireForbiddenError();
     return version;
+  }
+  private async requireManagedSection(id: string) {
+    await this.admin();
+    const section = await this.repository.getSection(id);
+    if (!section) throw new QuestionnaireNotFoundError();
+    if (section.version.status !== "draft") throw new QuestionnaireImmutableError();
+    if (section.version.template.isSystem) throw new QuestionnaireForbiddenError();
+    return section;
+  }
+  private async requireManagedQuestion(id: string) {
+    await this.admin();
+    const question = await this.repository.getQuestion(id);
+    if (!question) throw new QuestionnaireNotFoundError();
+    if (question.section.version.status !== "draft") throw new QuestionnaireImmutableError();
+    if (question.section.version.template.isSystem) throw new QuestionnaireForbiddenError();
+    return question;
   }
 }
