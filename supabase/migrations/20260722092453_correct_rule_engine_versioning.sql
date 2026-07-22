@@ -42,5 +42,28 @@ from (values
 ) as v(code, condition_json)
 where r.code = v.code and r.organization_id is null;
 
+update public.rules as r
+set code = v.new_code, name = v.new_name, description = v.new_description,
+    result_json = jsonb_build_object('key', lower(v.new_code), 'label', v.new_name)
+from (values
+('NO_BACKUP','LOW_DIGITAL_MATURITY','Maturité numérique faible','La maturité numérique déclarée est faible'),
+('MANUAL_LEAD_ASSIGNMENT','HIGH_LEAD_VOLUME','Volume de prospects élevé','Le volume mensuel de prospects dépasse 50'),
+('NO_SALES_PIPELINE','NO_SALES_FOLLOWUP','Relance commerciale non décrite','Le processus de relance commerciale est vide'),
+('NO_WORKFLOW_TOOL','MANUAL_VALIDATION','Validation administrative manuelle','La validation fait partie des tâches manuelles'),
+('MANUAL_EXPENSE_ENTRY','COST_REDUCTION_PRIORITY','Réduction des coûts prioritaire','Les coûts sont un domaine prioritaire'),
+('SLOW_MONTH_CLOSE','QUARTERLY_REPORTING','Reporting trimestriel','Le reporting est seulement trimestriel'),
+('SHARED_PASSWORDS','DISCONNECTED_TOOLS','Outils non intégrés','Les outils n’échangent pas automatiquement leurs données'),
+('NO_MFA','MATURITY_NOT_ADVANCED','Maturité numérique non avancée','La maturité numérique n’est pas avancée'),
+('STALE_ACCESS_REVIEW','PILOTAGE_PRIORITY','Pilotage prioritaire','Le pilotage est un domaine prioritaire'),
+('NO_TICKETING','EMAIL_SUPPORT_CHANNEL','Support principalement par email','Le canal principal du support est l’email'),
+('NO_SUPPORT_KB','CUSTOMER_EXPERIENCE_PRIORITY','Expérience client prioritaire','L’expérience client est un domaine prioritaire')
+) as v(old_code,new_code,new_name,new_description)
+where r.code = v.old_code and r.organization_id is null;
+
+update public.rule_results as rr
+set result_key = r.result_json->>'key', label = r.result_json->>'label',
+    description = r.description, score = r.weight
+from public.rules as r where r.id = rr.rule_id and r.organization_id is null;
+
 create trigger rules_prevent_decision_rewrite before update on public.rules
 for each row execute function private.prevent_rule_decision_rewrite();
