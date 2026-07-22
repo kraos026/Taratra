@@ -1,9 +1,9 @@
-create or replace function private.can_read_questionnaire_template(requested_template_id uuid)
+create or replace function private.can_read_questionnaire_template(template_id uuid)
 returns boolean language sql stable security definer set search_path = '' as $$
   select exists (
     select 1
     from public.questionnaire_templates as qt
-    where qt.id = requested_template_id
+    where qt.id = template_id
       and qt.deleted_at is null
       and (
         (qt.is_system and exists (
