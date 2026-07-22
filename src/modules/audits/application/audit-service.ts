@@ -1,4 +1,4 @@
-import { validateAnswer } from "@/modules/questionnaires/domain/answer-validator";
+import { validateAnswer } from "../../questionnaires/domain/answer-validator";
 import {
   AuditForbiddenError,
   AuditIncompleteError,
