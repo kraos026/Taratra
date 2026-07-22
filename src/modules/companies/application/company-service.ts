@@ -27,6 +27,18 @@ export class CompanyService {
       page: query.page,
       pageSize: query.pageSize,
       totalPages: Math.max(1, Math.ceil(result.total / query.pageSize)),
+      permissions: {
+        canWrite: canWriteCompanies(context.role),
+        canDelete: canPermanentlyDeleteCompanies(context.role),
+      },
+    };
+  }
+
+  async permissions() {
+    const context = await this.requireContext();
+    return {
+      canWrite: canWriteCompanies(context.role),
+      canDelete: canPermanentlyDeleteCompanies(context.role),
     };
   }
 

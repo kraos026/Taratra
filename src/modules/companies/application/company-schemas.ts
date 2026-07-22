@@ -28,7 +28,10 @@ const optionalWebsite = z.preprocess(
 export const companyInputSchema = z.object({
   name: z.string().trim().min(2).max(160),
   sectorId: optionalText(120),
-  employeeCount: z.coerce.number().int().nonnegative().optional(),
+  employeeCount: z.preprocess(
+    (value) => (value === "" || value === null ? undefined : value),
+    z.coerce.number().int().nonnegative().optional(),
+  ),
   companySize: z.enum(companySizes).optional(),
   primaryContactName: optionalText(160),
   primaryContactRole: optionalText(160),

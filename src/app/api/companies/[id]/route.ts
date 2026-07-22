@@ -15,7 +15,9 @@ async function validId(context: RouteContext): Promise<string | null> {
 export async function GET(_request: Request, context: RouteContext) {
   const id = await validId(context);
   if (!id) return validationError("Invalid company identifier");
-  return withCompanyService("companies.get", async (service) => apiSuccess(await service.get(id)));
+  return withCompanyService("companies.get", async (service) =>
+    apiSuccess({ company: await service.get(id), permissions: await service.permissions() }),
+  );
 }
 
 export async function PATCH(request: Request, context: RouteContext) {

@@ -85,6 +85,12 @@ export interface CompanyPage {
   readonly pageSize: number;
   readonly total: number;
   readonly totalPages: number;
+  readonly permissions: CompanyPermissions;
+}
+
+export interface CompanyPermissions {
+  readonly canWrite: boolean;
+  readonly canDelete: boolean;
 }
 
 export interface OrganizationContext {

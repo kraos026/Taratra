@@ -70,9 +70,7 @@ export class PrismaCompanyRepository implements CompanyRepository {
   }
 
   async create(organizationId: string, input: CompanyInput): Promise<Company> {
-    return mapCompany(
-      await this.database.company.create({ data: { ...input, organizationId } }),
-    );
+    return mapCompany(await this.database.company.create({ data: { ...input, organizationId } }));
   }
 
   async update(organizationId: string, id: string, input: CompanyUpdate): Promise<Company | null> {
