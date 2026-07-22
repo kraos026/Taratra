@@ -60,3 +60,10 @@ export function evaluateCondition(condition: RuleCondition, facts: AuditFacts): 
   if ("none" in condition) return condition.none.every((child) => !evaluateCondition(child, facts));
   return evaluateOperator(condition.operator, facts[condition.fact], condition.value);
 }
+
+export function referencedFacts(condition: RuleCondition): readonly string[] {
+  if ("all" in condition) return [...new Set(condition.all.flatMap(referencedFacts))];
+  if ("any" in condition) return [...new Set(condition.any.flatMap(referencedFacts))];
+  if ("none" in condition) return [...new Set(condition.none.flatMap(referencedFacts))];
+  return [condition.fact];
+}

@@ -339,6 +339,7 @@ model AuditRuleMatch {
   organizationId String @map("organization_id") @db.Uuid
   auditId        String @map("audit_id") @db.Uuid
   ruleId         String @map("rule_id") @db.Uuid
+  evaluationId   String @map("evaluation_id") @db.Uuid
   matched        Boolean
   score          Decimal @default(0) @db.Decimal(12, 4)
   detailsJson    Json @default("{}") @map("details_json")
@@ -359,6 +360,7 @@ model AuditScore {
   organizationId String @map("organization_id") @db.Uuid
   auditId        String @map("audit_id") @db.Uuid
   categoryId     String? @map("category_id") @db.Uuid
+  evaluationId   String @map("evaluation_id") @db.Uuid
   score          Decimal @default(0) @db.Decimal(12, 4)
   total          Decimal @default(0) @db.Decimal(12, 4)
   percentage     Decimal @default(0) @db.Decimal(7, 4)

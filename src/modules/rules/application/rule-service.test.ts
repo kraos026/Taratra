@@ -24,6 +24,10 @@ function repository(overrides: Record<string, unknown> = {}) {
       },
     ]),
     storeEvaluation: vi.fn(),
+    get: vi.fn().mockResolvedValue({ id: "rule", code: "CUSTOM", organizationId: "org" }),
+    category: vi.fn().mockResolvedValue({ id: "category", organizationId: "org" }),
+    createVersion: vi.fn().mockResolvedValue({ id: "v2", version: 2 }),
+    update: vi.fn(),
     results: vi.fn().mockResolvedValue({ id: "audit" }),
     ...overrides,
   } as unknown as PrismaRuleRepository;
@@ -70,5 +74,68 @@ describe("RuleService", () => {
     const result = await new RuleService(repo, "user").evaluate("audit");
     expect(result.matched).toHaveLength(0);
     expect(result.unmatched).toHaveLength(0);
+  });
+  it("creates a new version without rewriting the previous one", async () => {
+    const repo = repository({
+      context: vi.fn().mockResolvedValue({ organizationId: "org", role: "admin" }),
+    });
+    const input = {
+      categoryId: "category",
+      name: "V2",
+      priority: 1,
+      severity: "high" as const,
+      weight: 2,
+      conditionJson: { fact: "x", operator: "isEmpty" },
+      resultJson: {},
+      active: true,
+    };
+    await expect(new RuleService(repo, "user").createVersion("rule", input)).resolves.toMatchObject(
+      { version: 2 },
+    );
+    expect(repo.update).not.toHaveBeenCalled();
+    expect(repo.createVersion).toHaveBeenCalledWith(
+      "org",
+      expect.objectContaining({ code: "CUSTOM" }),
+      input,
+    );
+  });
+  it("cannot version a system rule", async () => {
+    const repo = repository({
+      context: vi.fn().mockResolvedValue({ organizationId: "org", role: "admin" }),
+      get: vi.fn().mockResolvedValue({ code: "SYSTEM", organizationId: null }),
+    });
+    await expect(
+      new RuleService(repo, "user").createVersion("rule", {} as never),
+    ).rejects.toMatchObject({ code: "RULE_FORBIDDEN" });
+  });
+  it("snapshots v1 before a later evaluation uses v2", async () => {
+    const repo = repository();
+    await new RuleService(repo, "user").evaluate("audit");
+    const firstRules = vi.mocked(repo.storeEvaluation).mock.calls[0]?.[2];
+    expect(firstRules?.[0]?.snapshot).toMatchObject({ ruleVersion: 1 });
+    vi.mocked(repo.evaluationRules).mockResolvedValue([
+      {
+        id: "rule-v2",
+        organizationId: null,
+        code: "CRM_ABSENT",
+        name: "V2",
+        version: 2,
+        categoryId: "category",
+        category: { code: "sales" },
+        weight: 7,
+        priority: 1,
+        severity: "high",
+        active: true,
+        conditionJson: { fact: "crm_used", operator: "equal", value: false },
+        resultJson: {},
+      },
+    ] as never);
+    await new RuleService(repo, "user").evaluate("audit");
+    const secondRules = vi.mocked(repo.storeEvaluation).mock.calls[1]?.[2];
+    expect(firstRules?.[0]?.snapshot).toMatchObject({ ruleVersion: 1 });
+    expect(secondRules?.[0]?.snapshot).toMatchObject({ ruleVersion: 2, weight: 7 });
+    expect(vi.mocked(repo.storeEvaluation).mock.calls[0]?.[4]).not.toEqual(
+      vi.mocked(repo.storeEvaluation).mock.calls[1]?.[4],
+    );
   });
 });

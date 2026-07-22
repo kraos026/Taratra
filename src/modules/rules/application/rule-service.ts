@@ -1,4 +1,5 @@
 import type { OrganizationRole } from "@/generated/prisma/client";
+import { randomUUID } from "node:crypto";
 import { RuleEngine } from "./rule-engine";
 import { ruleConditionSchema } from "./rule-schemas";
 import { RuleForbiddenError, RuleNotFoundError, RuleStateError } from "../domain/rule-errors";
@@ -46,6 +47,15 @@ export class RuleService {
     }
     return this.repository.update(id, input);
   }
+  async createVersion(id: string, input: Omit<RuleWriteInput, "code" | "version">) {
+    const context = await this.admin();
+    const current = await this.repository.get(context.organizationId, id);
+    if (!current) throw new RuleNotFoundError();
+    if (current.organizationId !== context.organizationId) throw new RuleForbiddenError();
+    const category = await this.repository.category(context.organizationId, input.categoryId);
+    if (!category) throw new RuleForbiddenError();
+    return this.repository.createVersion(context.organizationId, current, input);
+  }
   async evaluate(auditId: string) {
     const context = await this.context();
     if (context.role === "viewer") throw new RuleForbiddenError();
@@ -67,25 +77,39 @@ export class RuleService {
     const executable = rules.map((rule) => ({
       id: rule.id,
       code: rule.code,
+      version: rule.version,
+      name: rule.name,
       categoryId: rule.categoryId,
       categoryCode: rule.category.code,
+      priority: rule.priority,
+      severity: rule.severity,
       weight: Number(rule.weight),
       condition: ruleConditionSchema.parse(rule.conditionJson),
       result: rule.resultJson as Record<string, unknown>,
     }));
     const evaluation = this.engine.evaluate(facts as AuditFacts, executable);
+    const evaluationId = randomUUID();
+    const evaluatedAt = new Date();
     await this.repository.storeEvaluation(
       context.organizationId,
       auditId,
       [...evaluation.matched, ...evaluation.unmatched],
       evaluation.scores,
+      evaluationId,
+      evaluatedAt,
     );
-    return evaluation;
+    return { ...evaluation, evaluationId, evaluatedAt };
   }
   async results(auditId: string) {
     const context = await this.context();
     const results = await this.repository.results(context.organizationId, auditId);
     if (!results) throw new RuleNotFoundError();
-    return results;
+    return {
+      ...results,
+      ruleMatches: results.ruleMatches.map((match) => ({
+        ...match,
+        snapshot: match.detailsJson,
+      })),
+    };
   }
 }

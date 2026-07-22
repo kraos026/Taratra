@@ -53,8 +53,10 @@ export const ruleInputSchema = z.object({
   version: z.number().int().positive().default(1),
 });
 export const ruleUpdateSchema = ruleInputSchema
+  .pick({ name: true, description: true, priority: true, active: true })
   .partial()
   .refine((value) => Object.keys(value).length > 0);
+export const ruleVersionInputSchema = ruleInputSchema.omit({ code: true, version: true });
 export const ruleListSchema = z.object({
   active: z
     .enum(["true", "false"])

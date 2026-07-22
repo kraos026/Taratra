@@ -51,6 +51,23 @@ export class PrismaRuleRepository {
       },
     });
   }
+  async createVersion(
+    organizationId: string,
+    current: { code: string },
+    input: Omit<RuleWriteInput, "code" | "version">,
+  ) {
+    await this.db
+      .$executeRaw`select pg_advisory_xact_lock(hashtextextended(${`${organizationId}:${current.code}`}, 0))`;
+    const latest = await this.db.rule.aggregate({
+      where: { organizationId, code: current.code },
+      _max: { version: true },
+    });
+    return this.create(organizationId, {
+      ...input,
+      code: current.code,
+      version: (latest._max.version ?? 0) + 1,
+    });
+  }
   audit(organizationId: string, auditId: string) {
     return this.db.audit.findFirst({
       where: { id: auditId, organizationId, deletedAt: null },
@@ -72,6 +89,8 @@ export class PrismaRuleRepository {
     auditId: string,
     rules: readonly EvaluatedRule[],
     scores: readonly CategoryScore[],
+    evaluationId: string,
+    evaluatedAt: Date,
   ) {
     await this.db.auditRuleMatch.deleteMany({ where: { auditId, organizationId } });
     await this.db.auditScore.deleteMany({ where: { auditId, organizationId } });
@@ -81,9 +100,11 @@ export class PrismaRuleRepository {
           organizationId,
           auditId,
           ruleId: rule.id,
+          evaluationId,
           matched: rule.matched,
           score: rule.score,
-          detailsJson: { code: rule.code, result: rule.result } as Prisma.InputJsonValue,
+          evaluatedAt,
+          detailsJson: rule.snapshot as Prisma.InputJsonValue,
         })),
       });
     if (scores.length)
@@ -92,9 +113,11 @@ export class PrismaRuleRepository {
           organizationId,
           auditId,
           categoryId: score.categoryId,
+          evaluationId,
           score: score.score,
           total: score.total,
           percentage: score.percentage,
+          evaluatedAt,
         })),
       });
   }
@@ -102,10 +125,7 @@ export class PrismaRuleRepository {
     return this.db.audit.findFirst({
       where: { id: auditId, organizationId, deletedAt: null },
       include: {
-        ruleMatches: {
-          include: { rule: { include: { category: true } } },
-          orderBy: [{ matched: "desc" }, { rule: { priority: "asc" } }],
-        },
+        ruleMatches: { orderBy: [{ matched: "desc" }, { evaluatedAt: "desc" }] },
         scores: { include: { category: true }, orderBy: { percentage: "desc" } },
       },
     });

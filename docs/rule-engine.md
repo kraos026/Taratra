@@ -25,6 +25,11 @@ désactivée avec `active = false` et n'est jamais supprimée par l'API.
 Seule la version la plus récente de chaque code et de chaque portée est évaluée ; si elle est
 désactivée, aucune version antérieure n'est réactivée implicitement.
 
+Les champs décisionnels (`code`, catégorie, sévérité, poids, condition, résultat et numéro de
+version) sont immuables après insertion. `POST /api/rules/:id/versions` prend un verrou advisory
+transactionnel, calcule le prochain numéro et crée une nouvelle ligne. `PATCH` est limité au nom,
+à la description, à la priorité et à l'activation. Les règles système restent non modifiables.
+
 Owner et admin créent ou modifient les règles personnalisées. Tous les membres lisent le catalogue
 disponible. Owner, admin et consultant exécutent le moteur ; viewer lit uniquement les résultats.
 Les politiques RLS et les triggers empêchent toute lecture ou écriture inter-tenant.
@@ -44,6 +49,24 @@ ne modifient pas ce calcul.
 - `GET /api/rules`
 - `POST /api/rules`
 - `PATCH /api/rules/:id`
+- `POST /api/rules/:id/versions`
+
+## Historique d'évaluation
+
+Le Sprint 3A conserve uniquement la dernière évaluation d'un audit. Chaque réévaluation remplace
+atomiquement les matches et scores dans la transaction authentifiée. Tous les enregistrements
+d'une exécution partagent le même `evaluation_id` et le même `evaluated_at`; une nouvelle exécution
+génère un nouvel identifiant.
+
+`details_json` contient un snapshot autonome : identifiants, code, version et nom de règle,
+catégorie, priorité, sévérité, poids, condition, résultat, décision, score et uniquement les faits
+référencés. La lecture des résultats expose ce snapshot et ne dépend pas des métadonnées courantes.
+
+Le seuil de volume administratif élevé est strictement supérieur à 20 heures par semaine. Les
+vingt règles système utilisent uniquement les codes du questionnaire publié : `sales.crm`,
+`sales.leads`, `sales.followup`, `admin.manual_tasks`, `admin.hours`, `finance.invoicing`,
+`finance.late_rate`, `tools.list`, `tools.integrated`, `general.digital_maturity`,
+`support.channels`, `support.volume`, `volume.reporting` et `priority.areas`.
 
 ## Vérification
 

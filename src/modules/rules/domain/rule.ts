@@ -26,8 +26,12 @@ export type RuleCondition =
 export interface ExecutableRule {
   readonly id: string;
   readonly code: string;
+  readonly version: number;
+  readonly name: string;
   readonly categoryId: string;
   readonly categoryCode: string;
+  readonly priority: number;
+  readonly severity: string;
   readonly weight: number;
   readonly condition: RuleCondition;
   readonly result: Readonly<Record<string, unknown>>;
@@ -36,6 +40,7 @@ export interface ExecutableRule {
 export interface EvaluatedRule extends ExecutableRule {
   readonly matched: boolean;
   readonly score: number;
+  readonly snapshot: Readonly<Record<string, unknown>>;
 }
 
 export interface CategoryScore {

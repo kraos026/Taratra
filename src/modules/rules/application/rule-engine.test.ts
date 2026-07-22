@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { RuleEngine } from "./rule-engine";
+const metadata = { version: 1, name: "Rule", priority: 10, severity: "medium" };
 const rules = [
   {
+    ...metadata,
     id: "one",
     code: "ONE",
     categoryId: "sales",
@@ -11,6 +13,7 @@ const rules = [
     result: {},
   },
   {
+    ...metadata,
     id: "two",
     code: "TWO",
     categoryId: "sales",
@@ -20,6 +23,7 @@ const rules = [
     result: {},
   },
   {
+    ...metadata,
     id: "three",
     code: "THREE",
     categoryId: "security",
@@ -42,5 +46,25 @@ describe("RuleEngine", () => {
       { categoryId: "security", categoryCode: "security", score: 4, total: 4, percentage: 100 },
       { categoryId: null, categoryCode: "global", score: 7, total: 8, percentage: 87.5 },
     ]);
+  });
+  it("stores a self-contained snapshot with only referenced facts", () => {
+    const result = new RuleEngine().evaluate({ crm: false, ignored: "secret" }, [rules[0]!]);
+    expect(result.matched[0]?.snapshot).toMatchObject({
+      ruleId: "one",
+      ruleCode: "ONE",
+      ruleVersion: 1,
+      categoryCode: "sales",
+      conditionJson: { fact: "crm", operator: "equal", value: false },
+      matched: true,
+      score: 3,
+      facts: { crm: false },
+    });
+    expect(result.matched[0]?.snapshot).not.toHaveProperty("facts.ignored");
+  });
+  it("is idempotent with identical facts and rules", () => {
+    const engine = new RuleEngine();
+    expect(engine.evaluate({ crm: false }, [rules[0]!])).toEqual(
+      engine.evaluate({ crm: false }, [rules[0]!]),
+    );
   });
 });
