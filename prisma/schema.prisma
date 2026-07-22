@@ -83,6 +83,16 @@ enum RuleSeverity {
   @@schema("public")
 }
 
+enum ImplementationDifficulty {
+  very_low
+  low
+  medium
+  high
+  very_high
+  @@map("implementation_difficulty")
+  @@schema("public")
+}
+
 model Organization {
   id        String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name      String
@@ -98,6 +108,9 @@ model Organization {
   rules Rule[]
   auditRuleMatches AuditRuleMatch[]
   auditScores AuditScore[]
+  recommendations Recommendation[]
+  roiProfiles RoiProfile[]
+  auditRecommendations AuditRecommendation[]
 
   @@map("organizations")
   @@schema("public")
@@ -174,6 +187,7 @@ model Audit {
   answers              AuditAnswer[]
   ruleMatches          AuditRuleMatch[]
   scores               AuditScore[]
+  recommendations      AuditRecommendation[]
 
   @@index([organizationId, companyId], map: "audits_organization_company_idx")
   @@index([questionnaireVersionId], map: "audits_questionnaire_version_idx")
@@ -289,6 +303,7 @@ model RuleCategory {
   organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   rules          Rule[]
   auditScores    AuditScore[]
+  recommendations Recommendation[]
   @@map("rule_categories")
   @@schema("public")
 }
@@ -313,8 +328,100 @@ model Rule {
   category       RuleCategory @relation(fields: [categoryId], references: [id])
   results        RuleResult[]
   auditMatches   AuditRuleMatch[]
+  recommendations RuleRecommendation[]
   @@index([categoryId, active, priority], map: "rules_category_active_idx")
   @@map("rules")
+  @@schema("public")
+}
+
+model Recommendation {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String? @map("organization_id") @db.Uuid
+  code String
+  version Int @default(1)
+  title String
+  summary String
+  description String
+  implementationDifficulty ImplementationDifficulty @map("implementation_difficulty")
+  categoryId String @map("category_id") @db.Uuid
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category RuleCategory @relation(fields: [categoryId], references: [id])
+  impact RecommendationImpact?
+  rules RuleRecommendation[]
+  audits AuditRecommendation[]
+  @@map("recommendations")
+  @@schema("public")
+}
+
+model RecommendationImpact {
+  recommendationId String @id @map("recommendation_id") @db.Uuid
+  estimatedHoursPerMonth Decimal @map("estimated_hours_per_month") @db.Decimal(12,2)
+  estimatedCost Decimal @map("estimated_cost") @db.Decimal(14,2)
+  estimatedSavings Decimal @default(0) @map("estimated_savings") @db.Decimal(14,2)
+  metadataJson Json @default("{}") @map("metadata_json")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  @@map("recommendation_impacts")
+  @@schema("public")
+}
+
+model RuleRecommendation {
+  ruleId String @map("rule_id") @db.Uuid
+  recommendationId String @map("recommendation_id") @db.Uuid
+  active Boolean @default(true)
+  priority Int @default(100)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  rule Rule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  @@id([ruleId, recommendationId])
+  @@map("rule_recommendations")
+  @@schema("public")
+}
+
+model RoiProfile {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String? @map("organization_id") @db.Uuid
+  code String
+  name String
+  currency String @db.Char(3)
+  hourlyCost Decimal @map("hourly_cost") @db.Decimal(14,2)
+  workingDaysYear Decimal @map("working_days_year") @db.Decimal(6,2)
+  workingHoursDay Decimal @map("working_hours_day") @db.Decimal(4,2)
+  active Boolean @default(true)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  @@map("roi_profiles")
+  @@schema("public")
+}
+
+model AuditRecommendation {
+  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String @map("organization_id") @db.Uuid
+  auditId String @map("audit_id") @db.Uuid
+  recommendationId String @map("recommendation_id") @db.Uuid
+  evaluationId String @map("evaluation_id") @db.Uuid
+  priority String
+  estimatedHoursYear Decimal @map("estimated_hours_year") @db.Decimal(14,2)
+  estimatedSavingsYear Decimal @map("estimated_savings_year") @db.Decimal(14,2)
+  roiPercentage Decimal @map("roi_percentage") @db.Decimal(14,2)
+  implementationCost Decimal @map("implementation_cost") @db.Decimal(14,2)
+  paybackMonths Decimal? @map("payback_months") @db.Decimal(14,2)
+  quickWin Boolean @map("quick_win")
+  strategic Boolean
+  metadataJson Json @default("{}") @map("metadata_json")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  audit Audit @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  recommendation Recommendation @relation(fields: [recommendationId], references: [id])
+  @@unique([auditId, recommendationId])
+  @@map("audit_recommendations")
   @@schema("public")
 }
 
