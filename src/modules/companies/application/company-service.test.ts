@@ -94,13 +94,17 @@ describe("CompanyService", () => {
     expect((await service.restore(baseCompany.id)).deletedAt).toBeNull();
   });
 
-  it("returns stable pagination metadata", async () => {
+  it("returns stable pagination metadata and forwards validated filters and sorting", async () => {
     const query: CompanyListQuery = {
       page: 2,
       pageSize: 10,
       sortBy: "name",
       sortOrder: "asc",
       includeArchived: false,
+      search: "nova",
+      status: "prospect",
+      companySize: "small",
+      sectorId: "services",
     };
     const result = await service.list(query);
     expect(result).toMatchObject({ page: 2, pageSize: 10, total: 1, totalPages: 1 });

@@ -6,9 +6,15 @@ describe("company schemas", () => {
     const result = companyInputSchema.parse({
       name: "  Nova Conseil  ",
       email: "  ",
+      employeeCount: "",
       status: "prospect",
     });
-    expect(result).toEqual({ name: "Nova Conseil", email: undefined, status: "prospect" });
+    expect(result).toEqual({
+      name: "Nova Conseil",
+      email: undefined,
+      employeeCount: undefined,
+      status: "prospect",
+    });
   });
 
   it("rejects invalid email, website and employee count", () => {
