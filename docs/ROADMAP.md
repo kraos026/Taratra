@@ -29,6 +29,8 @@ fondation prépare les moteurs suivants sans modifier leur comportement actuel e
 Construit une cartographie versionnée à partir des processus Discovery et des entretiens. Il ne
 duplique ni le profil ni le catalogue des processus. Son entrée officielle sera un snapshot
 Enterprise Knowledge `ready`, pas les réponses brutes.
+Phase 1 en cours : patterns explicables, reconstruction de graphes, validation, provenance,
+versionnement et explorer read-only.
 
 ### Sprint 7 — Business Intelligence Engine
 

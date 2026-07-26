@@ -48,6 +48,7 @@ pas seulement dans le code.
 | Discovery            | Connaissance canonique de l'entreprise           | Production                           |
 | Interview            | Collecte adaptative des connaissances manquantes | Production                           |
 | Enterprise Knowledge | Projection interne normalisée et explicable      | Fondation                            |
+| Process Mapping      | Reconstruction déterministe des processus        | En cours                             |
 | Reports              | Projection de restitution sans décision métier   | v1                                   |
 | Rules                | Évaluation déterministe d'anciens audits         | Préexistant à réaligner              |
 | ROI                  | Calcul déterministe MVP                          | Préexistant à réaligner au Sprint 10 |
@@ -100,9 +101,16 @@ des sessions Discovery et Interview validées, puis génère des snapshots immua
 nœuds, faits, relations, sources et preuves. Chaque fait conserve les identifiants de ses
 enregistrements d'origine et une confiance indépendante.
 
-Aucun moteur livré ne le consomme encore. Les moteurs futurs liront uniquement les snapshots
-`ready` au moyen d'un port applicatif dédié. Les modèles sources restent propriétaires de leurs
-données et ne sont jamais modifiés par la projection.
+Process Mapping est son premier consommateur. Les moteurs lisent uniquement les snapshots `ready`
+au moyen de ports applicatifs dédiés. Les modèles sources restent propriétaires de leurs données
+et ne sont jamais modifiés par la projection.
+
+## Process Mapping
+
+Process Mapping est le premier consommateur d'Enterprise Knowledge. Il sélectionne des patterns
+versionnés, produit des graphes dirigés et conserve une provenance exhaustive des faits consommés
+ou ignorés. Les versions publiées sont immuables. Le bounded context ne possède aucun import ni
+repository vers Discovery ou Interview.
 
 ## Incohérences et dette détectées
 

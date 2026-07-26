@@ -103,6 +103,11 @@ export function CompanyDetail({ id }: { id: string }) {
               Entretien
             </Button>
           )}
+          {!company.deletedAt && (
+            <Button variant="outline" onClick={() => router.push(`/companies/${id}/process-maps`)}>
+              Process Maps
+            </Button>
+          )}
           {permissions.canWrite && !company.deletedAt && (
             <Button variant="outline" onClick={() => router.push(`/companies/${id}/audits/new`)}>
               Nouvel audit
