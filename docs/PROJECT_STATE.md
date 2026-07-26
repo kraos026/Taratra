@@ -1,90 +1,60 @@
-# AutomateX — État du projet
+# AutomateX — État final Version 1
 
-Dernière mise à jour : 2026-07-26
+Dernière mise à jour : 2026-07-26. Version : `1.0.0`.
 
-Ce document décrit l'état réellement présent dans `main`. Il ne remplace pas les décisions
-d'architecture de `docs/adr`, la vision ni la roadmap.
+AutomateX V1 est fonctionnellement livrée. L’architecture V1 est gelée : aucune fonctionnalité
+Execution Platform V2 n’est incluse.
 
-## Livré
+## Sprints livrés
 
-### Sprint 1 — Foundation
+| Sprint    | Livraison                                                | Migration principale                                     |
+| --------- | -------------------------------------------------------- | -------------------------------------------------------- |
+| 1         | Auth, onboarding atomique, multi-tenant, Prisma, RLS, CI | `0001_foundations.sql`                                   |
+| 2         | Questionnaires et Audit Engine foundation                | `20260722064705_add_audit_questionnaire.sql`             |
+| 3         | ReportBuilder, dashboard exécutif et API Report v1       | aucune migration dédiée                                  |
+| 4         | Discovery, profil canonique et wizard                    | `20260726033231_add_discovery_engine.sql`                |
+| 5         | Adaptive Interview Engine                                | `20260726042817_add_adaptive_interview_engine.sql`       |
+| Fondation | Enterprise Knowledge                                     | `20260726050014_add_enterprise_knowledge_foundation.sql` |
+| 6         | Process Mapping Engine                                   | `20260726051835_add_process_mapping_engine.sql`          |
+| 7         | Business Analysis Engine                                 | `20260726060854_add_business_analysis_engine.sql`        |
+| 8         | AI Opportunity Engine déterministe                       | `20260726070749_add_ai_opportunity_engine.sql`           |
+| 9         | Automation Opportunity Engine                            | `20260726074924_add_automation_opportunity_engine.sql`   |
+| 10        | ROI Engine versionné                                     | `20260726082805_add_roi_engine.sql`                      |
+| 11        | Recommendation Portfolio et roadmap                      | `20260726091105_add_recommendation_engine_v2.sql`        |
 
-- Supabase Auth et onboarding transactionnel organisation/owner ;
-- architecture SaaS multi-tenant et politiques RLS ;
-- PostgreSQL géré par migrations Supabase ;
-- accès serveur typé avec Prisma sous contexte RLS ;
-- Next.js, Tailwind CSS et composants UI ;
-- ESLint, Prettier, TypeScript strict, Vitest et GitHub Actions.
+## État final
 
-### Sprint 2 — Audit Engine foundation
+Chaîne canonique :
 
-- questionnaires, versions, sections et questions ;
-- sessions d'audit, réponses, progression, complétion et validation ;
-- API REST, UI et isolation multi-tenant.
+`Discovery → Interview → Enterprise Knowledge → Process Mapping → Business Analysis → AI Opportunity → Automation Opportunity → ROI → Recommendation`.
 
-### Sprint 3 — Executive Report Layer v1
+Chaque moteur aval consomme des snapshots publiés ou `ready`, conserve la provenance, applique
+des catalogues et formules versionnés, et ne réécrit jamais ses sources. Les snapshots publiés
+sont immuables. Un rebuild crée une nouvelle version. Les écritures concurrentes utilisent
+`lock_version` et renvoient HTTP 409 en cas de conflit.
 
-- `ReportBuilder` et contrat `AuditReport` ;
-- dashboard, KPI, graphiques et résumé déterministe ;
-- export JSON par API ;
-- projection des résultats persistés sans recalcul des moteurs.
+Catalogues versionnés : questionnaires, interviews, process patterns, règles et scores Business
+Analysis, capacités et règles AI, patterns/connecteurs/règles Automation, modèles/hypothèses ROI,
+règles Recommendation et définitions de priorité.
 
-### Sprint 4 — Enterprise Discovery Engine
+## Qualité de la release
 
-- bounded context Discovery ;
-- profil d'entreprise et entités associées normalisés ;
-- sessions versionnées, cycle de vie et verrouillage optimiste ;
-- wizard en six étapes, reprise, autosave et validation ;
-- API REST, projection Prisma, migration Supabase et tests pgTAP ;
-- Discovery déclaré source canonique des informations opérationnelles d'entreprise.
+- Vitest : 47 fichiers, 189 tests ;
+- pgTAP/RLS : 15 fichiers, 174 tests ;
+- lint, format, typecheck et build obligatoires en CI ;
+- audit initial : 17 alertes ; après correction : 13 (9 élevées dev-only, 4 modérées CLI),
+  documentées dans `docs/security/DEPENDENCY_AUDIT_V1.md`.
 
-### Sprint 5 — Adaptive Interview Engine
+## Contraintes et dette connue
 
-- catalogue déterministe et branchements contextuels ;
-- sessions, réponses, décisions, preuves et timeline ;
-- progression, confiance et readiness Process Mapping ;
-- API REST, wizard et isolation multi-tenant ;
-- consommation de Discovery validée sans duplication.
+- les moteurs historiques Rules, ROI et Recommendations restent présents pour compatibilité ;
+- les doublons historiques `employee_count` et secteur entre Companies et Discovery nécessitent
+  une migration de compatibilité future ;
+- la résolution du contexte tenant et certaines enveloppes HTTP restent répétées ;
+- neuf alertes de globbing restent dans ESLint/plug-ins et quatre dans le CLI Prisma ;
+- PostgreSQL 17 doit être la cible de validation avant déploiement Supabase.
 
-## Composants préexistants à réaligner
+## Prochaine étape
 
-Le dépôt contient des implémentations fonctionnelles v1 de Rule Engine, ROI et Recommendation.
-Elles restent testées et utilisables par le Report v1, mais ne signifient pas que les Sprints 7,
-10 et 11 de la roadmap officielle sont livrés. Leur migration, adaptation ou remplacement exigera
-un ADR au début du sprint concerné.
-
-### Sprint 6 — Process Mapping Engine
-
-- consommation exclusive des snapshots Enterprise Knowledge `ready` ;
-- patterns et Process Maps versionnés, graphes, provenance, validation et explorer read-only.
-
-### Sprint 7 — Business Analysis Engine
-
-- consommation exclusive des Process Maps publiées et de leur snapshot Knowledge référencé ;
-- règles versionnées, findings explicables, scores, santé, provenance et explorer read-only.
-
-### Sprint 8 — AI Opportunity Engine
-
-- consommation de Business Analysis publiée, Process Mapping publié et Knowledge référencé ;
-- capacités, détections et scores versionnés, explicables et sans LLM.
-
-### Sprint 9 — Automation Opportunity Engine
-
-- consommation exclusive des snapshots publiés AI Opportunity, Business Analysis et Process Map,
-  avec le snapshot Knowledge `ready` référencé ;
-- patterns, connecteurs, règles et scores versionnés, détection explicable et sans génération de workflow.
-
-### Sprint 10 — ROI Engine
-
-- évaluations économiques déterministes depuis Automation Opportunity publiée ;
-- modèles, hypothèses, scénarios, contributions et métriques versionnés et explicables.
-
-## En cours
-
-- Sprint 11 — Recommendation Engine ;
-- portfolio et roadmap déterministes depuis ROI publié ;
-- règles, priorité, dépendances, phases et contributions versionnées.
-
-## Prochain jalon
-
-Finaliser Recommendation sans génération ni déploiement de workflow.
+AutomateX Execution Platform V2, uniquement après validation d’une nouvelle architecture et de
+nouveaux ADR.
