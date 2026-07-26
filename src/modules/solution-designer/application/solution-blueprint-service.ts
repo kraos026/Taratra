@@ -1,15 +1,19 @@
 import { SolutionDesigner } from "../domain/solution-designer";
-import type { PrismaSolutionBlueprintRepository } from "../infrastructure/prisma-solution-blueprint-repository";
+import {
+  SolutionBlueprintAggregate,
+  SolutionBlueprintInvariantError,
+} from "../domain/solution-blueprint-aggregate";
 import {
   SolutionBlueprintConflictError,
   SolutionBlueprintForbiddenError,
   SolutionBlueprintNotFoundError,
   SolutionBlueprintValidationError,
 } from "./solution-blueprint-errors";
+import type { BlueprintDetail, SolutionBlueprintRepository } from "./solution-blueprint-repository";
 
 export class SolutionBlueprintService {
   constructor(
-    private readonly repository: PrismaSolutionBlueprintRepository,
+    private readonly repository: SolutionBlueprintRepository,
     private readonly userId: string,
     private readonly designer = new SolutionDesigner(),
   ) {}
@@ -37,9 +41,9 @@ export class SolutionBlueprintService {
   async rebuild(id: string, lockVersion: number) {
     const context = await this.context();
     this.ensureEditor(context.role);
-    const current = await this.repository.snapshot(context.organizationId, id);
+    const current = await this.repository.prepareRebuild(context.organizationId, id, lockVersion);
     if (!current) throw new SolutionBlueprintNotFoundError();
-    if (current.lockVersion !== lockVersion) throw new SolutionBlueprintConflictError();
+    this.enforceInvariant(() => this.aggregate(current, [], 0).prepareRebuild(lockVersion));
     const input = await this.repository.input(context.organizationId, current.recommendationId);
     if (!input) throw new SolutionBlueprintValidationError("Published canonical sources required");
     return this.repository.persist(
@@ -65,8 +69,11 @@ export class SolutionBlueprintService {
     this.ensureEditor(context.role);
     const detail = await this.repository.detail(context.organizationId, id);
     if (!detail) throw new SolutionBlueprintNotFoundError();
-    if (detail.validations.some((item) => item.severity === "error"))
-      throw new SolutionBlueprintValidationError("Blocking validation errors remain");
+    this.enforceInvariant(() =>
+      this.aggregate(detail.blueprint, detail.validations, detail.evidence.length).validate(
+        lockVersion,
+      ),
+    );
     return this.repository.transition(context.organizationId, id, lockVersion, "validated");
   }
   async publish(id: string, lockVersion: number) {
@@ -74,8 +81,39 @@ export class SolutionBlueprintService {
     if (!["owner", "admin"].includes(context.role)) throw new SolutionBlueprintForbiddenError();
     const detail = await this.repository.detail(context.organizationId, id);
     if (!detail) throw new SolutionBlueprintNotFoundError();
-    if (detail.validations.some((item) => item.severity === "error") || !detail.evidence.length)
-      throw new SolutionBlueprintValidationError("Blueprint traceability is incomplete");
+    this.enforceInvariant(() =>
+      this.aggregate(detail.blueprint, detail.validations, detail.evidence.length).publish(
+        lockVersion,
+      ),
+    );
     return this.repository.transition(context.organizationId, id, lockVersion, "published");
+  }
+
+  private aggregate(
+    blueprint: BlueprintDetail["blueprint"],
+    validations: BlueprintDetail["validations"],
+    evidenceCount: number,
+  ) {
+    return SolutionBlueprintAggregate.rehydrate({
+      ...blueprint,
+      validations,
+      evidenceCount,
+    });
+  }
+
+  private enforceInvariant(operation: () => unknown) {
+    try {
+      return operation();
+    } catch (error) {
+      this.mapInvariant(error);
+    }
+  }
+
+  private mapInvariant(error: unknown): never {
+    if (error instanceof SolutionBlueprintInvariantError) {
+      if (error.kind === "conflict") throw new SolutionBlueprintConflictError();
+      throw new SolutionBlueprintValidationError(error.message);
+    }
+    throw error;
   }
 }

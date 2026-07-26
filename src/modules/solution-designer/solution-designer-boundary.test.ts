@@ -15,4 +15,14 @@ describe("Solution Designer boundary", () => {
     );
     expect(source).not.toMatch(/workflow generator|deployment engine/i);
   });
+
+  it("keeps application independent from Prisma and validation rules outside the engine", () => {
+    const root = join(process.cwd(), "src/modules/solution-designer");
+    const service = readFileSync(join(root, "application/solution-blueprint-service.ts"), "utf8");
+    const engine = readFileSync(join(root, "domain/solution-designer.ts"), "utf8");
+    expect(service).not.toMatch(/infrastructure|PrismaSolutionBlueprintRepository/);
+    expect(engine).not.toMatch(
+      /unknown_pattern|missing_evidence|topology_cycle|forbidden_platform|roi_unpublished/,
+    );
+  });
 });

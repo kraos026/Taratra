@@ -8,8 +8,10 @@ import type {
   DesignerInput,
   PatternDefinition,
   PatternTemplate,
+  ValidationRuleDefinition,
 } from "../domain/solution-designer";
 import { SolutionBlueprintConflictError } from "../application/solution-blueprint-errors";
+import type { SolutionBlueprintRepository } from "../application/solution-blueprint-repository";
 
 const latest = <T extends { code: string }>(rows: T[]) => {
   const values = new Map<string, T>();
@@ -18,7 +20,7 @@ const latest = <T extends { code: string }>(rows: T[]) => {
 };
 const strings = (value: Prisma.JsonValue) => value as string[];
 
-export class PrismaSolutionBlueprintRepository {
+export class PrismaSolutionBlueprintRepository implements SolutionBlueprintRepository {
   constructor(private readonly db: TransactionClient) {}
   context(userId: string) {
     return this.db.organizationMember.findFirst({
@@ -29,13 +31,42 @@ export class PrismaSolutionBlueprintRepository {
   snapshot(organizationId: string, id: string) {
     return this.db.solutionBlueprint.findFirst({ where: { organizationId, id } });
   }
+  async prepareRebuild(organizationId: string, id: string, lockVersion: number) {
+    const current = await this.snapshot(organizationId, id);
+    if (!current) return null;
+    await this.db
+      .$executeRaw`select pg_advisory_xact_lock(hashtextextended(${`${organizationId}:${current.recommendationId}:blueprint`},0))`;
+    const [lockedCurrent] = await this.db.$queryRaw<
+      {
+        id: string;
+        recommendationId: string;
+        status: "draft" | "validated" | "published" | "archived";
+        lockVersion: number;
+      }[]
+    >`select id, recommendation_id as "recommendationId", status::text as status, lock_version as "lockVersion"
+      from public.solution_blueprints
+      where organization_id=${organizationId}::uuid and id=${id}::uuid
+      for update`;
+    if (!lockedCurrent) return null;
+    const latestBlueprint = await this.db.solutionBlueprint.findFirst({
+      where: { organizationId, recommendationId: lockedCurrent.recommendationId },
+      orderBy: { versionNumber: "desc" },
+    });
+    if (
+      lockedCurrent.lockVersion !== lockVersion ||
+      !latestBlueprint ||
+      latestBlueprint.id !== lockedCurrent.id
+    )
+      throw new SolutionBlueprintConflictError();
+    return lockedCurrent;
+  }
   async input(organizationId: string, recommendationId: string): Promise<DesignerInput | null> {
     const recommendation = await this.db.transformationRecommendation.findFirst({
       where: { organizationId, id: recommendationId },
     });
     if (!recommendation) return null;
-    const [snapshot, evidence, patterns, capabilities, connectors, constraints] = await Promise.all(
-      [
+    const [snapshot, evidence, patterns, capabilities, connectors, constraints, validationRules] =
+      await Promise.all([
         this.db.recommendationPortfolioSnapshot.findFirst({
           where: { organizationId, id: recommendation.snapshotId, status: "published" },
         }),
@@ -58,8 +89,11 @@ export class PrismaSolutionBlueprintRepository {
           where: { published: true, OR: [{ organizationId: null }, { organizationId }] },
           orderBy: [{ code: "asc" }, { version: "desc" }],
         }),
-      ],
-    );
+        this.db.solutionValidationRuleCatalog.findMany({
+          where: { published: true, OR: [{ organizationId: null }, { organizationId }] },
+          orderBy: [{ code: "asc" }, { version: "desc" }],
+        }),
+      ]);
     if (!snapshot) return null;
     const [roi, automation] = await Promise.all([
       this.db.roiEvaluationSnapshot.findFirst({
@@ -128,6 +162,15 @@ export class PrismaSolutionBlueprintRepository {
         version: item.version,
         published: item.published,
       })),
+      validationRules: latest(validationRules).map((item): ValidationRuleDefinition => ({
+        id: item.id,
+        code: item.code,
+        version: item.version,
+        description: item.description,
+        severity: item.severity,
+        configuration: item.ruleJson as unknown as ValidationRuleDefinition["configuration"],
+        published: item.published,
+      })),
     };
   }
   async persist(
@@ -138,6 +181,7 @@ export class PrismaSolutionBlueprintRepository {
     previousVersionId: string | null,
   ) {
     if (!result.pattern) throw new Error("Pattern unavailable");
+    await this.db.$executeRaw`select set_config('app.solution_designer_internal_write','on',true)`;
     await this.db
       .$executeRaw`select pg_advisory_xact_lock(hashtextextended(${`${organizationId}:${input.source.recommendationId}:blueprint`},0))`;
     const latestBlueprint = await this.db.solutionBlueprint.findFirst({
@@ -154,7 +198,7 @@ export class PrismaSolutionBlueprintRepository {
         automationOpportunityId: input.source.automationOpportunityId,
         automationOpportunitySnapshotId: input.source.automationSnapshotId,
         patternId: result.pattern.id,
-        previousVersionId,
+        previousVersionId: previousVersionId ?? latestBlueprint?.id ?? null,
         versionNumber: (latestBlueprint?.versionNumber ?? 0) + 1,
         name: result.name,
         description: result.description,

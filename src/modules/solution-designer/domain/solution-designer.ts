@@ -72,6 +72,31 @@ export interface PatternDefinition {
   template: PatternTemplate;
   published: boolean;
 }
+export type ValidationOperator =
+  | "pattern_valid"
+  | "catalog_references_resolved"
+  | "constraints_resolved"
+  | "graph_well_formed"
+  | "graph_acyclic"
+  | "connector_inputs_complete"
+  | "connector_outputs_complete"
+  | "connector_secrets_complete"
+  | "connector_permissions_complete"
+  | "evidence_present"
+  | "source_published";
+export interface ValidationRuleDefinition {
+  id: string;
+  code: string;
+  version: number;
+  description: string;
+  severity: "error" | "warning" | "information";
+  configuration: {
+    operator: ValidationOperator;
+    source?: "recommendation" | "roi" | "automation";
+    forbiddenValues?: string[];
+  };
+  published: boolean;
+}
 export interface BlueprintSource {
   recommendationId: string;
   recommendationIdentifier: string;
@@ -94,11 +119,13 @@ export interface DesignerInput {
   capabilities: CapabilityDefinition[];
   connectors: ConnectorDefinition[];
   constraints: ConstraintDefinition[];
+  validationRules: ValidationRuleDefinition[];
 }
 export interface BlueprintValidation {
   code: string;
-  severity: "error" | "information";
+  severity: "error" | "warning" | "information";
   message: string;
+  passed: boolean;
 }
 export interface BlueprintResult {
   pattern: PatternDefinition | null;
@@ -123,18 +150,6 @@ export interface BlueprintResult {
   validations: BlueprintValidation[];
   catalogVersions: Record<string, { id: string; code: string; version: number }[]>;
 }
-
-const forbiddenPlatforms = [
-  "n8n",
-  "make",
-  "zapier",
-  "power automate",
-  "temporal",
-  "camunda",
-  "aws step functions",
-  "azure logic apps",
-  "google workflows",
-];
 
 export class SolutionDesigner {
   generate(input: DesignerInput): BlueprintResult {
@@ -205,6 +220,7 @@ export class SolutionDesigner {
         capabilities: capabilities.map(version),
         connectors: connectors.map(version),
         constraints: constraints.map(version),
+        validations: input.validationRules.filter((rule) => rule.published).map(version),
       },
     };
     result.validations = this.validate(input, result);
@@ -216,64 +232,14 @@ export class SolutionDesigner {
   }
 
   validate(input: DesignerInput, result: BlueprintResult): BlueprintValidation[] {
-    const errors: BlueprintValidation[] = [];
-    const add = (code: string, message: string) =>
-      errors.push({ code, severity: "error", message });
-    if (!result.pattern) add("unknown_pattern", "Published pattern is required");
-    const template = result.pattern?.template;
-    if (template && result.capabilities.length !== template.capabilities.length)
-      add("unknown_capability", "Every capability must resolve to a published catalog version");
-    if (result.capabilities.some((item) => !Number.isFinite(item.costIndex)))
-      add("missing_capability_cost", "Every capability requires a cost index");
-    if (template && result.connectors.length !== template.connectors.length)
-      add("unknown_connector", "Every connector requirement must be published");
-    if (result.connectors.some((item) => !Number.isFinite(item.costIndex)))
-      add("missing_connector_cost", "Every connector requires a cost index");
-    if (template && result.constraints.length !== template.constraints.length)
-      add("unknown_constraint", "Every constraint must be published");
-    if (template) {
-      const known = new Set(result.components.map((item) => item.code));
-      const connected = new Set(result.topology.flatMap((edge) => [edge.from, edge.to]));
-      if (result.components.some((item) => !connected.has(item.code)))
-        add("orphan_component", "Every component must participate in the topology");
-      if (result.topology.some((edge) => !known.has(edge.from) || !known.has(edge.to)))
-        add("invalid_edge", "Every edge must reference known components");
-      if (
-        hasCycle(
-          result.components.map((item) => item.code),
-          result.topology.filter((edge) =>
-            template.normalization.dependencyEdgeTypes.includes(edge.type),
-          ),
-        )
-      )
-        add("topology_cycle", "Topology cycles are forbidden");
-      const connectorSecrets = unique(result.connectors.flatMap((item) => item.secrets));
-      const connectorPermissions = unique(result.connectors.flatMap((item) => item.permissions));
-      const connectorInputs = unique(result.connectors.flatMap((item) => item.inputs));
-      const connectorOutputs = unique(result.connectors.flatMap((item) => item.outputs));
-      if (connectorSecrets.some((item) => !result.secrets.includes(item)))
-        add("missing_secret", "Every connector secret must be generated");
-      if (connectorPermissions.some((item) => !result.permissions.includes(item)))
-        add("missing_permission", "Every connector permission must be generated");
-      if (connectorInputs.some((item) => !result.inputs.includes(item)) || !result.inputs.length)
-        add("missing_input", "Every connector input must be generated");
-      if (connectorOutputs.some((item) => !result.outputs.includes(item)) || !result.outputs.length)
-        add("missing_output", "Every connector output must be generated");
-      if (result.risks.some((risk) => !Number.isFinite(risk.severity)))
-        add("missing_risk_severity", "Every risk requires a severity");
-    }
-    if (!result.evidenceIds.length) add("missing_evidence", "Evidence is required");
-    if (input.source.recommendationStatus !== "published")
-      add("recommendation_unpublished", "Recommendation must be published");
-    if (input.source.roiStatus !== "published") add("roi_unpublished", "ROI must be published");
-    if (input.source.automationStatus !== "published")
-      add("automation_unpublished", "Automation Opportunity must be published");
-    const serialized = JSON.stringify(result).toLowerCase();
-    if (forbiddenPlatforms.some((platform) => serialized.includes(platform)))
-      add("forbidden_platform", "Blueprint must remain platform-agnostic");
-    return errors.length
-      ? errors
-      : [{ code: "blueprint_valid", severity: "information", message: "Blueprint is valid" }];
+    return input.validationRules
+      .filter((rule) => rule.published)
+      .map((rule) => ({
+        code: rule.code,
+        severity: rule.severity,
+        message: rule.description,
+        passed: evaluateValidationOperator(rule, input, result),
+      }));
   }
 
   private complexity(template: PatternTemplate, connectorCount: number, constraintCount: number) {
@@ -297,6 +263,85 @@ const version = <T extends { id: string; code: string; version: number }>(item: 
   code: item.code,
   version: item.version,
 });
+function evaluateValidationOperator(
+  rule: ValidationRuleDefinition,
+  input: DesignerInput,
+  result: BlueprintResult,
+) {
+  const template = result.pattern?.template;
+  const connectorValues = {
+    secrets: unique(result.connectors.flatMap((item) => item.secrets)),
+    permissions: unique(result.connectors.flatMap((item) => item.permissions)),
+    inputs: unique(result.connectors.flatMap((item) => item.inputs)),
+    outputs: unique(result.connectors.flatMap((item) => item.outputs)),
+  };
+  switch (rule.configuration.operator) {
+    case "pattern_valid": {
+      const serialized = JSON.stringify(result).toLowerCase();
+      return (
+        result.pattern !== null &&
+        !(rule.configuration.forbiddenValues ?? []).some((value) =>
+          serialized.includes(value.toLowerCase()),
+        )
+      );
+    }
+    case "catalog_references_resolved":
+      return Boolean(
+        template &&
+        result.capabilities.length === template.capabilities.length &&
+        result.connectors.length === template.connectors.length &&
+        result.capabilities.every((item) => Number.isFinite(item.costIndex)) &&
+        result.connectors.every((item) => Number.isFinite(item.costIndex)),
+      );
+    case "constraints_resolved":
+      return Boolean(template && result.constraints.length === template.constraints.length);
+    case "graph_well_formed": {
+      const known = new Set(result.components.map((item) => item.code));
+      const connected = new Set(result.topology.flatMap((edge) => [edge.from, edge.to]));
+      return (
+        result.components.every((item) => connected.has(item.code)) &&
+        result.topology.every((edge) => known.has(edge.from) && known.has(edge.to))
+      );
+    }
+    case "graph_acyclic":
+      return Boolean(
+        template &&
+        !hasCycle(
+          result.components.map((item) => item.code),
+          result.topology.filter((edge) =>
+            template.normalization.dependencyEdgeTypes.includes(edge.type),
+          ),
+        ),
+      );
+    case "connector_inputs_complete":
+      return (
+        connectorValues.inputs.length > 0 &&
+        connectorValues.inputs.every((item) => result.inputs.includes(item))
+      );
+    case "connector_outputs_complete":
+      return (
+        connectorValues.outputs.length > 0 &&
+        connectorValues.outputs.every((item) => result.outputs.includes(item))
+      );
+    case "connector_secrets_complete":
+      return connectorValues.secrets.every((item) => result.secrets.includes(item));
+    case "connector_permissions_complete":
+      return connectorValues.permissions.every((item) => result.permissions.includes(item));
+    case "evidence_present":
+      return result.evidenceIds.length > 0;
+    case "source_published":
+      return sourceStatus(input.source, rule.configuration.source) === "published";
+  }
+}
+function sourceStatus(
+  source: BlueprintSource,
+  key: ValidationRuleDefinition["configuration"]["source"],
+) {
+  if (key === "recommendation") return source.recommendationStatus;
+  if (key === "roi") return source.roiStatus;
+  if (key === "automation") return source.automationStatus;
+  return "";
+}
 function hasCycle(nodes: string[], edges: PatternTemplate["edges"]) {
   const visiting = new Set<string>();
   const visited = new Set<string>();
