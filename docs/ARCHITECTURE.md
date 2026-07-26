@@ -39,17 +39,19 @@ pas seulement dans le code.
 
 ## Bounded contexts actuels
 
-| Contexte        | Responsabilité                                 | Statut                               |
-| --------------- | ---------------------------------------------- | ------------------------------------ |
-| Onboarding      | Création atomique organisation/owner           | Production                           |
-| Companies       | Identité CRM, contact et cycle commercial      | Production, dette de frontière       |
-| Questionnaires  | Catalogue versionné de questions               | Production                           |
-| Audits          | Sessions et réponses d'audit                   | Production                           |
-| Discovery       | Connaissance canonique de l'entreprise         | Production                           |
-| Reports         | Projection de restitution sans décision métier | v1                                   |
-| Rules           | Évaluation déterministe d'anciens audits       | Préexistant à réaligner              |
-| ROI             | Calcul déterministe MVP                        | Préexistant à réaligner au Sprint 10 |
-| Recommendations | Priorisation déterministe MVP                  | Préexistant à réaligner au Sprint 11 |
+| Contexte             | Responsabilité                                   | Statut                               |
+| -------------------- | ------------------------------------------------ | ------------------------------------ |
+| Onboarding           | Création atomique organisation/owner             | Production                           |
+| Companies            | Identité CRM, contact et cycle commercial        | Production, dette de frontière       |
+| Questionnaires       | Catalogue versionné de questions                 | Production                           |
+| Audits               | Sessions et réponses d'audit                     | Production                           |
+| Discovery            | Connaissance canonique de l'entreprise           | Production                           |
+| Interview            | Collecte adaptative des connaissances manquantes | Production                           |
+| Enterprise Knowledge | Projection interne normalisée et explicable      | Fondation                            |
+| Reports              | Projection de restitution sans décision métier   | v1                                   |
+| Rules                | Évaluation déterministe d'anciens audits         | Préexistant à réaligner              |
+| ROI                  | Calcul déterministe MVP                          | Préexistant à réaligner au Sprint 10 |
+| Recommendations      | Priorisation déterministe MVP                    | Préexistant à réaligner au Sprint 11 |
 
 ## Contrat canonique Discovery
 
@@ -74,6 +76,8 @@ Discovery (canonical company knowledge)
       |
 Adaptive Interview
       |
+Enterprise Knowledge (immutable projections)
+      |
 Process Mapping
       |
 Business Intelligence
@@ -88,6 +92,17 @@ Executive Report v2
 ```
 
 Chaque flèche représente un contrat de lecture versionné, jamais une duplication de tables.
+
+## Enterprise Knowledge
+
+Enterprise Knowledge est une projection interne, et non un nouveau système de saisie. Il reçoit
+des sessions Discovery et Interview validées, puis génère des snapshots immuables composés de
+nœuds, faits, relations, sources et preuves. Chaque fait conserve les identifiants de ses
+enregistrements d'origine et une confiance indépendante.
+
+Aucun moteur livré ne le consomme encore. Les moteurs futurs liront uniquement les snapshots
+`ready` au moyen d'un port applicatif dédié. Les modèles sources restent propriétaires de leurs
+données et ne sont jamais modifiés par la projection.
 
 ## Incohérences et dette détectées
 

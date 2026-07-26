@@ -38,6 +38,14 @@ d'architecture de `docs/adr`, la vision ni la roadmap.
 - API REST, projection Prisma, migration Supabase et tests pgTAP ;
 - Discovery déclaré source canonique des informations opérationnelles d'entreprise.
 
+### Sprint 5 — Adaptive Interview Engine
+
+- catalogue déterministe et branchements contextuels ;
+- sessions, réponses, décisions, preuves et timeline ;
+- progression, confiance et readiness Process Mapping ;
+- API REST, wizard et isolation multi-tenant ;
+- consommation de Discovery validée sans duplication.
+
 ## Composants préexistants à réaligner
 
 Le dépôt contient des implémentations fonctionnelles v1 de Rule Engine, ROI et Recommendation.
@@ -47,12 +55,12 @@ un ADR au début du sprint concerné.
 
 ## En cours
 
-- Sprint 5 Adaptive Interview Engine : développement sur `feat/adaptive-interview-engine`.
-- Catalogue déterministe, sessions, adaptation, réponses, décisions, confiance, progression,
-  readiness Process Mapping, API, UI et isolation multi-tenant sont en cours de validation.
+- fondation Enterprise Knowledge sur `feat/enterprise-knowledge-foundation` ;
+- projection interne versionnée et immuable de Discovery et Interview validés ;
+- aucun moteur existant ne consomme encore cette projection.
 
 ## Prochain jalon
 
-Sprint 5 doit consommer une Discovery validée, conserver uniquement les connaissances propres à
-l'entretien et publier un contrat versionné utilisable par Process Mapping. Il ne doit ni modifier
-implicitement ni dupliquer les entités canoniques Discovery.
+Sprint 6 Process Mapping devra consommer un snapshot Enterprise Knowledge `ready` via un port de
+lecture dédié. Il ne devra pas interpréter directement les réponses Interview ni dupliquer les
+entités Discovery.
