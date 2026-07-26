@@ -9,3 +9,8 @@ System software/process categories are shared read-only defaults. Organizations 
 Endpoints: `POST|GET /api/companies/:id/discovery`, `GET|PATCH /api/discovery-sessions/:id`, and `POST /api/discovery-sessions/:id/validate`. The wizard is `/companies/:id/discovery`.
 
 Future engines must consume normalized Discovery entities. They must not duplicate Discovery data or derive authorization from user-editable JWT metadata.
+
+The legacy `companies.employee_count` and `companies.sector_id` fields are compatibility debt, not
+alternative sources. New engines read `company_profiles.employee_count` and
+`company_profiles.industry`. The planned migration/backfill must be approved separately because it
+changes existing API and UI contracts.

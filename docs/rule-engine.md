@@ -1,5 +1,9 @@
 # Rule Engine Core
 
+> Statut d'architecture : implémentation déterministe v1 préexistante. Elle reste opérationnelle,
+> mais ne constitue pas à elle seule le Sprint 7 Business Intelligence Engine. Son devenir devra
+> être décidé par ADR avant toute extension.
+
 Le Rule Engine évalue les réponses d'un audit sans IA, sans réseau et sans `eval`. Les faits sont
 construits à partir du code stable de chaque question et de sa réponse validée. Une exécution lit
 les règles actives disponibles pour l'organisation, évalue leur DSL en mémoire puis remplace les
