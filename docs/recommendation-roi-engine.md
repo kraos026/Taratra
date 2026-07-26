@@ -1,5 +1,10 @@
 # Recommendation and ROI engine (MVP)
 
+> Architecture status: this is a pre-existing deterministic v1 implementation. It remains
+> operational, but it is not the completion of the official Sprint 10 ROI Engine or Sprint 11
+> Recommendation Engine. It must not be expanded before an ADR decides whether to migrate, adapt,
+> or replace it using Discovery and the intervening engine contracts.
+
 The engine is deterministic and performs no network call or currency conversion. Every monetary value remains in the selected profile currency.
 
 ## Configurable assumptions
