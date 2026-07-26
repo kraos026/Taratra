@@ -278,6 +278,42 @@ enum AnalysisValidationSeverity {
   @@schema("public")
 }
 
+enum AiOpportunityStatus {
+  draft
+  validated
+  published
+  archived
+  @@map("ai_opportunity_status")
+  @@schema("public")
+}
+
+enum AiComplexity {
+  very_low
+  low
+  medium
+  high
+  very_high
+  @@map("ai_complexity")
+  @@schema("public")
+}
+
+enum AiRisk {
+  low
+  medium
+  high
+  critical
+  @@map("ai_risk")
+  @@schema("public")
+}
+
+enum AiValidationSeverity {
+  error
+  warning
+  information
+  @@map("ai_validation_severity")
+  @@schema("public")
+}
+
 model Organization {
   id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
@@ -1322,6 +1358,180 @@ model AnalysisValidation {
   createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("analysis_validations")
+  @@schema("public")
+}
+
+model AiCapabilityCatalog {
+  id                       String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId           String?      @map("organization_id") @db.Uuid
+  code                     String
+  version                  Int
+  title                    String
+  description              String
+  supportedFindings        Json         @default("[]") @map("supported_findings")
+  requiredInputs           Json         @default("[]") @map("required_inputs")
+  requiredData             Json         @default("[]") @map("required_data")
+  expectedOutputs          Json         @default("[]") @map("expected_outputs")
+  limitations              Json         @default("[]")
+  implementationComplexity AiComplexity @map("implementation_complexity")
+  confidenceRules          Json         @map("confidence_rules")
+  published                Boolean      @default(false)
+  createdAt                DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@map("ai_capability_catalog")
+  @@schema("public")
+}
+
+model AiDetectionRuleCatalog {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId          String?  @map("organization_id") @db.Uuid
+  code                    String
+  version                 Int
+  title                   String
+  findingCodes            Json     @map("finding_codes")
+  processTerms            Json     @default("[]") @map("process_terms")
+  knowledgeTerms          Json     @default("[]") @map("knowledge_terms")
+  capabilityCodes         Json     @map("capability_codes")
+  businessProblemTemplate String   @map("business_problem_template")
+  impactTemplate          String   @map("impact_template")
+  risk                    AiRisk
+  active                  Boolean  @default(true)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@map("ai_detection_rule_catalog")
+  @@schema("public")
+}
+
+model AiScoreDefinitionCatalog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  version        Int
+  title          String
+  direction      String
+  formulaJson    Json     @map("formula_json")
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@map("ai_score_definition_catalog")
+  @@schema("public")
+}
+
+model AiOpportunitySnapshot {
+  id                  String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String              @map("organization_id") @db.Uuid
+  companyId           String              @map("company_id") @db.Uuid
+  businessAnalysisId  String              @map("business_analysis_id") @db.Uuid
+  processMapId        String              @map("process_map_id") @db.Uuid
+  knowledgeSnapshotId String              @map("knowledge_snapshot_id") @db.Uuid
+  previousVersionId   String?             @map("previous_version_id") @db.Uuid
+  versionNumber       Int                 @map("version_number")
+  status              AiOpportunityStatus @default(draft)
+  lockVersion         Int                 @default(1) @map("lock_version")
+  catalogVersionsJson Json                @map("catalog_versions_json")
+  provenanceJson      Json                @map("provenance_json")
+  createdBy           String              @map("created_by") @db.Uuid
+  validatedAt         DateTime?           @map("validated_at") @db.Timestamptz(6)
+  publishedAt         DateTime?           @map("published_at") @db.Timestamptz(6)
+  createdAt           DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([id, organizationId])
+  @@unique([organizationId, businessAnalysisId, versionNumber])
+  @@map("ai_opportunity_snapshots")
+  @@schema("public")
+}
+
+model AiOpportunity {
+  id                    String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String       @map("organization_id") @db.Uuid
+  snapshotId            String       @map("snapshot_id") @db.Uuid
+  detectionRuleId       String       @map("detection_rule_id") @db.Uuid
+  identifier            String
+  title                 String
+  description           String
+  businessProblem       String       @map("business_problem")
+  confidence            Decimal      @db.Decimal(5, 2)
+  feasibility           Decimal      @db.Decimal(5, 2)
+  businessImpact        Decimal      @map("business_impact") @db.Decimal(5, 2)
+  technicalComplexity   Decimal      @map("technical_complexity") @db.Decimal(5, 2)
+  dataReadiness         Decimal      @map("data_readiness") @db.Decimal(5, 2)
+  aiReadiness           Decimal      @map("ai_readiness") @db.Decimal(5, 2)
+  implementationEffort  AiComplexity @map("implementation_effort")
+  risk                  AiRisk
+  affectedProcessIds    String[]     @default([]) @map("affected_process_ids") @db.Uuid
+  affectedDepartmentIds String[]     @default([]) @map("affected_department_ids") @db.Uuid
+  affectedSystemIds     String[]     @default([]) @map("affected_system_ids") @db.Uuid
+  createdAt             DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([snapshotId, identifier])
+  @@unique([id, snapshotId, organizationId])
+  @@map("ai_opportunities")
+  @@schema("public")
+}
+
+model AiOpportunityCapability {
+  opportunityId String   @map("opportunity_id") @db.Uuid
+  snapshotId    String   @map("snapshot_id") @db.Uuid
+  organizationId String  @map("organization_id") @db.Uuid
+  capabilityId  String   @map("capability_id") @db.Uuid
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@id([opportunityId, capabilityId])
+  @@map("ai_opportunity_capabilities")
+  @@schema("public")
+}
+
+model AiOpportunityEvidence {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opportunityId     String   @map("opportunity_id") @db.Uuid
+  snapshotId        String   @map("snapshot_id") @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  businessFindingId String   @map("business_finding_id") @db.Uuid
+  knowledgeFactId   String   @map("knowledge_fact_id") @db.Uuid
+  explanation       String
+  evidenceJson      Json     @default("{}") @map("evidence_json")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([opportunityId, businessFindingId, knowledgeFactId])
+  @@map("ai_opportunity_evidence")
+  @@schema("public")
+}
+
+model AiOpportunityScore {
+  id                String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opportunityId     String   @map("opportunity_id") @db.Uuid
+  snapshotId        String   @map("snapshot_id") @db.Uuid
+  organizationId    String   @map("organization_id") @db.Uuid
+  scoreDefinitionId String   @map("score_definition_id") @db.Uuid
+  score             Decimal  @db.Decimal(5, 2)
+  calculationJson   Json     @map("calculation_json")
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([opportunityId, scoreDefinitionId])
+  @@map("ai_opportunity_scores")
+  @@schema("public")
+}
+
+model AiOpportunityPrerequisite {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  opportunityId  String   @map("opportunity_id") @db.Uuid
+  snapshotId     String   @map("snapshot_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  code           String
+  description    String
+  satisfied      Boolean
+  evidenceJson   Json     @default("{}") @map("evidence_json")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([opportunityId, code])
+  @@map("ai_opportunity_prerequisites")
+  @@schema("public")
+}
+
+model AiOpportunityValidation {
+  id             String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String               @map("organization_id") @db.Uuid
+  snapshotId     String               @map("snapshot_id") @db.Uuid
+  code           String
+  severity       AiValidationSeverity
+  message        String
+  createdAt      DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@map("ai_opportunity_validations")
   @@schema("public")
 }
 

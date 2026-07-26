@@ -81,7 +81,7 @@ Enterprise Knowledge (immutable projections)
       |
 Process Mapping
       |
-Business Intelligence
+Business Analysis
       |
 AI Opportunity + Automation Opportunity
       |
@@ -118,6 +118,13 @@ Business Analysis consomme exclusivement une Process Map publiée et le snapshot
 Knowledge qu'elle référence. Ses règles versionnées produisent des findings, preuves, scores et
 dimensions de santé traçables. Une analyse publiée est immuable et devient l'entrée canonique des
 moteurs d'opportunités futurs. Voir ADR-0007.
+
+## AI Opportunity
+
+AI Opportunity lit uniquement une Business Analysis publiée, sa Process Map publiée et son
+snapshot Knowledge référencé. Les capacités, règles de détection et formules sont des catalogues
+versionnés. Le moteur identifie et explique des possibilités sans exécuter d'IA, calculer de ROI,
+prioriser ou produire de recommandations. Voir ADR-0008.
 
 ## Incohérences et dette détectées
 
