@@ -63,12 +63,18 @@ un ADR au début du sprint concerné.
 - consommation exclusive des Process Maps publiées et de leur snapshot Knowledge référencé ;
 - règles versionnées, findings explicables, scores, santé, provenance et explorer read-only.
 
-## En cours
+### Sprint 8 — AI Opportunity Engine
 
-- Sprint 8 AI Opportunity Engine ;
 - consommation de Business Analysis publiée, Process Mapping publié et Knowledge référencé ;
 - capacités, détections et scores versionnés, explicables et sans LLM.
 
+## En cours
+
+- Sprint 9 — Automation Opportunity Engine ;
+- consommation exclusive des snapshots publiés AI Opportunity, Business Analysis et Process Map,
+  avec le snapshot Knowledge `ready` référencé ;
+- patterns, connecteurs, règles et scores versionnés, détection explicable et sans génération de workflow.
+
 ## Prochain jalon
 
-Finaliser AI Opportunity sans démarrer Automation Opportunity, ROI ou Recommendation.
+Finaliser Automation Opportunity sans démarrer ROI, Recommendation ou génération de workflow.

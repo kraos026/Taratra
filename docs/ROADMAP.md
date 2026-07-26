@@ -47,7 +47,9 @@ immuable et explorer read-only.
 
 ### Sprint 9 — Automation Opportunity Engine
 
-Identifie et qualifie les opportunités d'automatisation indépendamment du moteur AI Opportunity.
+Consomme les snapshots publiés AI Opportunity, Business Analysis et Process Mapping, ainsi que le
+snapshot Knowledge référencé. Identifie et qualifie les opportunités d'automatisation avec des
+patterns, connecteurs, règles et scores versionnés. Ne génère aucun workflow.
 
 ### Sprint 10 — ROI Engine
 
