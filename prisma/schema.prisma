@@ -191,6 +191,63 @@ enum KnowledgeSourceType {
   @@schema("public")
 }
 
+enum ProcessPatternStatus {
+  draft
+  published
+  archived
+
+  @@map("process_pattern_status")
+  @@schema("public")
+}
+
+enum ProcessMapStatus {
+  draft
+  validated
+  published
+  archived
+
+  @@map("process_map_status")
+  @@schema("public")
+}
+
+enum ProcessValidationSeverity {
+  error
+  warning
+  information
+
+  @@map("process_validation_severity")
+  @@schema("public")
+}
+
+enum ProcessNodeType {
+  process
+  step
+  decision
+  document
+  actor
+  system
+  event
+  input
+  output
+
+  @@map("process_node_type")
+  @@schema("public")
+}
+
+enum ProcessEdgeType {
+  produces
+  consumes
+  uses
+  sends
+  approves
+  transfers
+  depends_on
+  triggers
+
+  @@map("process_edge_type")
+  @@schema("public")
+}
+
 model Organization {
   id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
@@ -967,6 +1024,139 @@ model KnowledgeEvidence {
 
   @@unique([factId, sourceId, sourceRecordType, sourceRecordId])
   @@map("knowledge_evidence")
+  @@schema("public")
+}
+
+model ProcessPattern {
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String?              @map("organization_id") @db.Uuid
+  code            String
+  version         Int
+  status          ProcessPatternStatus @default(draft)
+  name            String
+  description     String?
+  industryScope   Json                 @default("[]") @map("industry_scope")
+  requiredFacts   Json                 @map("required_facts")
+  optionalFacts   Json                 @default("[]") @map("optional_facts")
+  graphTemplate   Json                 @map("graph_template")
+  validationRules Json                 @map("validation_rules")
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  publishedAt     DateTime?            @map("published_at") @db.Timestamptz(6)
+
+  @@map("process_patterns")
+  @@schema("public")
+}
+
+model ProcessMap {
+  id                           String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId               String           @map("organization_id") @db.Uuid
+  companyId                    String           @map("company_id") @db.Uuid
+  knowledgeSnapshotId          String           @map("knowledge_snapshot_id") @db.Uuid
+  processPatternId             String           @map("process_pattern_id") @db.Uuid
+  processPatternVersion        Int              @map("process_pattern_version")
+  previousVersionId            String?          @map("previous_version_id") @db.Uuid
+  versionNumber                Int              @map("version_number")
+  status                       ProcessMapStatus @default(draft)
+  lockVersion                  Int              @default(1) @map("lock_version")
+  name                         String
+  graphJson                    Json             @map("graph_json")
+  validationJson               Json             @default("[]") @map("validation_json")
+  provenanceJson               Json             @map("provenance_json")
+  completenessPercentage       Decimal          @map("completeness_percentage") @db.Decimal(5, 2)
+  confidencePercentage         Decimal          @map("confidence_percentage") @db.Decimal(5, 2)
+  coveragePercentage           Decimal          @map("coverage_percentage") @db.Decimal(5, 2)
+  readyForBusinessIntelligence Boolean          @default(false) @map("ready_for_business_intelligence")
+  createdBy                    String           @map("created_by") @db.Uuid
+  validatedAt                  DateTime?        @map("validated_at") @db.Timestamptz(6)
+  publishedAt                  DateTime?        @map("published_at") @db.Timestamptz(6)
+  archivedAt                   DateTime?        @map("archived_at") @db.Timestamptz(6)
+  createdAt                    DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, companyId, processPatternId, versionNumber])
+  @@map("process_maps")
+  @@schema("public")
+}
+
+model ProcessMapNode {
+  id                        String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId            String          @map("organization_id") @db.Uuid
+  processMapId              String          @map("process_map_id") @db.Uuid
+  nodeKey                   String          @map("node_key")
+  nodeType                  ProcessNodeType @map("node_type")
+  name                      String
+  description               String?
+  sequence                  Int?
+  departmentKnowledgeNodeId String?         @map("department_knowledge_node_id") @db.Uuid
+  actorKnowledgeNodeId      String?         @map("actor_knowledge_node_id") @db.Uuid
+  systemKnowledgeNodeId     String?         @map("system_knowledge_node_id") @db.Uuid
+  knowledgeFactIds          String[]        @default([]) @map("knowledge_fact_ids") @db.Uuid
+  estimatedDurationMinutes  Decimal?        @map("estimated_duration_minutes") @db.Decimal(12, 2)
+  frequency                 String?
+  executionMode             String?         @map("execution_mode")
+  attributesJson            Json            @default("{}") @map("attributes_json")
+  createdAt                 DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([processMapId, nodeKey])
+  @@map("process_map_nodes")
+  @@schema("public")
+}
+
+model ProcessMapEdge {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  processMapId   String          @map("process_map_id") @db.Uuid
+  fromNodeId     String          @map("from_node_id") @db.Uuid
+  toNodeId       String          @map("to_node_id") @db.Uuid
+  edgeType       ProcessEdgeType @map("edge_type")
+  attributesJson Json            @default("{}") @map("attributes_json")
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([processMapId, fromNodeId, toNodeId, edgeType])
+  @@map("process_map_edges")
+  @@schema("public")
+}
+
+model ProcessMapOwnership {
+  processMapId                String   @id @map("process_map_id") @db.Uuid
+  organizationId              String   @map("organization_id") @db.Uuid
+  ownerKnowledgeNodeId        String?  @map("owner_knowledge_node_id") @db.Uuid
+  departmentKnowledgeNodeId   String?  @map("department_knowledge_node_id") @db.Uuid
+  participantKnowledgeNodeIds String[] @default([]) @map("participant_knowledge_node_ids") @db.Uuid
+  supportingSystemNodeIds     String[] @default([]) @map("supporting_system_node_ids") @db.Uuid
+  createdAt                   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("process_map_ownership")
+  @@schema("public")
+}
+
+model ProcessMapValidation {
+  id             String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                    @map("organization_id") @db.Uuid
+  processMapId   String                    @map("process_map_id") @db.Uuid
+  code           String
+  severity       ProcessValidationSeverity
+  message        String
+  nodeKey        String?                   @map("node_key")
+  metadataJson   Json                      @default("{}") @map("metadata_json")
+  createdAt      DateTime                  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("process_map_validations")
+  @@schema("public")
+}
+
+model ProcessMapFactUsage {
+  processMapId     String   @map("process_map_id") @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  knowledgeFactId  String   @map("knowledge_fact_id") @db.Uuid
+  usage            String
+  reason           String
+  importanceWeight Decimal  @map("importance_weight") @db.Decimal(8, 2)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@id([processMapId, knowledgeFactId])
+  @@map("process_map_fact_usage")
   @@schema("public")
 }
 

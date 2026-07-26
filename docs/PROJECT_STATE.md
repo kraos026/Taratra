@@ -55,12 +55,11 @@ un ADR au début du sprint concerné.
 
 ## En cours
 
-- fondation Enterprise Knowledge sur `feat/enterprise-knowledge-foundation` ;
-- projection interne versionnée et immuable de Discovery et Interview validés ;
-- aucun moteur existant ne consomme encore cette projection.
+- Sprint 6 Business Process Intelligence, phase Process Mapping ;
+- consommation exclusive des snapshots Enterprise Knowledge `ready` ;
+- patterns et Process Maps versionnés, graphes, provenance, validation et explorer read-only.
 
 ## Prochain jalon
 
-Sprint 6 Process Mapping devra consommer un snapshot Enterprise Knowledge `ready` via un port de
-lecture dédié. Il ne devra pas interpréter directement les réponses Interview ni dupliquer les
-entités Discovery.
+Finaliser et publier Process Mapping sans démarrer Business Intelligence, AI Opportunity,
+Automation Opportunity, ROI ou Recommendation.
