@@ -17,6 +17,7 @@ validation de son contrat d'entrée, de ses frontières métier et de ses critè
 
 Consomme le profil Discovery validé pour préparer et conduire des entretiens adaptatifs. Il
 conserve les réponses d'entretien sans modifier les données canoniques Discovery implicitement.
+Implémentation v1 en cours sur `feat/adaptive-interview-engine`.
 
 ### Sprint 6 — Process Mapping Engine
 
