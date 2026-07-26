@@ -171,6 +171,26 @@ enum EvidenceConfidence {
   @@schema("public")
 }
 
+enum KnowledgeSnapshotStatus {
+  building
+  ready
+  failed
+
+  @@map("knowledge_snapshot_status")
+  @@schema("public")
+}
+
+enum KnowledgeSourceType {
+  discovery
+  interview
+  connector
+  manual_validation
+  ai_inference
+
+  @@map("knowledge_source_type")
+  @@schema("public")
+}
+
 model Organization {
   id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
@@ -844,6 +864,109 @@ model InterviewTimeline {
   createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@map("interview_timeline")
+  @@schema("public")
+}
+
+model KnowledgeSnapshot {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  companyId      String                  @map("company_id") @db.Uuid
+  version        Int
+  status         KnowledgeSnapshotStatus @default(building)
+  schemaVersion  Int                     @default(1) @map("schema_version")
+  generatedAt    DateTime?               @map("generated_at") @db.Timestamptz(6)
+  createdBy      String                  @map("created_by") @db.Uuid
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, companyId, version])
+  @@map("knowledge_snapshots")
+  @@schema("public")
+}
+
+model KnowledgeSource {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String              @map("organization_id") @db.Uuid
+  snapshotId     String              @map("snapshot_id") @db.Uuid
+  sourceType     KnowledgeSourceType @map("source_type")
+  sourceId       String              @map("source_id") @db.Uuid
+  sourceVersion  Int                 @map("source_version")
+  validatedAt    DateTime?           @map("validated_at") @db.Timestamptz(6)
+  metadataJson   Json                @default("{}") @map("metadata_json")
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([snapshotId, sourceType, sourceId])
+  @@map("knowledge_sources")
+  @@schema("public")
+}
+
+model KnowledgeNode {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  snapshotId           String   @map("snapshot_id") @db.Uuid
+  nodeKey              String   @map("node_key")
+  nodeType             String   @map("node_type")
+  domain               String
+  label                String
+  canonicalEntityType  String?  @map("canonical_entity_type")
+  canonicalEntityId    String?  @map("canonical_entity_id") @db.Uuid
+  confidencePercentage Decimal  @map("confidence_percentage") @db.Decimal(5, 2)
+  attributesJson       Json     @default("{}") @map("attributes_json")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([snapshotId, nodeKey])
+  @@map("knowledge_nodes")
+  @@schema("public")
+}
+
+model KnowledgeFact {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  snapshotId           String   @map("snapshot_id") @db.Uuid
+  nodeId               String?  @map("node_id") @db.Uuid
+  factKey              String   @map("fact_key")
+  domain               String
+  valueJson            Json     @map("value_json")
+  valueType            String   @map("value_type")
+  confidencePercentage Decimal  @map("confidence_percentage") @db.Decimal(5, 2)
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([snapshotId, factKey])
+  @@map("knowledge_facts")
+  @@schema("public")
+}
+
+model KnowledgeRelationship {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  snapshotId           String   @map("snapshot_id") @db.Uuid
+  fromNodeId           String   @map("from_node_id") @db.Uuid
+  toNodeId             String   @map("to_node_id") @db.Uuid
+  relationshipType     String   @map("relationship_type")
+  confidencePercentage Decimal  @map("confidence_percentage") @db.Decimal(5, 2)
+  attributesJson       Json     @default("{}") @map("attributes_json")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([snapshotId, fromNodeId, toNodeId, relationshipType])
+  @@map("knowledge_relationships")
+  @@schema("public")
+}
+
+model KnowledgeEvidence {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  snapshotId           String   @map("snapshot_id") @db.Uuid
+  factId               String   @map("fact_id") @db.Uuid
+  sourceId             String   @map("source_id") @db.Uuid
+  sourceRecordType     String   @map("source_record_type")
+  sourceRecordId       String   @map("source_record_id") @db.Uuid
+  evidenceType         String   @map("evidence_type")
+  confidencePercentage Decimal  @map("confidence_percentage") @db.Decimal(5, 2)
+  metadataJson         Json     @default("{}") @map("metadata_json")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([factId, sourceId, sourceRecordType, sourceRecordId])
+  @@map("knowledge_evidence")
   @@schema("public")
 }
 

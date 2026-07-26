@@ -19,10 +19,16 @@ Consomme le profil Discovery validé pour préparer et conduire des entretiens a
 conserve les réponses d'entretien sans modifier les données canoniques Discovery implicitement.
 Implémentation v1 en cours sur `feat/adaptive-interview-engine`.
 
+### Fondation — Enterprise Knowledge
+
+Projection interne, versionnée et immuable des données Discovery et Interview validées. Cette
+fondation prépare les moteurs suivants sans modifier leur comportement actuel et sans API publique.
+
 ### Sprint 6 — Process Mapping Engine
 
 Construit une cartographie versionnée à partir des processus Discovery et des entretiens. Il ne
-duplique ni le profil ni le catalogue des processus.
+duplique ni le profil ni le catalogue des processus. Son entrée officielle sera un snapshot
+Enterprise Knowledge `ready`, pas les réponses brutes.
 
 ### Sprint 7 — Business Intelligence Engine
 
