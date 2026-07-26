@@ -195,3 +195,30 @@ versionnées et chaque contribution est explicable. Voir ADR-0011.
    conservés comme v1 ; ne pas les étendre avant cette décision.
 7. Épingler toutes les dépendances et traiter les alertes `npm audit` dans une passe dédiée,
    sans mise à jour majeure automatique.
+
+## Gel architectural AutomateX V1
+
+L’architecture V1 est gelée à compter de la release `1.0.0`. Aucun moteur V2 n’est inclus.
+AutomateX V1 ne génère et n’exécute aucun workflow. Les anciens moteurs Rules, ROI et
+Recommendations sont conservés uniquement pour compatibilité avec les contrats historiques.
+
+Chaîne canonique gelée :
+
+`Discovery → Interview → Enterprise Knowledge → Process Mapping → Business Analysis → AI Opportunity → Automation Opportunity → ROI → Recommendation`.
+
+| Contexte               | Responsabilité                | Entrée canonique                          | Sortie canonique           | Lifecycle et immutabilité                                | Dépendances interdites                       |
+| ---------------------- | ----------------------------- | ----------------------------------------- | -------------------------- | -------------------------------------------------------- | -------------------------------------------- |
+| Discovery              | Profil opérationnel canonique | Company tenant-scoped                     | profil validé              | draft → validated                                        | moteurs aval                                 |
+| Interview              | Collecte adaptative           | Discovery validée                         | session validée            | draft → completed/validated, lock optimiste              | Process/Analysis directs                     |
+| Enterprise Knowledge   | Normalisation explicable      | Discovery + Interview validés             | snapshot `ready`           | building → ready, ready immuable                         | modification des sources                     |
+| Process Mapping        | Graphes de processus          | Knowledge `ready`                         | Process Map publiée        | draft → validated → published ; rebuild crée une version | Discovery, Interview                         |
+| Business Analysis      | Findings et santé             | Process Map publiée + Knowledge           | Analysis publiée           | draft → validated → published, publiée immuable          | Discovery, Interview                         |
+| AI Opportunity         | Opportunités IA explicables   | Analysis et Process publiés + Knowledge   | snapshot AI publié         | draft → validated → published, publié immuable           | Discovery, Interview, LLM décisionnel        |
+| Automation Opportunity | Opportunités d’automatisation | AI, Analysis, Process publiés + Knowledge | snapshot Automation publié | draft → validated → published, publié immuable           | Discovery, Interview, génération de workflow |
+| ROI                    | Scénarios économiques         | Automation publiée et chaîne référencée   | ROI publié                 | draft → validated → published, publié immuable           | recalcul des moteurs amont                   |
+| Recommendation         | Priorisation et roadmap       | ROI et chaîne canonique publiés           | portfolio publié           | draft → validated → published, publié immuable           | Discovery, Interview, recalcul ROI           |
+
+Les viewers lisent uniquement. Consultants, admins et owners peuvent produire des brouillons selon
+les permissions du bounded context ; la publication est réservée aux admins/owners. Chaque accès
+reste tenant-scoped par filtres applicatifs, contraintes composites et RLS. `lock_version`
+protège les transitions concurrentes et les conflits sont exposés en HTTP 409.
