@@ -39,20 +39,23 @@ pas seulement dans le code.
 
 ## Bounded contexts actuels
 
-| Contexte             | Responsabilité                                   | Statut                               |
-| -------------------- | ------------------------------------------------ | ------------------------------------ |
-| Onboarding           | Création atomique organisation/owner             | Production                           |
-| Companies            | Identité CRM, contact et cycle commercial        | Production, dette de frontière       |
-| Questionnaires       | Catalogue versionné de questions                 | Production                           |
-| Audits               | Sessions et réponses d'audit                     | Production                           |
-| Discovery            | Connaissance canonique de l'entreprise           | Production                           |
-| Interview            | Collecte adaptative des connaissances manquantes | Production                           |
-| Enterprise Knowledge | Projection interne normalisée et explicable      | Fondation                            |
-| Process Mapping      | Reconstruction déterministe des processus        | En cours                             |
-| Reports              | Projection de restitution sans décision métier   | v1                                   |
-| Rules                | Évaluation déterministe d'anciens audits         | Préexistant à réaligner              |
-| ROI                  | Calcul déterministe MVP                          | Préexistant à réaligner au Sprint 10 |
-| Recommendations      | Priorisation déterministe MVP                    | Préexistant à réaligner au Sprint 11 |
+| Contexte               | Responsabilité                                   | Statut                               |
+| ---------------------- | ------------------------------------------------ | ------------------------------------ |
+| Onboarding             | Création atomique organisation/owner             | Production                           |
+| Companies              | Identité CRM, contact et cycle commercial        | Production, dette de frontière       |
+| Questionnaires         | Catalogue versionné de questions                 | Production                           |
+| Audits                 | Sessions et réponses d'audit                     | Production                           |
+| Discovery              | Connaissance canonique de l'entreprise           | Production                           |
+| Interview              | Collecte adaptative des connaissances manquantes | Production                           |
+| Enterprise Knowledge   | Projection interne normalisée et explicable      | Fondation                            |
+| Process Mapping        | Reconstruction déterministe des processus        | En cours                             |
+| Business Analysis      | Findings et santé explicables                    | Production                           |
+| AI Opportunity         | Opportunités IA déterministes                    | Production                           |
+| Automation Opportunity | Opportunités d'automatisation explicables        | En cours                             |
+| Reports                | Projection de restitution sans décision métier   | v1                                   |
+| Rules                  | Évaluation déterministe d'anciens audits         | Préexistant à réaligner              |
+| ROI                    | Calcul déterministe MVP                          | Préexistant à réaligner au Sprint 10 |
+| Recommendations        | Priorisation déterministe MVP                    | Préexistant à réaligner au Sprint 11 |
 
 ## Contrat canonique Discovery
 
@@ -125,6 +128,14 @@ AI Opportunity lit uniquement une Business Analysis publiée, sa Process Map pub
 snapshot Knowledge référencé. Les capacités, règles de détection et formules sont des catalogues
 versionnés. Le moteur identifie et explique des possibilités sans exécuter d'IA, calculer de ROI,
 prioriser ou produire de recommandations. Voir ADR-0008.
+
+## Automation Opportunity
+
+Automation Opportunity consomme uniquement un snapshot AI Opportunity publié et les versions
+exactes Business Analysis, Process Map et Knowledge qu'il référence. Ses patterns, connecteurs,
+règles et formules sont versionnés et figés dans chaque snapshot. La disponibilité d'un connecteur
+exige une preuve Knowledge explicite. Il ne génère aucun workflow et ne calcule ni ROI ni
+recommandation. Voir ADR-0009.
 
 ## Incohérences et dette détectées
 
