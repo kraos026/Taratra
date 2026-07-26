@@ -1,5 +1,10 @@
 # Module Companies
 
+> Frontière canonique : Companies gère l'identité CRM, les contacts et le cycle commercial.
+> Discovery est désormais la source canonique du profil opérationnel. Les champs historiques
+> `employee_count` et `sector_id` sont conservés temporairement pour compatibilité et ne doivent
+> plus être consommés par de nouveaux moteurs.
+
 Le module Companies gère les entreprises clientes et prospects d’une organisation AutomateX.
 Il couvre la création, la consultation, la modification, l’archivage, la restauration et, pour
 les rôles autorisés, la suppression définitive.
