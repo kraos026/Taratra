@@ -40,7 +40,7 @@ export class RecommendationService {
       }
     }
     const result = this.engine.evaluate([...unique.values()], Number(profile.hourlyCost));
-    await this.repo.store(c.organizationId, auditId, evaluationId, result);
+    await this.repo.store(c.organizationId, auditId, evaluationId, result, profile.currency);
     return { profile, result };
   }
   async results(auditId: string) {

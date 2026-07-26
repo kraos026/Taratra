@@ -17,6 +17,28 @@ body {
   color: var(--ink);
   font-family: "DM Sans", sans-serif;
 }
+.report-score-red {
+  border-left-color: #dc2626;
+}
+.report-score-orange {
+  border-left-color: #f59e0b;
+}
+.report-score-blue {
+  border-left-color: #2563eb;
+}
+.report-score-green {
+  border-left-color: #16a34a;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f5f5f5;
+    --bg: #0a0a0a;
+    --line: #262626;
+  }
+  body {
+    color-scheme: dark;
+  }
+}
 .app-shell {
   display: flex;
   min-height: 100vh;

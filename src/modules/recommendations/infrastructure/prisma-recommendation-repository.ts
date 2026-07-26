@@ -73,12 +73,14 @@ export class PrismaRecommendationRepository {
       annualSavings: number;
       roiPercentage: number;
       implementationCost: number;
+      hoursMonth: number;
       paybackMonths: number | null;
       quickWin: boolean;
       strategic: boolean;
       code: string;
       rulePriority: number;
     }[],
+    currency: string,
   ) {
     await this.db.auditRecommendation.deleteMany({ where: { organizationId, auditId } });
     if (items.length)
@@ -99,6 +101,8 @@ export class PrismaRecommendationRepository {
           metadataJson: {
             formulaVersion: "mvp-v1",
             rulePriority: i.rulePriority,
+            hoursMonth: i.hoursMonth,
+            currency,
           } as Prisma.InputJsonValue,
         })),
       });
