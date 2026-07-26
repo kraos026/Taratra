@@ -341,6 +341,31 @@ enum AutomationValidationSeverity {
   @@schema("public")
 }
 
+enum RoiEvaluationStatus {
+  draft
+  validated
+  published
+  archived
+  @@map("roi_evaluation_status")
+  @@schema("public")
+}
+
+enum RoiScenarioType {
+  conservative
+  expected
+  optimistic
+  @@map("roi_scenario_type")
+  @@schema("public")
+}
+
+enum RoiValidationSeverity {
+  error
+  warning
+  information
+  @@map("roi_validation_severity")
+  @@schema("public")
+}
+
 model Organization {
   id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
@@ -1759,6 +1784,177 @@ model AutomationOpportunityValidation {
   message        String
   createdAt      DateTime                     @default(now()) @map("created_at") @db.Timestamptz(6)
   @@map("automation_opportunity_validations")
+  @@schema("public")
+}
+
+model RoiModelCatalog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  version        Int
+  title          String
+  description    String
+  formulaJson    Json     @map("formula_json")
+  requiredInputs Json     @map("required_inputs")
+  outputs        Json
+  published      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([code, version, organizationId])
+  @@map("roi_model_catalog")
+  @@schema("public")
+}
+
+model RoiAssumptionCatalog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  version        Int
+  title          String
+  description    String
+  defaultValue   Decimal? @map("default_value") @db.Decimal(18, 4)
+  unit           String
+  industryScope  Json     @default("[]") @map("industry_scope")
+  required       Boolean  @default(true)
+  published      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([code, version, organizationId])
+  @@map("roi_assumption_catalog")
+  @@schema("public")
+}
+
+model RoiEvaluationSnapshot {
+  id                              String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId                  String              @map("organization_id") @db.Uuid
+  companyId                       String              @map("company_id") @db.Uuid
+  automationOpportunitySnapshotId String              @map("automation_opportunity_snapshot_id") @db.Uuid
+  aiOpportunitySnapshotId         String              @map("ai_opportunity_snapshot_id") @db.Uuid
+  businessAnalysisId              String              @map("business_analysis_id") @db.Uuid
+  processMapId                    String              @map("process_map_id") @db.Uuid
+  knowledgeSnapshotId             String              @map("knowledge_snapshot_id") @db.Uuid
+  previousVersionId               String?             @map("previous_version_id") @db.Uuid
+  versionNumber                   Int                 @map("version_number")
+  status                          RoiEvaluationStatus @default(draft)
+  lockVersion                     Int                 @default(1) @map("lock_version")
+  currency                        String
+  catalogVersionsJson             Json                @map("catalog_versions_json")
+  provenanceJson                  Json                @map("provenance_json")
+  createdBy                       String              @map("created_by") @db.Uuid
+  validatedAt                     DateTime?           @map("validated_at") @db.Timestamptz(6)
+  publishedAt                     DateTime?           @map("published_at") @db.Timestamptz(6)
+  createdAt                       DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                       DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([id, organizationId])
+  @@unique([organizationId, automationOpportunitySnapshotId, versionNumber])
+  @@map("roi_evaluation_snapshots")
+  @@schema("public")
+}
+
+model RoiScenario {
+  id             String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String          @map("organization_id") @db.Uuid
+  snapshotId     String          @map("snapshot_id") @db.Uuid
+  type           RoiScenarioType
+  modelId        String          @map("model_id") @db.Uuid
+  volumeFactor   Decimal         @map("volume_factor") @db.Decimal(8, 4)
+  costFactor     Decimal         @map("cost_factor") @db.Decimal(8, 4)
+  createdAt      DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([snapshotId, type])
+  @@unique([id, snapshotId, organizationId])
+  @@map("roi_scenarios")
+  @@schema("public")
+}
+
+model RoiScenarioAssumption {
+  scenarioId     String   @map("scenario_id") @db.Uuid
+  snapshotId     String   @map("snapshot_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  assumptionId   String   @map("assumption_id") @db.Uuid
+  value          Decimal  @db.Decimal(18, 4)
+  unit           String
+  source         String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@id([scenarioId, assumptionId])
+  @@map("roi_scenario_assumptions")
+  @@schema("public")
+}
+
+model RoiEvaluation {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId          String   @map("organization_id") @db.Uuid
+  snapshotId              String   @map("snapshot_id") @db.Uuid
+  scenarioId              String   @map("scenario_id") @db.Uuid
+  automationOpportunityId String   @map("automation_opportunity_id") @db.Uuid
+  identifier              String
+  title                   String
+  description             String
+  confidence              Decimal  @db.Decimal(5, 2)
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([scenarioId, automationOpportunityId])
+  @@unique([id, scenarioId, snapshotId, organizationId])
+  @@map("roi_evaluations")
+  @@schema("public")
+}
+
+model RoiContribution {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  snapshotId     String   @map("snapshot_id") @db.Uuid
+  scenarioId     String   @map("scenario_id") @db.Uuid
+  evaluationId   String   @map("evaluation_id") @db.Uuid
+  assumptionId   String   @map("assumption_id") @db.Uuid
+  code           String
+  inputValue     Decimal  @map("input_value") @db.Decimal(18, 4)
+  contribution   Decimal  @db.Decimal(18, 4)
+  calculationJson Json    @map("calculation_json")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@map("roi_contributions")
+  @@schema("public")
+}
+
+model RoiMetric {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  snapshotId     String   @map("snapshot_id") @db.Uuid
+  scenarioId     String   @map("scenario_id") @db.Uuid
+  evaluationId   String   @map("evaluation_id") @db.Uuid
+  code           String
+  value          Decimal? @db.Decimal(18, 4)
+  specialValue   String?  @map("special_value")
+  unit           String
+  calculationJson Json    @map("calculation_json")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([evaluationId, code])
+  @@map("roi_metrics")
+  @@schema("public")
+}
+
+model RoiEvidence {
+  id                      String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId          String   @map("organization_id") @db.Uuid
+  snapshotId              String   @map("snapshot_id") @db.Uuid
+  scenarioId              String   @map("scenario_id") @db.Uuid
+  evaluationId            String   @map("evaluation_id") @db.Uuid
+  automationEvidenceId    String   @map("automation_evidence_id") @db.Uuid
+  businessFindingId       String   @map("business_finding_id") @db.Uuid
+  knowledgeFactId         String   @map("knowledge_fact_id") @db.Uuid
+  explanation             String
+  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([evaluationId, automationEvidenceId])
+  @@map("roi_evidence")
+  @@schema("public")
+}
+
+model RoiValidation {
+  id             String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                  @map("organization_id") @db.Uuid
+  snapshotId     String                  @map("snapshot_id") @db.Uuid
+  code           String
+  severity       RoiValidationSeverity
+  message        String
+  createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@map("roi_validations")
   @@schema("public")
 }
 
