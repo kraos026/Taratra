@@ -56,6 +56,5 @@ règles Recommendation et définitions de priorité.
 
 ## Prochaine étape
 
-AutomateX V2 Sprint 1 — Solution Designer est en développement comme couche indépendante. Il
-consomme uniquement Recommendation, ROI et Automation Opportunity publiés et ne modifie aucun
-bounded context V1.
+AutomateX Execution Platform V2, uniquement après validation d’une nouvelle architecture et de
+nouveaux ADR.

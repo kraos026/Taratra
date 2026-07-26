@@ -21,7 +21,7 @@ Aucun nouveau comportement métier ne doit être ajouté à la branche de releas
 
 Roadmap conceptuelle, non implémentée :
 
-1. Solution Designer — Sprint V2-1 en développement ;
+1. Solution Designer ;
 2. Automation Specification ;
 3. Automation Generator ;
 4. Sandbox Validation ;
