@@ -366,6 +366,57 @@ enum RoiValidationSeverity {
   @@schema("public")
 }
 
+enum RecommendationPortfolioStatus {
+  draft
+  validated
+  published
+  archived
+  @@map("recommendation_portfolio_status")
+  @@schema("public")
+}
+
+enum RecommendationPriorityLevel {
+  critical
+  high
+  medium
+  low
+  future
+  @@map("recommendation_priority_level")
+  @@schema("public")
+}
+
+enum RecommendationPortfolioCategory {
+  quick_wins
+  strategic_projects
+  high_roi
+  low_investment
+  ai_first
+  automation_first
+  operational_excellence
+  compliance
+  risk_reduction
+  long_term
+  @@map("recommendation_portfolio_category")
+  @@schema("public")
+}
+
+enum RecommendationRoadmapPhase {
+  phase_1
+  phase_2
+  phase_3
+  phase_4
+  @@map("recommendation_roadmap_phase")
+  @@schema("public")
+}
+
+enum RecommendationValidationSeverity {
+  error
+  warning
+  information
+  @@map("recommendation_validation_severity")
+  @@schema("public")
+}
+
 model Organization {
   id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
@@ -1955,6 +2006,165 @@ model RoiValidation {
   message        String
   createdAt      DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   @@map("roi_validations")
+  @@schema("public")
+}
+
+model RecommendationRuleCatalog {
+  id              String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String?                         @map("organization_id") @db.Uuid
+  code            String
+  version         Int
+  title           String
+  description     String
+  priorityFormula Json                            @map("priority_formula")
+  matchJson       Json                            @map("match_json")
+  dependencies    Json                            @default("[]")
+  category        RecommendationPortfolioCategory
+  published       Boolean                         @default(false)
+  createdAt       DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime                        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([code, version, organizationId])
+  @@map("recommendation_rule_catalog")
+  @@schema("public")
+}
+
+model PriorityDefinitionCatalog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  version        Int
+  title          String
+  formulaJson    Json     @map("formula_json")
+  thresholdsJson Json     @map("thresholds_json")
+  published      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([code, version, organizationId])
+  @@map("priority_definition_catalog")
+  @@schema("public")
+}
+
+model RecommendationPortfolioSnapshot {
+  id                              String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId                  String                        @map("organization_id") @db.Uuid
+  companyId                       String                        @map("company_id") @db.Uuid
+  roiSnapshotId                   String                        @map("roi_snapshot_id") @db.Uuid
+  automationOpportunitySnapshotId String                        @map("automation_opportunity_snapshot_id") @db.Uuid
+  aiOpportunitySnapshotId         String                        @map("ai_opportunity_snapshot_id") @db.Uuid
+  businessAnalysisId              String                        @map("business_analysis_id") @db.Uuid
+  processMapId                    String                        @map("process_map_id") @db.Uuid
+  knowledgeSnapshotId             String                        @map("knowledge_snapshot_id") @db.Uuid
+  previousVersionId               String?                       @map("previous_version_id") @db.Uuid
+  versionNumber                   Int                           @map("version_number")
+  status                          RecommendationPortfolioStatus @default(draft)
+  lockVersion                     Int                           @default(1) @map("lock_version")
+  catalogVersionsJson             Json                          @map("catalog_versions_json")
+  provenanceJson                  Json                          @map("provenance_json")
+  createdBy                       String                        @map("created_by") @db.Uuid
+  validatedAt                     DateTime?                     @map("validated_at") @db.Timestamptz(6)
+  publishedAt                     DateTime?                     @map("published_at") @db.Timestamptz(6)
+  createdAt                       DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                       DateTime                      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([id, organizationId])
+  @@unique([organizationId, roiSnapshotId, versionNumber])
+  @@map("recommendation_portfolio_snapshots")
+  @@schema("public")
+}
+
+model TransformationRecommendation {
+  id                      String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId          String                          @map("organization_id") @db.Uuid
+  snapshotId              String                          @map("snapshot_id") @db.Uuid
+  ruleId                  String                          @map("rule_id") @db.Uuid
+  priorityDefinitionId    String                          @map("priority_definition_id") @db.Uuid
+  roiEvaluationId         String                          @map("roi_evaluation_id") @db.Uuid
+  roiScenarioId           String                          @map("roi_scenario_id") @db.Uuid
+  roiSnapshotId           String                          @map("roi_snapshot_id") @db.Uuid
+  automationOpportunityId String                          @map("automation_opportunity_id") @db.Uuid
+  automationOpportunitySnapshotId String                  @map("automation_opportunity_snapshot_id") @db.Uuid
+  identifier              String
+  title                   String
+  description             String
+  businessProblem         String                          @map("business_problem")
+  recommendedInitiative   String                          @map("recommended_initiative")
+  expectedBenefits        Json                            @map("expected_benefits")
+  implementationCost      Decimal                         @map("implementation_cost") @db.Decimal(18, 4)
+  expectedRoi             Decimal?                        @map("expected_roi") @db.Decimal(18, 4)
+  roiSpecialValue         String?                         @map("roi_special_value")
+  payback                 Decimal?                        @db.Decimal(18, 4)
+  businessImpact          Decimal                         @map("business_impact") @db.Decimal(5, 2)
+  complexity              Decimal                         @db.Decimal(5, 2)
+  feasibility             Decimal                         @db.Decimal(5, 2)
+  operationalRisk         Decimal                         @map("operational_risk") @db.Decimal(5, 2)
+  confidence              Decimal                         @db.Decimal(5, 2)
+  priorityScore           Decimal                         @map("priority_score") @db.Decimal(5, 2)
+  priority                RecommendationPriorityLevel
+  category                RecommendationPortfolioCategory
+  roadmapPhase            RecommendationRoadmapPhase      @map("roadmap_phase")
+  prerequisitesJson       Json                            @default("[]") @map("prerequisites_json")
+  affectedProcessIds      String[]                        @default([]) @map("affected_process_ids") @db.Uuid
+  affectedDepartmentIds   String[]                        @default([]) @map("affected_department_ids") @db.Uuid
+  affectedSystemIds       String[]                        @default([]) @map("affected_system_ids") @db.Uuid
+  createdAt               DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([snapshotId, identifier])
+  @@unique([id, snapshotId, organizationId])
+  @@map("transformation_recommendations")
+  @@schema("public")
+}
+
+model TransformationRecommendationDependency {
+  recommendationId String   @map("recommendation_id") @db.Uuid
+  dependsOnId      String   @map("depends_on_id") @db.Uuid
+  snapshotId       String   @map("snapshot_id") @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  reason           String
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@id([recommendationId, dependsOnId])
+  @@map("transformation_recommendation_dependencies")
+  @@schema("public")
+}
+
+model TransformationRecommendationEvidence {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recommendationId     String   @map("recommendation_id") @db.Uuid
+  snapshotId           String   @map("snapshot_id") @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  roiEvidenceId        String   @map("roi_evidence_id") @db.Uuid
+  businessFindingId    String   @map("business_finding_id") @db.Uuid
+  knowledgeFactId      String   @map("knowledge_fact_id") @db.Uuid
+  explanation          String
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([recommendationId, roiEvidenceId])
+  @@map("transformation_recommendation_evidence")
+  @@schema("public")
+}
+
+model TransformationRecommendationContribution {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  recommendationId     String   @map("recommendation_id") @db.Uuid
+  snapshotId           String   @map("snapshot_id") @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  component            String
+  rawValue             Decimal  @map("raw_value") @db.Decimal(18, 4)
+  normalizedValue      Decimal  @map("normalized_value") @db.Decimal(5, 2)
+  weight               Decimal  @db.Decimal(8, 4)
+  weightedContribution Decimal  @map("weighted_contribution") @db.Decimal(8, 4)
+  calculationJson      Json     @map("calculation_json")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([recommendationId, component])
+  @@map("transformation_recommendation_contributions")
+  @@schema("public")
+}
+
+model RecommendationPortfolioValidation {
+  id             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                           @map("organization_id") @db.Uuid
+  snapshotId     String                           @map("snapshot_id") @db.Uuid
+  code           String
+  severity       RecommendationValidationSeverity
+  message        String
+  createdAt      DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@map("recommendation_portfolio_validations")
   @@schema("public")
 }
 

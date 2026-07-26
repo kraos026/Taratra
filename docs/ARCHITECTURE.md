@@ -39,24 +39,25 @@ pas seulement dans le code.
 
 ## Bounded contexts actuels
 
-| Contexte               | Responsabilité                                   | Statut                               |
-| ---------------------- | ------------------------------------------------ | ------------------------------------ |
-| Onboarding             | Création atomique organisation/owner             | Production                           |
-| Companies              | Identité CRM, contact et cycle commercial        | Production, dette de frontière       |
-| Questionnaires         | Catalogue versionné de questions                 | Production                           |
-| Audits                 | Sessions et réponses d'audit                     | Production                           |
-| Discovery              | Connaissance canonique de l'entreprise           | Production                           |
-| Interview              | Collecte adaptative des connaissances manquantes | Production                           |
-| Enterprise Knowledge   | Projection interne normalisée et explicable      | Fondation                            |
-| Process Mapping        | Reconstruction déterministe des processus        | En cours                             |
-| Business Analysis      | Findings et santé explicables                    | Production                           |
-| AI Opportunity         | Opportunités IA déterministes                    | Production                           |
-| Automation Opportunity | Opportunités d'automatisation explicables        | En cours                             |
-| ROI Evaluations        | Évaluations économiques versionnées              | En cours                             |
-| Reports                | Projection de restitution sans décision métier   | v1                                   |
-| Rules                  | Évaluation déterministe d'anciens audits         | Préexistant à réaligner              |
-| ROI                    | Calcul déterministe MVP                          | Préexistant à réaligner au Sprint 10 |
-| Recommendations        | Priorisation déterministe MVP                    | Préexistant à réaligner au Sprint 11 |
+| Contexte                 | Responsabilité                                   | Statut                               |
+| ------------------------ | ------------------------------------------------ | ------------------------------------ |
+| Onboarding               | Création atomique organisation/owner             | Production                           |
+| Companies                | Identité CRM, contact et cycle commercial        | Production, dette de frontière       |
+| Questionnaires           | Catalogue versionné de questions                 | Production                           |
+| Audits                   | Sessions et réponses d'audit                     | Production                           |
+| Discovery                | Connaissance canonique de l'entreprise           | Production                           |
+| Interview                | Collecte adaptative des connaissances manquantes | Production                           |
+| Enterprise Knowledge     | Projection interne normalisée et explicable      | Fondation                            |
+| Process Mapping          | Reconstruction déterministe des processus        | En cours                             |
+| Business Analysis        | Findings et santé explicables                    | Production                           |
+| AI Opportunity           | Opportunités IA déterministes                    | Production                           |
+| Automation Opportunity   | Opportunités d'automatisation explicables        | En cours                             |
+| ROI Evaluations          | Évaluations économiques versionnées              | En cours                             |
+| Recommendation Portfolio | Roadmap de transformation déterministe           | En cours                             |
+| Reports                  | Projection de restitution sans décision métier   | v1                                   |
+| Rules                    | Évaluation déterministe d'anciens audits         | Préexistant à réaligner              |
+| ROI                      | Calcul déterministe MVP                          | Préexistant à réaligner au Sprint 10 |
+| Recommendations          | Priorisation déterministe MVP                    | Préexistant à réaligner au Sprint 11 |
 
 ## Contrat canonique Discovery
 
@@ -144,6 +145,12 @@ Le ROI Sprint 10 consomme une Automation Opportunity publiée et toute sa chaîn
 référencée. Il produit trois scénarios dont les hypothèses, formules, contributions, preuves et
 métriques sont figées. Il ne priorise pas et ne recommande pas. Le ROI v1 reste isolé pour
 compatibilité. Voir ADR-0010.
+
+## Recommendation Portfolio
+
+Sprint 11 consomme les métriques ROI publiées sans les recalculer et produit la décision finale :
+catégorie, priorité, dépendances et phase de roadmap. Les règles et définitions de priorité sont
+versionnées et chaque contribution est explicable. Voir ADR-0011.
 
 ## Incohérences et dette détectées
 

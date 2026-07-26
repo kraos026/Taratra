@@ -60,7 +60,8 @@ compatibilité et introduit un bounded context versionné consommant Automation 
 ### Sprint 11 — Recommendation Engine
 
 Priorise les opportunités évaluées. Le moteur Recommendation MVP existant est provisoire jusqu'à
-la définition de ce nouveau contrat.
+la définition de ce nouveau contrat. ADR-0011 conserve la v1 pour compatibilité et introduit des
+portfolios versionnés consommant exclusivement le ROI Sprint 10 publié.
 
 ### Sprint 12 — Executive Report v2
 
