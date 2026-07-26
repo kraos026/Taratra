@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
-import type { PrismaSolutionBlueprintRepository } from "../infrastructure/prisma-solution-blueprint-repository";
 import { SolutionBlueprintService } from "./solution-blueprint-service";
+import type { SolutionBlueprintRepository } from "./solution-blueprint-repository";
 
 const repository = (
   role: "owner" | "admin" | "consultant" | "viewer",
@@ -11,9 +11,9 @@ const repository = (
       organizationId: "organization",
       role,
     }),
-    snapshot: vi.fn(),
+    prepareRebuild: vi.fn(),
     ...overrides,
-  }) as unknown as PrismaSolutionBlueprintRepository;
+  }) as unknown as SolutionBlueprintRepository;
 
 describe("SolutionBlueprintService permissions and concurrency", () => {
   it("forbids a viewer from generating a blueprint", async () => {
@@ -37,9 +37,10 @@ describe("SolutionBlueprintService permissions and concurrency", () => {
   it("returns HTTP 409 semantics when optimistic locking detects a stale rebuild", async () => {
     const service = new SolutionBlueprintService(
       repository("admin", {
-        snapshot: vi.fn().mockResolvedValue({
+        prepareRebuild: vi.fn().mockResolvedValue({
           id: "blueprint",
           recommendationId: "recommendation",
+          status: "draft",
           lockVersion: 2,
         }),
       }),
@@ -50,5 +51,65 @@ describe("SolutionBlueprintService permissions and concurrency", () => {
       code: "SOLUTION_BLUEPRINT_CONFLICT",
       status: 409,
     });
+  });
+
+  it("refuses validation when a published catalog rule failed", async () => {
+    const service = new SolutionBlueprintService(
+      repository("consultant", {
+        detail: vi.fn().mockResolvedValue({
+          blueprint: {
+            id: "blueprint",
+            recommendationId: "recommendation",
+            status: "draft",
+            lockVersion: 1,
+          },
+          evidence: [{ id: "evidence" }],
+          validations: [
+            {
+              code: "catalog_rule",
+              severity: "error",
+              message: "failed",
+              passed: false,
+            },
+          ],
+        }),
+      }),
+      "user",
+    );
+
+    await expect(service.validate("blueprint", 1)).rejects.toMatchObject({
+      code: "SOLUTION_BLUEPRINT_INVALID",
+      status: 422,
+    });
+  });
+
+  it("publishes through the aggregate and repository transition", async () => {
+    const transition = vi.fn().mockResolvedValue({ status: "published" });
+    const service = new SolutionBlueprintService(
+      repository("admin", {
+        detail: vi.fn().mockResolvedValue({
+          blueprint: {
+            id: "blueprint",
+            recommendationId: "recommendation",
+            status: "validated",
+            lockVersion: 2,
+          },
+          evidence: [{ id: "evidence" }],
+          validations: [
+            {
+              code: "catalog_rule",
+              severity: "error",
+              message: "passed",
+              passed: true,
+            },
+          ],
+        }),
+        transition,
+      }),
+      "user",
+    );
+
+    await service.publish("blueprint", 2);
+    expect(transition).toHaveBeenCalledWith("organization", "blueprint", 2, "published");
   });
 });

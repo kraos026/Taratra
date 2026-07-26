@@ -2262,6 +2262,8 @@ model SolutionValidationRuleCatalog {
   version        Int
   name           String
   description    String
+  severity       SolutionValidationSeverity @default(error)
+  ruleJson       Json                       @map("rule_json")
   published      Boolean  @default(false)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
@@ -2335,6 +2337,7 @@ model SolutionBlueprintValidation {
   code           String
   severity       SolutionValidationSeverity
   message        String
+  passed         Boolean                    @default(false)
   createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   @@map("solution_blueprint_validations")
   @@schema("public")

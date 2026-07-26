@@ -35,6 +35,7 @@ create table public.solution_constraint_catalog(
 create table public.solution_validation_rule_catalog(
  id uuid primary key default gen_random_uuid(), organization_id uuid references public.organizations(id),
  code text not null, version integer not null check(version>0), name text not null, description text not null,
+ severity public.solution_validation_severity not null default 'error', rule_json jsonb not null check(jsonb_typeof(rule_json)='object'),
  published boolean not null default false, created_at timestamptz not null default now(),
  updated_at timestamptz not null default now(), unique nulls not distinct(code,version,organization_id)
 );
@@ -42,7 +43,7 @@ create table public.solution_blueprints(
  id uuid primary key default gen_random_uuid(), organization_id uuid not null, company_id uuid not null,
  recommendation_id uuid not null, recommendation_snapshot_id uuid not null, roi_snapshot_id uuid not null,
  automation_opportunity_id uuid not null, automation_opportunity_snapshot_id uuid not null,
- pattern_id uuid not null references public.solution_pattern_catalog(id), previous_version_id uuid references public.solution_blueprints(id),
+ pattern_id uuid not null references public.solution_pattern_catalog(id), previous_version_id uuid,
  version_number integer not null check(version_number>0), status public.solution_blueprint_status not null default 'draft',
  lock_version integer not null default 1, name text not null, description text not null, objective text not null,
  architecture text not null, components_json jsonb not null, capabilities_json jsonb not null,
@@ -61,7 +62,8 @@ create table public.solution_blueprints(
   references public.transformation_recommendations(id,snapshot_id,organization_id),
  foreign key(roi_snapshot_id,organization_id) references public.roi_evaluation_snapshots(id,organization_id),
  foreign key(automation_opportunity_id,automation_opportunity_snapshot_id,organization_id)
-  references public.automation_opportunities(id,snapshot_id,organization_id)
+  references public.automation_opportunities(id,snapshot_id,organization_id),
+ foreign key(previous_version_id,organization_id) references public.solution_blueprints(id,organization_id)
 );
 create table public.solution_blueprint_evidence(
  id uuid primary key default gen_random_uuid(), organization_id uuid not null, blueprint_id uuid not null,
@@ -73,7 +75,9 @@ create table public.solution_blueprint_evidence(
 create table public.solution_blueprint_validations(
  id uuid primary key default gen_random_uuid(), organization_id uuid not null, blueprint_id uuid not null,
  code text not null, severity public.solution_validation_severity not null, message text not null,
+ passed boolean not null default false,
  created_at timestamptz not null default now(),
+ unique(blueprint_id,code),
  foreign key(blueprint_id,organization_id) references public.solution_blueprints(id,organization_id) on delete cascade
 );
 
@@ -95,11 +99,42 @@ begin
    and r.automation_opportunity_id=new.automation_opportunity_id
    and au.id=new.automation_opportunity_snapshot_id and au.status='published'
  ) then raise exception 'Solution Blueprint requires aligned published canonical sources'; end if;
- return new;
+ if tg_op='DELETE' then return old; else return new; end if;
 end $$;
 revoke execute on function private.validate_solution_blueprint_sources() from public,anon,authenticated;
 create trigger solution_blueprint_sources_valid before insert on public.solution_blueprints
 for each row execute function private.validate_solution_blueprint_sources();
+
+create function private.enforce_solution_blueprint_write_boundary() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ if coalesce(current_setting('app.solution_designer_internal_write',true),'') <> 'on'
+ then raise exception 'Solution Designer writes must use the application transaction'; end if;
+ if tg_table_name='solution_blueprints' then
+  if new.status <> 'draft' or new.lock_version <> 1
+  then raise exception 'A Solution Blueprint must be created as draft with lock version 1'; end if;
+  if not exists(
+   select 1 from public.solution_pattern_catalog p
+   where p.id=new.pattern_id and p.published and (p.organization_id is null or p.organization_id=new.organization_id)
+  ) then raise exception 'Solution Blueprint pattern must be a published system or tenant catalog version'; end if;
+  if (new.version_number=1 and new.previous_version_id is not null)
+   or (new.version_number>1 and not exists(
+    select 1 from public.solution_blueprints previous
+    where previous.id=new.previous_version_id and previous.organization_id=new.organization_id
+     and previous.recommendation_id=new.recommendation_id
+     and previous.version_number=new.version_number-1
+   ))
+ then raise exception 'Solution Blueprint previous version must be the preceding tenant recommendation version'; end if;
+ end if;
+ if tg_op='DELETE' then return old; else return new; end if;
+end $$;
+revoke execute on function private.enforce_solution_blueprint_write_boundary() from public,anon,authenticated;
+create trigger solution_blueprint_internal_insert before insert on public.solution_blueprints
+for each row execute function private.enforce_solution_blueprint_write_boundary();
+create trigger solution_blueprint_evidence_internal_write before insert or update or delete on public.solution_blueprint_evidence
+for each row execute function private.enforce_solution_blueprint_write_boundary();
+create trigger solution_blueprint_validations_internal_write before insert or update or delete on public.solution_blueprint_validations
+for each row execute function private.enforce_solution_blueprint_write_boundary();
 
 create function private.validate_solution_blueprint_evidence_scope() returns trigger
 language plpgsql security definer set search_path='' as $$
@@ -119,6 +154,29 @@ revoke execute on function private.validate_solution_blueprint_evidence_scope() 
 create trigger solution_blueprint_evidence_scope before insert or update on public.solution_blueprint_evidence
 for each row execute function private.validate_solution_blueprint_evidence_scope();
 
+create function private.validate_solution_blueprint_validation_scope() returns trigger
+language plpgsql security definer set search_path='' as $$
+begin
+ if not exists(
+  select 1
+  from public.solution_blueprints b
+  cross join lateral jsonb_array_elements(b.catalog_versions_json->'validations') reference
+  join public.solution_validation_rule_catalog rule
+   on rule.id=(reference->>'id')::uuid
+   and rule.code=new.code
+   and rule.version=(reference->>'version')::integer
+   and rule.severity=new.severity
+   and rule.description=new.message
+   and rule.published
+   and (rule.organization_id is null or rule.organization_id=b.organization_id)
+  where b.id=new.blueprint_id and b.organization_id=new.organization_id
+ ) then raise exception 'Solution Blueprint validation must reference its published tenant catalog rule'; end if;
+ return new;
+end $$;
+revoke execute on function private.validate_solution_blueprint_validation_scope() from public,anon,authenticated;
+create trigger solution_blueprint_validation_scope before insert or update on public.solution_blueprint_validations
+for each row execute function private.validate_solution_blueprint_validation_scope();
+
 create function private.prevent_solution_catalog_mutation() returns trigger language plpgsql set search_path='' as $$
 begin
  if old.published then raise exception 'Published Solution Designer catalog versions are immutable'; end if;
@@ -136,7 +194,39 @@ declare blueprint uuid;
 begin
  if tg_table_name='solution_blueprints' then
   if old.status='published' then raise exception 'Published Solution Blueprints are immutable'; end if;
-  if tg_op='DELETE' then return old; else return new; end if;
+  if tg_op='DELETE' then return old; end if;
+  if (to_jsonb(new)-array['status','lock_version','validated_at','published_at','updated_at'])
+    is distinct from
+    (to_jsonb(old)-array['status','lock_version','validated_at','published_at','updated_at'])
+  then raise exception 'Solution Blueprint content is immutable; rebuild a new draft version'; end if;
+  if new.lock_version <> old.lock_version+1
+  then raise exception 'Solution Blueprint transition requires the next lock version'; end if;
+  if exists(
+   select 1 from public.solution_blueprints newer
+   where newer.organization_id=old.organization_id
+    and newer.recommendation_id=old.recommendation_id
+    and newer.version_number>old.version_number
+  ) then raise exception 'Only the latest Solution Blueprint version can transition'; end if;
+  if not exists(select 1 from public.solution_blueprint_validations v where v.blueprint_id=old.id)
+   or (select count(*) from public.solution_blueprint_validations v where v.blueprint_id=old.id)
+      <> jsonb_array_length(old.catalog_versions_json->'validations')
+   or exists(
+    select 1 from public.solution_blueprint_validations v
+    where v.blueprint_id=old.id and not v.passed and v.severity='error'
+   )
+  then raise exception 'Solution Blueprint has incomplete or blocking catalog validation results'; end if;
+  if old.status='draft' and new.status='validated' then
+   if new.validated_at is null or new.published_at is not null
+   then raise exception 'Invalid Solution Blueprint validation transition'; end if;
+  elsif old.status='validated' and new.status='published' then
+   if not (select private.has_organization_role(old.organization_id,array['owner','admin']::public.organization_role[]))
+   then raise exception 'Only owner or admin can publish a Solution Blueprint'; end if;
+   if new.published_at is null
+    or not exists(select 1 from public.solution_blueprint_evidence e where e.blueprint_id=old.id)
+   then raise exception 'Published Solution Blueprint requires evidence'; end if;
+  else raise exception 'Invalid Solution Blueprint lifecycle transition';
+  end if;
+  return new;
  end if;
  blueprint:=case when tg_op='DELETE' then old.blueprint_id else new.blueprint_id end;
  if exists(select 1 from public.solution_blueprints b where b.id=blueprint and b.status='published')
@@ -217,11 +307,34 @@ insert into public.solution_constraint_catalog(code,version,name,published) valu
 ('multi_tenant',1,'Multi Tenant',true),('idempotency',1,'Idempotency',true),
 ('retry_policy',1,'Retry Policy',true),('observability',1,'Observability',true);
 
-insert into public.solution_validation_rule_catalog(code,version,name,description,published)
-select lower(replace(name,' ','_')),1,name,name,true from unnest(array[
-'Known Pattern','Known Capability','Known Constraint','No Orphan Component','No Cycle',
-'All Inputs Connected','All Outputs Connected','Required Secret Present','Required Permission Present',
-'Evidence Present','Published Recommendation','Published ROI','Published Automation Opportunity']) name;
+insert into public.solution_validation_rule_catalog
+(code,version,name,description,severity,rule_json,published) values
+('known_pattern',1,'Known Pattern','A published platform-agnostic pattern is required','error',
+ '{"operator":"pattern_valid","forbiddenValues":["n8n","make","zapier","power automate","temporal","camunda","aws step functions","azure logic apps","google workflows"]}',true),
+('known_capability',1,'Known Capability','Every capability and connector must resolve to a published catalog version with a cost','error',
+ '{"operator":"catalog_references_resolved"}',true),
+('known_constraint',1,'Known Constraint','Every constraint must resolve to a published catalog version','error',
+ '{"operator":"constraints_resolved"}',true),
+('no_orphan_component',1,'No Orphan Component','Every component must be connected and every edge must reference known components','error',
+ '{"operator":"graph_well_formed"}',true),
+('no_cycle',1,'No Cycle','The dependency graph must be acyclic','error',
+ '{"operator":"graph_acyclic"}',true),
+('all_inputs_connected',1,'All Inputs Connected','Every connector input must be represented','error',
+ '{"operator":"connector_inputs_complete"}',true),
+('all_outputs_connected',1,'All Outputs Connected','Every connector output must be represented','error',
+ '{"operator":"connector_outputs_complete"}',true),
+('required_secret_present',1,'Required Secret Present','Every connector secret must be represented','error',
+ '{"operator":"connector_secrets_complete"}',true),
+('required_permission_present',1,'Required Permission Present','Every connector permission must be represented','error',
+ '{"operator":"connector_permissions_complete"}',true),
+('evidence_present',1,'Evidence Present','Published Recommendation evidence is required','error',
+ '{"operator":"evidence_present"}',true),
+('published_recommendation',1,'Published Recommendation','The Recommendation snapshot must be published','error',
+ '{"operator":"source_published","source":"recommendation"}',true),
+('published_roi',1,'Published ROI','The ROI snapshot must be published','error',
+ '{"operator":"source_published","source":"roi"}',true),
+('published_automation_opportunity',1,'Published Automation Opportunity','The Automation Opportunity snapshot must be published','error',
+ '{"operator":"source_published","source":"automation"}',true);
 
 insert into public.solution_connector_requirement_catalog
 (code,version,name,cost_level,cost_index,capabilities,secrets,permissions,inputs,outputs,published) values
@@ -353,7 +466,7 @@ with patterns(code,name,categories,components,capabilities,connectors,constraint
 '["authentication_required","authorization_required","secret_required","pii_handling","rate_limit","audit_trail","observability"]',
 '["LLM provider API key","Search credential","Notification credential","Logging credential","Monitoring credential"]',
 '["llm.invoke","search.read","approval.request","approval.respond","notification.send","logs.write","metrics.write"]',
-'[{"from":"intake","to":"assistant","type":"calls","label":"Intake calls Assistant"},{"from":"assistant","to":"escalation","type":"calls","label":"Assistant transfers unresolved request"},{"from":"escalation","to":"assistant","type":"approves","label":"Escalation approves response"}]',
+'[{"from":"intake","to":"assistant","type":"calls","label":"Intake calls Assistant"},{"from":"assistant","to":"escalation","type":"calls","label":"Assistant transfers unresolved request"}]',
 '[{"name":"Incorrect customer response","severity":75,"costIndex":40},{"name":"PII disclosure","severity":100,"costIndex":80},{"name":"Escalation failure","severity":75,"costIndex":40},{"name":"Provider outage","severity":50,"costIndex":20}]'),
 ('notification_hub','Notification Hub','[]',
 '[{"code":"event","name":"Event"},{"code":"dispatcher","name":"Dispatcher"}]',

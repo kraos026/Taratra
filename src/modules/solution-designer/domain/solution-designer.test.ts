@@ -117,6 +117,82 @@ const input = (): DesignerInput => ({
     version: 1,
     published: true,
   })),
+  validationRules: [
+    {
+      id: "v1",
+      code: "known_pattern",
+      version: 1,
+      description: "known pattern",
+      severity: "error",
+      configuration: { operator: "pattern_valid", forbiddenValues: ["zapier"] },
+      published: true,
+    },
+    {
+      id: "v2",
+      code: "known_capability",
+      version: 1,
+      description: "known references",
+      severity: "error",
+      configuration: { operator: "catalog_references_resolved" },
+      published: true,
+    },
+    {
+      id: "v3",
+      code: "known_constraint",
+      version: 1,
+      description: "known constraints",
+      severity: "error",
+      configuration: { operator: "constraints_resolved" },
+      published: true,
+    },
+    {
+      id: "v4",
+      code: "no_orphan_component",
+      version: 1,
+      description: "graph well formed",
+      severity: "error",
+      configuration: { operator: "graph_well_formed" },
+      published: true,
+    },
+    {
+      id: "v5",
+      code: "no_cycle",
+      version: 1,
+      description: "no cycle",
+      severity: "error",
+      configuration: { operator: "graph_acyclic" },
+      published: true,
+    },
+    ...(["inputs", "outputs", "secrets", "permissions"] as const).map((value) => ({
+      id: `connector-${value}`,
+      code: `connector_${value}`,
+      version: 1,
+      description: value,
+      severity: "error" as const,
+      configuration: {
+        operator: `connector_${value}_complete` as const,
+      },
+      published: true,
+    })),
+    {
+      id: "evidence",
+      code: "evidence_present",
+      version: 1,
+      description: "evidence",
+      severity: "error",
+      configuration: { operator: "evidence_present" },
+      published: true,
+    },
+    ...(["recommendation", "roi", "automation"] as const).map((source) => ({
+      id: `published-${source}`,
+      code: `published_${source}`,
+      version: 1,
+      description: source,
+      severity: "error" as const,
+      configuration: { operator: "source_published" as const, source },
+      published: true,
+    })),
+  ],
 });
 describe("SolutionDesigner", () => {
   const designer = new SolutionDesigner();
@@ -126,7 +202,8 @@ describe("SolutionDesigner", () => {
     expect(result.complexityScore).toBe(36);
     expect(result.estimatedTechnicalCostIndex).toBe(108);
     expect(result.finalRisk).toBe(50);
-    expect(result.validations).toEqual([expect.objectContaining({ code: "blueprint_valid" })]);
+    expect(result.validations).toHaveLength(13);
+    expect(result.validations.every((validation) => validation.passed)).toBe(true);
   });
   it("is deterministic on rebuild", () =>
     expect(designer.rebuild(input())).toEqual(designer.generate(input())));
@@ -139,28 +216,31 @@ describe("SolutionDesigner", () => {
       label: "cycle",
     });
     expect(designer.generate(value).validations).toContainEqual(
-      expect.objectContaining({ code: "topology_cycle" }),
+      expect.objectContaining({ code: "no_cycle", passed: false }),
     );
   });
   it("blocks unpublished canonical sources", () => {
     const value = input();
     value.source.roiStatus = "draft";
     expect(designer.generate(value).validations).toContainEqual(
-      expect.objectContaining({ code: "roi_unpublished" }),
+      expect.objectContaining({ code: "published_roi", passed: false }),
     );
   });
   it("blocks missing evidence and unknown capabilities", () => {
     const value = input();
     value.source.evidenceIds = [];
     value.capabilities = value.capabilities.slice(0, 2);
-    const codes = designer.generate(value).validations.map((item) => item.code);
-    expect(codes).toEqual(expect.arrayContaining(["missing_evidence", "unknown_capability"]));
+    const failures = designer
+      .generate(value)
+      .validations.filter((item) => !item.passed)
+      .map((item) => item.code);
+    expect(failures).toEqual(expect.arrayContaining(["evidence_present", "known_capability"]));
   });
   it("rejects forbidden platform names", () => {
     const value = input();
     value.patterns[0]!.name = "Zapier";
     expect(designer.generate(value).validations).toContainEqual(
-      expect.objectContaining({ code: "forbidden_platform" }),
+      expect.objectContaining({ code: "known_pattern", passed: false }),
     );
   });
 });
