@@ -47,9 +47,9 @@ un ADR au début du sprint concerné.
 
 ## En cours
 
-- PR #8 : alignement de la Vision, de l'Architecture, de la Roadmap et des ADR.
-- Sprint 5 Adaptive Interview Engine : spécification reçue, développement non commencé en attente
-  des décisions métier déterministes et de la fusion de l'alignement architectural.
+- Sprint 5 Adaptive Interview Engine : développement sur `feat/adaptive-interview-engine`.
+- Catalogue déterministe, sessions, adaptation, réponses, décisions, confiance, progression,
+  readiness Process Mapping, API, UI et isolation multi-tenant sont en cours de validation.
 
 ## Prochain jalon
 

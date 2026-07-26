@@ -129,6 +129,48 @@ enum OfferingType {
   @@schema("public")
 }
 
+enum InterviewStatus {
+  draft
+  in_progress
+  completed
+  validated
+  archived
+
+  @@map("interview_status")
+  @@schema("public")
+}
+
+enum InterviewAnswerType {
+  short_text
+  long_text
+  number
+  boolean
+  single_choice
+  multiple_choice
+
+  @@map("interview_answer_type")
+  @@schema("public")
+}
+
+enum InterviewSkipReason {
+  irrelevant
+  unknown
+  deferred
+
+  @@map("interview_skip_reason")
+  @@schema("public")
+}
+
+enum EvidenceConfidence {
+  validated
+  confirmed
+  uncertain
+  missing
+
+  @@map("evidence_confidence")
+  @@schema("public")
+}
+
 model Organization {
   id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
@@ -678,6 +720,130 @@ model DiscoveryAnswer {
 
   @@unique([discoverySessionId, fieldKey])
   @@map("discovery_answers")
+  @@schema("public")
+}
+
+model InterviewQuestion {
+  id             String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?             @map("organization_id") @db.Uuid
+  code           String
+  version        Int                 @default(1)
+  domain         String
+  prompt         String
+  helpText       String?             @map("help_text")
+  answerType     InterviewAnswerType @map("answer_type")
+  optionsJson    Json                @default("[]") @map("options_json")
+  mandatory      Boolean             @default(true)
+  weight         Decimal             @default(1) @db.Decimal(8, 2)
+  sequence       Int
+  conditionJson  Json                @default("{}") @map("condition_json")
+  validationJson Json                @default("{}") @map("validation_json")
+  active         Boolean             @default(true)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("interview_questions")
+  @@schema("public")
+}
+
+model InterviewSession {
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String          @map("organization_id") @db.Uuid
+  companyId          String          @map("company_id") @db.Uuid
+  discoverySessionId String          @map("discovery_session_id") @db.Uuid
+  status             InterviewStatus @default(draft)
+  version            Int             @default(1)
+  lockVersion        Int             @default(1) @map("lock_version")
+  currentQuestionId  String?         @map("current_question_id") @db.Uuid
+  startedBy          String          @map("started_by") @db.Uuid
+  completedAt        DateTime?       @map("completed_at") @db.Timestamptz(6)
+  validatedAt        DateTime?       @map("validated_at") @db.Timestamptz(6)
+  validatedBy        String?         @map("validated_by") @db.Uuid
+  archivedAt         DateTime?       @map("archived_at") @db.Timestamptz(6)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("interview_sessions")
+  @@schema("public")
+}
+
+model InterviewAnswer {
+  id                 String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String               @map("organization_id") @db.Uuid
+  interviewSessionId String               @map("interview_session_id") @db.Uuid
+  questionId         String               @map("question_id") @db.Uuid
+  valueJson          Json?                @map("value_json")
+  skipReason         InterviewSkipReason? @map("skip_reason")
+  confidence         EvidenceConfidence
+  answeredBy         String               @map("answered_by") @db.Uuid
+  revision           Int                  @default(1)
+  createdAt          DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([interviewSessionId, questionId])
+  @@map("interview_answers")
+  @@schema("public")
+}
+
+model InterviewDecision {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String   @map("organization_id") @db.Uuid
+  interviewSessionId String   @map("interview_session_id") @db.Uuid
+  questionId         String   @map("question_id") @db.Uuid
+  decision           String
+  reason             String
+  factsJson          Json     @default("{}") @map("facts_json")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("interview_decisions")
+  @@schema("public")
+}
+
+model InterviewEvidence {
+  id                 String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String             @map("organization_id") @db.Uuid
+  interviewSessionId String             @map("interview_session_id") @db.Uuid
+  domain             String
+  factKey            String             @map("fact_key")
+  sourceType         String             @map("source_type")
+  sourceId           String             @map("source_id") @db.Uuid
+  confidence         EvidenceConfidence
+  valueJson          Json?              @map("value_json")
+  createdAt          DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime           @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([interviewSessionId, factKey, sourceType])
+  @@map("interview_evidence")
+  @@schema("public")
+}
+
+model InterviewProgress {
+  interviewSessionId   String   @map("interview_session_id") @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  domain               String
+  answeredWeight       Decimal  @default(0) @map("answered_weight") @db.Decimal(10, 2)
+  requiredWeight       Decimal  @default(0) @map("required_weight") @db.Decimal(10, 2)
+  progressPercentage   Decimal  @map("progress_percentage") @db.Decimal(5, 2)
+  confidencePercentage Decimal  @map("confidence_percentage") @db.Decimal(5, 2)
+  missingMandatory     Int      @default(0) @map("missing_mandatory")
+  ready                Boolean  @default(false)
+  updatedAt            DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@id([interviewSessionId, domain])
+  @@map("interview_progress")
+  @@schema("public")
+}
+
+model InterviewTimeline {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String   @map("organization_id") @db.Uuid
+  interviewSessionId String   @map("interview_session_id") @db.Uuid
+  actorId            String   @map("actor_id") @db.Uuid
+  eventType          String   @map("event_type")
+  metadataJson       Json     @default("{}") @map("metadata_json")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("interview_timeline")
   @@schema("public")
 }
 

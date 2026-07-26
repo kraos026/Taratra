@@ -94,6 +94,16 @@ export function CompanyDetail({ id }: { id: string }) {
         </div>
         <div className="flex gap-2">
           {permissions.canWrite && !company.deletedAt && (
+            <Button variant="outline" onClick={() => router.push(`/companies/${id}/discovery`)}>
+              Discovery
+            </Button>
+          )}
+          {permissions.canWrite && !company.deletedAt && (
+            <Button variant="outline" onClick={() => router.push(`/companies/${id}/interview`)}>
+              Entretien
+            </Button>
+          )}
+          {permissions.canWrite && !company.deletedAt && (
             <Button variant="outline" onClick={() => router.push(`/companies/${id}/audits/new`)}>
               Nouvel audit
             </Button>
