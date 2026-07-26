@@ -52,6 +52,7 @@ pas seulement dans le code.
 | Business Analysis      | Findings et santé explicables                    | Production                           |
 | AI Opportunity         | Opportunités IA déterministes                    | Production                           |
 | Automation Opportunity | Opportunités d'automatisation explicables        | En cours                             |
+| ROI Evaluations        | Évaluations économiques versionnées              | En cours                             |
 | Reports                | Projection de restitution sans décision métier   | v1                                   |
 | Rules                  | Évaluation déterministe d'anciens audits         | Préexistant à réaligner              |
 | ROI                    | Calcul déterministe MVP                          | Préexistant à réaligner au Sprint 10 |
@@ -136,6 +137,13 @@ exactes Business Analysis, Process Map et Knowledge qu'il référence. Ses patte
 règles et formules sont versionnés et figés dans chaque snapshot. La disponibilité d'un connecteur
 exige une preuve Knowledge explicite. Il ne génère aucun workflow et ne calcule ni ROI ni
 recommandation. Voir ADR-0009.
+
+## ROI Evaluations
+
+Le ROI Sprint 10 consomme une Automation Opportunity publiée et toute sa chaîne canonique
+référencée. Il produit trois scénarios dont les hypothèses, formules, contributions, preuves et
+métriques sont figées. Il ne priorise pas et ne recommande pas. Le ROI v1 reste isolé pour
+compatibilité. Voir ADR-0010.
 
 ## Incohérences et dette détectées
 

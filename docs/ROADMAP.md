@@ -54,7 +54,8 @@ patterns, connecteurs, règles et scores versionnés. Ne génère aucun workflow
 ### Sprint 10 — ROI Engine
 
 Calcule des scénarios financiers explicables. Le moteur ROI MVP existant doit faire l'objet d'une
-décision explicite de migration ou de remplacement.
+décision explicite de migration ou de remplacement. ADR-0010 conserve le moteur v1 pour
+compatibilité et introduit un bounded context versionné consommant Automation Opportunity.
 
 ### Sprint 11 — Recommendation Engine
 
