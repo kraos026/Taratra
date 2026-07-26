@@ -417,6 +417,25 @@ enum RecommendationValidationSeverity {
   @@schema("public")
 }
 
+enum SolutionBlueprintStatus {
+  draft
+  validated
+  published
+  archived
+
+  @@map("solution_blueprint_status")
+  @@schema("public")
+}
+
+enum SolutionValidationSeverity {
+  error
+  warning
+  information
+
+  @@map("solution_validation_severity")
+  @@schema("public")
+}
+
 model Organization {
   id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
@@ -2165,6 +2184,159 @@ model RecommendationPortfolioValidation {
   message        String
   createdAt      DateTime                         @default(now()) @map("created_at") @db.Timestamptz(6)
   @@map("recommendation_portfolio_validations")
+  @@schema("public")
+}
+
+model SolutionPatternCatalog {
+  id                       String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId           String?  @map("organization_id") @db.Uuid
+  code                     String
+  version                  Int
+  name                     String
+  description              String
+  recommendationCategories Json     @map("recommendation_categories")
+  templateJson             Json     @map("template_json")
+  published                Boolean  @default(false)
+  createdAt                DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([code, version, organizationId])
+  @@map("solution_pattern_catalog")
+  @@schema("public")
+}
+
+model SolutionCapabilityCatalog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  version        Int
+  name           String
+  costLevel      String   @map("cost_level")
+  costIndex      Decimal  @map("cost_index") @db.Decimal(12, 2)
+  published      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([code, version, organizationId])
+  @@map("solution_capability_catalog")
+  @@schema("public")
+}
+
+model SolutionConnectorRequirementCatalog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  version        Int
+  name           String
+  costLevel      String   @map("cost_level")
+  costIndex      Decimal  @map("cost_index") @db.Decimal(12, 2)
+  capabilities   Json
+  secrets        Json
+  permissions    Json
+  inputs         Json
+  outputs        Json
+  published      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([code, version, organizationId])
+  @@map("solution_connector_requirement_catalog")
+  @@schema("public")
+}
+
+model SolutionConstraintCatalog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  version        Int
+  name           String
+  published      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([code, version, organizationId])
+  @@map("solution_constraint_catalog")
+  @@schema("public")
+}
+
+model SolutionValidationRuleCatalog {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  version        Int
+  name           String
+  description    String
+  published      Boolean  @default(false)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([code, version, organizationId])
+  @@map("solution_validation_rule_catalog")
+  @@schema("public")
+}
+
+model SolutionBlueprint {
+  id                          String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId              String                  @map("organization_id") @db.Uuid
+  companyId                   String                  @map("company_id") @db.Uuid
+  recommendationId            String                  @map("recommendation_id") @db.Uuid
+  recommendationSnapshotId    String                  @map("recommendation_snapshot_id") @db.Uuid
+  roiSnapshotId               String                  @map("roi_snapshot_id") @db.Uuid
+  automationOpportunityId     String                  @map("automation_opportunity_id") @db.Uuid
+  automationOpportunitySnapshotId String              @map("automation_opportunity_snapshot_id") @db.Uuid
+  patternId                   String                  @map("pattern_id") @db.Uuid
+  previousVersionId           String?                 @map("previous_version_id") @db.Uuid
+  versionNumber               Int                     @map("version_number")
+  status                      SolutionBlueprintStatus @default(draft)
+  lockVersion                 Int                     @default(1) @map("lock_version")
+  name                        String
+  description                 String
+  objective                   String
+  architecture               String
+  componentsJson              Json                    @map("components_json")
+  capabilitiesJson            Json                    @map("capabilities_json")
+  connectorsJson              Json                    @map("connectors_json")
+  constraintsJson             Json                    @map("constraints_json")
+  assumptionsJson             Json                    @map("assumptions_json")
+  secretsJson                 Json                    @map("secrets_json")
+  permissionsJson             Json                    @map("permissions_json")
+  inputsJson                  Json                    @map("inputs_json")
+  outputsJson                 Json                    @map("outputs_json")
+  topologyJson                Json                    @map("topology_json")
+  dependenciesJson            Json                    @map("dependencies_json")
+  risksJson                   Json                    @map("risks_json")
+  finalRisk                   Decimal                 @map("final_risk") @db.Decimal(5, 2)
+  estimatedTechnicalCostIndex Decimal                 @map("estimated_technical_cost_index") @db.Decimal(12, 2)
+  complexityScore             Decimal                 @map("complexity_score") @db.Decimal(5, 2)
+  catalogVersionsJson         Json                    @map("catalog_versions_json")
+  provenanceJson              Json                    @map("provenance_json")
+  createdBy                   String                  @map("created_by") @db.Uuid
+  validatedAt                 DateTime?               @map("validated_at") @db.Timestamptz(6)
+  publishedAt                 DateTime?               @map("published_at") @db.Timestamptz(6)
+  createdAt                   DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+  @@unique([id, organizationId])
+  @@unique([organizationId, recommendationId, versionNumber])
+  @@map("solution_blueprints")
+  @@schema("public")
+}
+
+model SolutionBlueprintEvidence {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  blueprintId      String   @map("blueprint_id") @db.Uuid
+  recommendationEvidenceId String @map("recommendation_evidence_id") @db.Uuid
+  explanation      String
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@unique([blueprintId, recommendationEvidenceId])
+  @@map("solution_blueprint_evidence")
+  @@schema("public")
+}
+
+model SolutionBlueprintValidation {
+  id             String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                     @map("organization_id") @db.Uuid
+  blueprintId    String                     @map("blueprint_id") @db.Uuid
+  code           String
+  severity       SolutionValidationSeverity
+  message        String
+  createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  @@map("solution_blueprint_validations")
   @@schema("public")
 }
 
