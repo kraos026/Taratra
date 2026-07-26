@@ -42,6 +42,8 @@ ADR-0007 maintient le Rule Engine historique séparé.
 
 Identifie des opportunités liées à l'IA à partir des constats structurés. Le terme « AI » décrit le
 domaine d'opportunité ; toute décision reste gouvernée par des règles déterministes.
+Phase en cours : catalogues versionnés, détection explicable, scores, provenance, publication
+immuable et explorer read-only.
 
 ### Sprint 9 — Automation Opportunity Engine
 
