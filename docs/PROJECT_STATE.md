@@ -53,13 +53,18 @@ Elles restent testées et utilisables par le Report v1, mais ne signifient pas q
 10 et 11 de la roadmap officielle sont livrés. Leur migration, adaptation ou remplacement exigera
 un ADR au début du sprint concerné.
 
-## En cours
+### Sprint 6 — Process Mapping Engine
 
-- Sprint 6 Business Process Intelligence, phase Process Mapping ;
 - consommation exclusive des snapshots Enterprise Knowledge `ready` ;
 - patterns et Process Maps versionnés, graphes, provenance, validation et explorer read-only.
 
+## En cours
+
+- Sprint 7 Business Analysis Engine ;
+- consommation exclusive des Process Maps publiées et de leur snapshot Knowledge référencé ;
+- règles versionnées, findings explicables, scores, santé, provenance et explorer read-only.
+
 ## Prochain jalon
 
-Finaliser et publier Process Mapping sans démarrer Business Intelligence, AI Opportunity,
-Automation Opportunity, ROI ou Recommendation.
+Finaliser Business Analysis sans démarrer AI Opportunity, Automation Opportunity, ROI ou
+Recommendation.

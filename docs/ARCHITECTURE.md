@@ -112,6 +112,13 @@ versionnés, produit des graphes dirigés et conserve une provenance exhaustive 
 ou ignorés. Les versions publiées sont immuables. Le bounded context ne possède aucun import ni
 repository vers Discovery ou Interview.
 
+## Business Analysis
+
+Business Analysis consomme exclusivement une Process Map publiée et le snapshot Enterprise
+Knowledge qu'elle référence. Ses règles versionnées produisent des findings, preuves, scores et
+dimensions de santé traçables. Une analyse publiée est immuable et devient l'entrée canonique des
+moteurs d'opportunités futurs. Voir ADR-0007.
+
 ## Incohérences et dette détectées
 
 ### Critique

@@ -36,5 +36,5 @@ de ses offres, départements, rôles, logiciels, processus, objectifs et difficu
 ## Direction officielle
 
 Les prochains moteurs sont, dans l'ordre : Adaptive Interview, Process Mapping, Business
-Intelligence, AI Opportunity, Automation Opportunity, ROI, Recommendation, puis Executive Report
+Analysis, AI Opportunity, Automation Opportunity, ROI, Recommendation, puis Executive Report
 v2. Cette séquence remplace les anciennes numérotations de sprint.
