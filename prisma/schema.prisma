@@ -248,6 +248,36 @@ enum ProcessEdgeType {
   @@schema("public")
 }
 
+enum AnalysisStatus {
+  draft
+  validated
+  published
+  archived
+
+  @@map("analysis_status")
+  @@schema("public")
+}
+
+enum FindingSeverity {
+  critical
+  high
+  medium
+  low
+  information
+
+  @@map("finding_severity")
+  @@schema("public")
+}
+
+enum AnalysisValidationSeverity {
+  error
+  warning
+  information
+
+  @@map("analysis_validation_severity")
+  @@schema("public")
+}
+
 model Organization {
   id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
@@ -1157,6 +1187,141 @@ model ProcessMapFactUsage {
 
   @@id([processMapId, knowledgeFactId])
   @@map("process_map_fact_usage")
+  @@schema("public")
+}
+
+model AnalysisRuleCatalog {
+  id                    String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId        String?         @map("organization_id") @db.Uuid
+  code                  String
+  version               Int
+  title                 String
+  description           String
+  severity              FindingSeverity
+  category              String
+  industryScope         Json            @default("[]") @map("industry_scope")
+  requiredFacts         Json            @default("[]") @map("required_facts")
+  evaluationLogic       Json            @map("evaluation_logic")
+  explanationTemplate   String          @map("explanation_template")
+  recommendationHint    String?         @map("recommendation_hint")
+  active                Boolean         @default(true)
+  createdAt             DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("analysis_rule_catalog")
+  @@schema("public")
+}
+
+model AnalysisSnapshot {
+  id                  String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId      String         @map("organization_id") @db.Uuid
+  companyId           String         @map("company_id") @db.Uuid
+  processMapId        String         @map("process_map_id") @db.Uuid
+  knowledgeSnapshotId String         @map("knowledge_snapshot_id") @db.Uuid
+  previousVersionId   String?        @map("previous_version_id") @db.Uuid
+  versionNumber       Int            @map("version_number")
+  status              AnalysisStatus @default(draft)
+  lockVersion         Int            @default(1) @map("lock_version")
+  rulesetJson         Json           @map("ruleset_json")
+  provenanceJson      Json           @map("provenance_json")
+  createdBy           String         @map("created_by") @db.Uuid
+  validatedAt         DateTime?      @map("validated_at") @db.Timestamptz(6)
+  publishedAt         DateTime?      @map("published_at") @db.Timestamptz(6)
+  archivedAt          DateTime?      @map("archived_at") @db.Timestamptz(6)
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, processMapId, versionNumber])
+  @@map("analysis_snapshots")
+  @@schema("public")
+}
+
+model BusinessFinding {
+  id                               String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId                   String          @map("organization_id") @db.Uuid
+  analysisSnapshotId               String          @map("analysis_snapshot_id") @db.Uuid
+  ruleId                           String          @map("rule_id") @db.Uuid
+  identifier                       String
+  title                            String
+  description                      String
+  severity                         FindingSeverity
+  category                         String
+  relatedProcessMapId              String          @map("related_process_map_id") @db.Uuid
+  relatedStepId                    String?         @map("related_step_id") @db.Uuid
+  relatedDepartmentKnowledgeNodeId String?         @map("related_department_knowledge_node_id") @db.Uuid
+  relatedActorKnowledgeNodeId      String?         @map("related_actor_knowledge_node_id") @db.Uuid
+  relatedSystemKnowledgeNodeId     String?         @map("related_system_knowledge_node_id") @db.Uuid
+  confidencePercentage             Decimal         @map("confidence_percentage") @db.Decimal(5, 2)
+  businessImpact                   String          @map("business_impact")
+  riskPoints                       Decimal         @default(0) @map("risk_points") @db.Decimal(8, 2)
+  createdAt                        DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([analysisSnapshotId, identifier])
+  @@unique([id, analysisSnapshotId, organizationId])
+  @@map("business_findings")
+  @@schema("public")
+}
+
+model FindingEvidence {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String   @map("organization_id") @db.Uuid
+  analysisSnapshotId String   @map("analysis_snapshot_id") @db.Uuid
+  findingId          String   @map("finding_id") @db.Uuid
+  knowledgeFactId    String   @map("knowledge_fact_id") @db.Uuid
+  evidenceType       String   @map("evidence_type")
+  explanation        String
+  valueJson          Json     @default("{}") @map("value_json")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([findingId, knowledgeFactId, evidenceType])
+  @@map("finding_evidence")
+  @@schema("public")
+}
+
+model BusinessScore {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String   @map("organization_id") @db.Uuid
+  analysisSnapshotId String   @map("analysis_snapshot_id") @db.Uuid
+  code               String
+  label              String
+  score              Decimal  @db.Decimal(5, 2)
+  direction          String
+  calculationJson    Json     @map("calculation_json")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([analysisSnapshotId, code])
+  @@map("business_scores")
+  @@schema("public")
+}
+
+model BusinessHealth {
+  id                 String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String   @map("organization_id") @db.Uuid
+  analysisSnapshotId String   @map("analysis_snapshot_id") @db.Uuid
+  dimension          String
+  scopeType          String   @map("scope_type")
+  scopeReferenceId   String?  @map("scope_reference_id") @db.Uuid
+  score              Decimal  @db.Decimal(5, 2)
+  calculationJson    Json     @map("calculation_json")
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([analysisSnapshotId, dimension, scopeType, scopeReferenceId])
+  @@map("business_health")
+  @@schema("public")
+}
+
+model AnalysisValidation {
+  id                 String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String                     @map("organization_id") @db.Uuid
+  analysisSnapshotId String                     @map("analysis_snapshot_id") @db.Uuid
+  code               String
+  severity           AnalysisValidationSeverity
+  message            String
+  metadataJson       Json                       @default("{}") @map("metadata_json")
+  createdAt          DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@map("analysis_validations")
   @@schema("public")
 }
 

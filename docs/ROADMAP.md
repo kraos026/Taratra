@@ -32,10 +32,11 @@ Enterprise Knowledge `ready`, pas les réponses brutes.
 Phase 1 en cours : patterns explicables, reconstruction de graphes, validation, provenance,
 versionnement et explorer read-only.
 
-### Sprint 7 — Business Intelligence Engine
+### Sprint 7 — Business Analysis Engine
 
-Produit des constats explicables depuis Discovery, Interview et Process Mapping. Une décision ADR
-devra établir le devenir du Rule Engine préexistant.
+Produit des constats opérationnels explicables depuis les Process Maps publiées et Enterprise
+Knowledge uniquement. Il ne constitue ni un dashboard analytique ni un moteur de recommandations.
+ADR-0007 maintient le Rule Engine historique séparé.
 
 ### Sprint 8 — AI Opportunity Engine
 
