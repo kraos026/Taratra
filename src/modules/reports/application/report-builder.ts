@@ -10,7 +10,16 @@ export type ReportSource = {
     status: string;
     createdAt: Date;
     organization: { id: string; name: string };
-    company: { id: string; name: string };
+    company: {
+      id: string;
+      name: string;
+      discoveryProfile?: {
+        industry: string | null;
+        countryCode: string | null;
+        businessModel: string | null;
+        growthStage: string | null;
+      } | null;
+    };
     answers: { valueJson: unknown; question: { code: string } }[];
     scores: {
       categoryId: string | null;
@@ -138,7 +147,11 @@ export class ReportBuilder {
         maturity: typeof maturity === "string" ? maturity : null,
       },
       organization: a.organization,
-      company: a.company,
+      company: {
+        id: a.company.id,
+        name: a.company.name,
+        ...(a.company.discoveryProfile ? { discovery: a.company.discoveryProfile } : {}),
+      },
       scores: { global, categories },
       recommendations: recs,
       roi: {
