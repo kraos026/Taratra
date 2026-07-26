@@ -74,12 +74,17 @@ un ADR au début du sprint concerné.
   avec le snapshot Knowledge `ready` référencé ;
 - patterns, connecteurs, règles et scores versionnés, détection explicable et sans génération de workflow.
 
-## En cours
+### Sprint 10 — ROI Engine
 
-- Sprint 10 — ROI Engine ;
 - évaluations économiques déterministes depuis Automation Opportunity publiée ;
 - modèles, hypothèses, scénarios, contributions et métriques versionnés et explicables.
 
+## En cours
+
+- Sprint 11 — Recommendation Engine ;
+- portfolio et roadmap déterministes depuis ROI publié ;
+- règles, priorité, dépendances, phases et contributions versionnées.
+
 ## Prochain jalon
 
-Finaliser ROI sans démarrer Recommendation, priorisation ou génération de workflow.
+Finaliser Recommendation sans génération ni déploiement de workflow.

@@ -1,0 +1,15 @@
+begin;select plan(13);
+select has_table('public','recommendation_rule_catalog','rule catalog exists');
+select has_table('public','priority_definition_catalog','priority catalog exists');
+select has_table('public','recommendation_portfolio_snapshots','portfolio snapshots exist');
+select has_table('public','transformation_recommendations','recommendations exist');
+select has_table('public','transformation_recommendation_dependencies','dependencies exist');
+select has_table('public','transformation_recommendation_evidence','evidence exists');
+select has_table('public','transformation_recommendation_contributions','contributions exist');
+select has_table('public','recommendation_portfolio_validations','validations exist');
+select is((select count(*)::integer from public.recommendation_rule_catalog where published and organization_id is null),10,'ten recommendation rules');
+select is((select count(*)::integer from public.priority_definition_catalog where published and organization_id is null),1,'one priority definition');
+select is((select relrowsecurity from pg_class where oid='public.recommendation_portfolio_snapshots'::regclass),true,'portfolio RLS enabled');
+select throws_like($$update public.recommendation_rule_catalog set title='Changed' where code='quick_win'$$,'%immutable%','published rule immutable');
+select throws_ok($$insert into public.recommendation_portfolio_snapshots(organization_id,company_id,roi_snapshot_id,automation_opportunity_snapshot_id,ai_opportunity_snapshot_id,business_analysis_id,process_map_id,knowledge_snapshot_id,version_number,catalog_versions_json,provenance_json,created_by)values(gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),1,'{}','{}',gen_random_uuid())$$,'P0001','Recommendation requires aligned published canonical sources','invalid source rejected');
+select*from finish();rollback;
