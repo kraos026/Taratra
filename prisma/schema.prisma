@@ -45,6 +45,7 @@ enum QuestionnaireVersionStatus {
   draft
   published
   archived
+
   @@map("questionnaire_version_status")
   @@schema("public")
 }
@@ -59,6 +60,7 @@ enum QuestionType {
   percentage
   currency
   date
+
   @@map("question_type")
   @@schema("public")
 }
@@ -69,6 +71,7 @@ enum AuditStatus {
   completed
   validated
   archived
+
   @@map("audit_status")
   @@schema("public")
 }
@@ -79,6 +82,7 @@ enum RuleSeverity {
   medium
   high
   critical
+
   @@map("rule_severity")
   @@schema("public")
 }
@@ -89,28 +93,60 @@ enum ImplementationDifficulty {
   medium
   high
   very_high
+
   @@map("implementation_difficulty")
   @@schema("public")
 }
 
+enum DiscoveryStatus {
+  draft
+  in_progress
+  completed
+  validated
+  archived
+
+  @@map("discovery_status")
+  @@schema("public")
+}
+
+enum DiscoveryStep {
+  company
+  business
+  organization
+  software
+  processes
+  review
+
+  @@map("discovery_step")
+  @@schema("public")
+}
+
+enum OfferingType {
+  product
+  service
+
+  @@map("offering_type")
+  @@schema("public")
+}
+
 model Organization {
-  id        String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name      String
-  createdAt DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
-  deletedAt DateTime?            @map("deleted_at") @db.Timestamptz(6)
-  members   OrganizationMember[]
-  companies Company[]
-  audits    Audit[]
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                   String
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt              DateTime?               @map("deleted_at") @db.Timestamptz(6)
+  members                OrganizationMember[]
+  companies              Company[]
+  audits                 Audit[]
   questionnaireTemplates QuestionnaireTemplate[]
-  auditAnswers AuditAnswer[]
-  ruleCategories RuleCategory[]
-  rules Rule[]
-  auditRuleMatches AuditRuleMatch[]
-  auditScores AuditScore[]
-  recommendations Recommendation[]
-  roiProfiles RoiProfile[]
-  auditRecommendations AuditRecommendation[]
+  auditAnswers           AuditAnswer[]
+  ruleCategories         RuleCategory[]
+  rules                  Rule[]
+  auditRuleMatches       AuditRuleMatch[]
+  auditScores            AuditScore[]
+  recommendations        Recommendation[]
+  roiProfiles            RoiProfile[]
+  auditRecommendations   AuditRecommendation[]
 
   @@map("organizations")
   @@schema("public")
@@ -122,7 +158,7 @@ model OrganizationMember {
   role           OrganizationRole @default(consultant)
   createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization  Organization     @relation(fields: [organizationId], references: [id])
+  organization   Organization     @relation(fields: [organizationId], references: [id])
 
   @@id([organizationId, userId])
   @@index([userId], map: "organization_members_user_idx")
@@ -132,14 +168,14 @@ model OrganizationMember {
 }
 
 model Company {
-  id                 String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId     String        @map("organization_id") @db.Uuid
+  id                 String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String          @map("organization_id") @db.Uuid
   name               String
-  sectorId           String?       @map("sector_id")
-  employeeCount      Int?          @map("employee_count")
-  companySize        CompanySize?  @map("company_size")
-  primaryContactName String?       @map("primary_contact_name")
-  primaryContactRole String?       @map("primary_contact_role")
+  sectorId           String?         @map("sector_id")
+  employeeCount      Int?            @map("employee_count")
+  companySize        CompanySize?    @map("company_size")
+  primaryContactName String?         @map("primary_contact_name")
+  primaryContactRole String?         @map("primary_contact_role")
   phone              String?
   email              String?
   website            String?
@@ -147,85 +183,88 @@ model Company {
   city               String?
   country            String?
   description        String?
-  internalNotes      String?       @map("internal_notes")
-  status             CompanyStatus @default(prospect)
-  createdAt          DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt          DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
-  deletedAt          DateTime?     @map("deleted_at") @db.Timestamptz(6)
-  organization       Organization  @relation(fields: [organizationId], references: [id])
+  internalNotes      String?         @map("internal_notes")
+  status             CompanyStatus   @default(prospect)
+  createdAt          DateTime        @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime        @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt          DateTime?       @map("deleted_at") @db.Timestamptz(6)
+  organization       Organization    @relation(fields: [organizationId], references: [id])
   audits             Audit[]
+  discoveryProfile   CompanyProfile?
 
+  @@unique([organizationId, id], map: "companies_organization_id_id_key")
   @@index([organizationId], map: "companies_organization_idx")
   @@index([organizationId, status], map: "companies_status_idx")
   @@index([organizationId, companySize], map: "companies_size_idx")
   @@index([organizationId, sectorId], map: "companies_sector_idx")
   @@index([organizationId, createdAt(sort: Desc)], map: "companies_created_at_idx")
-  @@unique([organizationId, id], map: "companies_organization_id_id_key")
   @@map("companies")
   @@schema("public")
 }
 
 model Audit {
-  id                   String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId       String       @map("organization_id") @db.Uuid
-  companyId            String       @map("company_id") @db.Uuid
-  status               AuditStatus  @default(draft)
-  questionnaireVersionId String?    @map("questionnaire_version_id") @db.Uuid
-  ruleSetVersion       String?      @map("rule_set_version")
-  startedAt            DateTime?    @map("started_at") @db.Timestamptz(6)
-  completedAt          DateTime?    @map("completed_at") @db.Timestamptz(6)
-  progressPercentage   Int          @default(0) @map("progress_percentage")
-  currentSectionId     String?      @map("current_section_id") @db.Uuid
-  validatedAt          DateTime?    @map("validated_at") @db.Timestamptz(6)
-  createdAt            DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt            DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
-  deletedAt            DateTime?    @map("deleted_at") @db.Timestamptz(6)
-  organization         Organization @relation(fields: [organizationId], references: [id])
-  company              Company      @relation(fields: [organizationId, companyId], references: [organizationId, id])
-  questionnaireVersion QuestionnaireVersion? @relation(fields: [questionnaireVersionId], references: [id])
-  currentSection       QuestionnaireSection? @relation(fields: [currentSectionId], references: [id])
-  answers              AuditAnswer[]
-  ruleMatches          AuditRuleMatch[]
-  scores               AuditScore[]
-  recommendations      AuditRecommendation[]
+  id                     String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String                @map("organization_id") @db.Uuid
+  companyId              String                @map("company_id") @db.Uuid
+  status                 AuditStatus           @default(draft)
+  questionnaireVersionId String?               @map("questionnaire_version_id") @db.Uuid
+  ruleSetVersion         String?               @map("rule_set_version")
+  startedAt              DateTime?             @map("started_at") @db.Timestamptz(6)
+  completedAt            DateTime?             @map("completed_at") @db.Timestamptz(6)
+  progressPercentage     Int                   @default(0) @map("progress_percentage")
+  currentSectionId       String?               @map("current_section_id") @db.Uuid
+  validatedAt            DateTime?             @map("validated_at") @db.Timestamptz(6)
+  createdAt              DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt              DateTime?             @map("deleted_at") @db.Timestamptz(6)
+  organization           Organization          @relation(fields: [organizationId], references: [id])
+  company                Company               @relation(fields: [organizationId, companyId], references: [organizationId, id])
+  questionnaireVersion   QuestionnaireVersion? @relation(fields: [questionnaireVersionId], references: [id])
+  currentSection         QuestionnaireSection? @relation(fields: [currentSectionId], references: [id])
+  answers                AuditAnswer[]
+  ruleMatches            AuditRuleMatch[]
+  scores                 AuditScore[]
+  recommendations        AuditRecommendation[]
 
+  @@unique([id, organizationId])
+  @@unique([id, questionnaireVersionId])
   @@index([organizationId, companyId], map: "audits_organization_company_idx")
   @@index([questionnaireVersionId], map: "audits_questionnaire_version_idx")
   @@index([organizationId, status], map: "audits_status_idx")
-  @@unique([id, organizationId])
-  @@unique([id, questionnaireVersionId])
   @@map("audits")
   @@schema("public")
 }
 
 model QuestionnaireTemplate {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String? @map("organization_id") @db.Uuid
+  id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?                @map("organization_id") @db.Uuid
   name           String
   description    String?
   category       String
-  isSystem       Boolean @default(false) @map("is_system")
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  deletedAt      DateTime? @map("deleted_at") @db.Timestamptz(6)
-  organization   Organization? @relation(fields: [organizationId], references: [id])
+  isSystem       Boolean                @default(false) @map("is_system")
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime               @default(now()) @map("updated_at") @db.Timestamptz(6)
+  deletedAt      DateTime?              @map("deleted_at") @db.Timestamptz(6)
+  organization   Organization?          @relation(fields: [organizationId], references: [id])
   versions       QuestionnaireVersion[]
+
   @@index([organizationId], map: "questionnaire_templates_organization_idx")
   @@map("questionnaire_templates")
   @@schema("public")
 }
 
 model QuestionnaireVersion {
-  id                      String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  questionnaireTemplateId String @map("questionnaire_template_id") @db.Uuid
-  versionNumber           Int @map("version_number")
+  id                      String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionnaireTemplateId String                     @map("questionnaire_template_id") @db.Uuid
+  versionNumber           Int                        @map("version_number")
   status                  QuestionnaireVersionStatus @default(draft)
-  publishedAt             DateTime? @map("published_at") @db.Timestamptz(6)
-  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt               DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  template                QuestionnaireTemplate @relation(fields: [questionnaireTemplateId], references: [id])
+  publishedAt             DateTime?                  @map("published_at") @db.Timestamptz(6)
+  createdAt               DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime                   @default(now()) @map("updated_at") @db.Timestamptz(6)
+  template                QuestionnaireTemplate      @relation(fields: [questionnaireTemplateId], references: [id])
   sections                QuestionnaireSection[]
   audits                  Audit[]
+
   @@unique([questionnaireTemplateId, versionNumber])
   @@unique([id, questionnaireTemplateId])
   @@index([questionnaireTemplateId, versionNumber(sort: Desc)], map: "questionnaire_versions_template_idx")
@@ -234,16 +273,17 @@ model QuestionnaireVersion {
 }
 
 model QuestionnaireSection {
-  id                     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  questionnaireVersionId String @map("questionnaire_version_id") @db.Uuid
+  id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionnaireVersionId String                  @map("questionnaire_version_id") @db.Uuid
   title                  String
   description            String?
   position               Int
-  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  version                QuestionnaireVersion @relation(fields: [questionnaireVersionId], references: [id], onDelete: Cascade)
+  createdAt              DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime                @default(now()) @map("updated_at") @db.Timestamptz(6)
+  version                QuestionnaireVersion    @relation(fields: [questionnaireVersionId], references: [id], onDelete: Cascade)
   questions              QuestionnaireQuestion[]
   currentAudits          Audit[]
+
   @@unique([questionnaireVersionId, position])
   @@unique([id, questionnaireVersionId])
   @@map("questionnaire_sections")
@@ -251,21 +291,22 @@ model QuestionnaireSection {
 }
 
 model QuestionnaireQuestion {
-  id                     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  questionnaireSectionId String @map("questionnaire_section_id") @db.Uuid
+  id                     String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  questionnaireSectionId String               @map("questionnaire_section_id") @db.Uuid
   code                   String
   label                  String
   description            String?
-  questionType           QuestionType @map("question_type")
-  required               Boolean @default(false)
+  questionType           QuestionType         @map("question_type")
+  required               Boolean              @default(false)
   position               Int
-  optionsJson            Json? @map("options_json")
-  validationJson         Json @default("{}") @map("validation_json")
-  metadataJson           Json @default("{}") @map("metadata_json")
-  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt              DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  optionsJson            Json?                @map("options_json")
+  validationJson         Json                 @default("{}") @map("validation_json")
+  metadataJson           Json                 @default("{}") @map("metadata_json")
+  createdAt              DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
   section                QuestionnaireSection @relation(fields: [questionnaireSectionId], references: [id], onDelete: Cascade)
   answers                AuditAnswer[]
+
   @@unique([questionnaireSectionId, position])
   @@index([questionnaireSectionId, position], map: "questionnaire_questions_section_idx")
   @@map("questionnaire_questions")
@@ -273,17 +314,18 @@ model QuestionnaireQuestion {
 }
 
 model AuditAnswer {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String @map("organization_id") @db.Uuid
-  auditId        String @map("audit_id") @db.Uuid
-  questionId     String @map("question_id") @db.Uuid
-  valueJson      Json @map("value_json")
-  answeredBy     String @map("answered_by") @db.Uuid
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id])
-  audit          Audit @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  id             String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                @map("organization_id") @db.Uuid
+  auditId        String                @map("audit_id") @db.Uuid
+  questionId     String                @map("question_id") @db.Uuid
+  valueJson      Json                  @map("value_json")
+  answeredBy     String                @map("answered_by") @db.Uuid
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime              @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization          @relation(fields: [organizationId], references: [id])
+  audit          Audit                 @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
   question       QuestionnaireQuestion @relation(fields: [questionId], references: [id])
+
   @@unique([auditId, questionId])
   @@index([auditId], map: "audit_answers_audit_idx")
   @@index([organizationId], map: "audit_answers_organization_idx")
@@ -292,170 +334,386 @@ model AuditAnswer {
 }
 
 model RuleCategory {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String? @map("organization_id") @db.Uuid
-  code           String
-  name           String
-  description    String?
-  active         Boolean @default(true)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  rules          Rule[]
-  auditScores    AuditScore[]
+  id              String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String?          @map("organization_id") @db.Uuid
+  code            String
+  name            String
+  description     String?
+  active          Boolean          @default(true)
+  createdAt       DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization    Organization?    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  rules           Rule[]
+  auditScores     AuditScore[]
   recommendations Recommendation[]
+
   @@map("rule_categories")
   @@schema("public")
 }
 
 model Rule {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String? @map("organization_id") @db.Uuid
-  categoryId     String @map("category_id") @db.Uuid
-  code           String
-  name           String
-  description    String?
-  priority       Int @default(100)
-  severity       RuleSeverity @default(medium)
-  weight         Decimal @default(1) @db.Decimal(12, 4)
-  conditionJson  Json @map("condition_json")
-  resultJson     Json @default("{}") @map("result_json")
-  active         Boolean @default(true)
-  version        Int @default(1)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  category       RuleCategory @relation(fields: [categoryId], references: [id])
-  results        RuleResult[]
-  auditMatches   AuditRuleMatch[]
+  id              String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String?              @map("organization_id") @db.Uuid
+  categoryId      String               @map("category_id") @db.Uuid
+  code            String
+  name            String
+  description     String?
+  priority        Int                  @default(100)
+  severity        RuleSeverity         @default(medium)
+  weight          Decimal              @default(1) @db.Decimal(12, 4)
+  conditionJson   Json                 @map("condition_json")
+  resultJson      Json                 @default("{}") @map("result_json")
+  active          Boolean              @default(true)
+  version         Int                  @default(1)
+  createdAt       DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization    Organization?        @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category        RuleCategory         @relation(fields: [categoryId], references: [id])
+  results         RuleResult[]
+  auditMatches    AuditRuleMatch[]
   recommendations RuleRecommendation[]
+
   @@index([categoryId, active, priority], map: "rules_category_active_idx")
   @@map("rules")
   @@schema("public")
 }
 
 model Recommendation {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String? @map("organization_id") @db.Uuid
-  code String
-  version Int @default(1)
-  title String
-  summary String
-  description String
+  id                       String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId           String?                  @map("organization_id") @db.Uuid
+  code                     String
+  version                  Int                      @default(1)
+  title                    String
+  summary                  String
+  description              String
   implementationDifficulty ImplementationDifficulty @map("implementation_difficulty")
-  categoryId String @map("category_id") @db.Uuid
-  active Boolean @default(true)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  category RuleCategory @relation(fields: [categoryId], references: [id])
-  impact RecommendationImpact?
-  rules RuleRecommendation[]
-  audits AuditRecommendation[]
+  categoryId               String                   @map("category_id") @db.Uuid
+  active                   Boolean                  @default(true)
+  createdAt                DateTime                 @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                DateTime                 @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization             Organization?            @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  category                 RuleCategory             @relation(fields: [categoryId], references: [id])
+  impact                   RecommendationImpact?
+  rules                    RuleRecommendation[]
+  audits                   AuditRecommendation[]
+
   @@map("recommendations")
   @@schema("public")
 }
 
 model RecommendationImpact {
-  recommendationId String @id @map("recommendation_id") @db.Uuid
-  estimatedHoursPerMonth Decimal @map("estimated_hours_per_month") @db.Decimal(12,2)
-  estimatedCost Decimal @map("estimated_cost") @db.Decimal(14,2)
-  estimatedSavings Decimal @default(0) @map("estimated_savings") @db.Decimal(14,2)
-  metadataJson Json @default("{}") @map("metadata_json")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  recommendationId       String         @id @map("recommendation_id") @db.Uuid
+  estimatedHoursPerMonth Decimal        @map("estimated_hours_per_month") @db.Decimal(12, 2)
+  estimatedCost          Decimal        @map("estimated_cost") @db.Decimal(14, 2)
+  estimatedSavings       Decimal        @default(0) @map("estimated_savings") @db.Decimal(14, 2)
+  metadataJson           Json           @default("{}") @map("metadata_json")
+  createdAt              DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  recommendation         Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
   @@map("recommendation_impacts")
   @@schema("public")
 }
 
 model RuleRecommendation {
-  ruleId String @map("rule_id") @db.Uuid
-  recommendationId String @map("recommendation_id") @db.Uuid
-  active Boolean @default(true)
-  priority Int @default(100)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  rule Rule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
-  recommendation Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+  ruleId           String         @map("rule_id") @db.Uuid
+  recommendationId String         @map("recommendation_id") @db.Uuid
+  active           Boolean        @default(true)
+  priority         Int            @default(100)
+  createdAt        DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  rule             Rule           @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  recommendation   Recommendation @relation(fields: [recommendationId], references: [id], onDelete: Cascade)
+
   @@id([ruleId, recommendationId])
   @@map("rule_recommendations")
   @@schema("public")
 }
 
 model RoiProfile {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String? @map("organization_id") @db.Uuid
-  code String
-  name String
-  currency String @db.Char(3)
-  hourlyCost Decimal @map("hourly_cost") @db.Decimal(14,2)
-  workingDaysYear Decimal @map("working_days_year") @db.Decimal(6,2)
-  workingHoursDay Decimal @map("working_hours_day") @db.Decimal(4,2)
-  active Boolean @default(true)
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId  String?       @map("organization_id") @db.Uuid
+  code            String
+  name            String
+  currency        String        @db.Char(3)
+  hourlyCost      Decimal       @map("hourly_cost") @db.Decimal(14, 2)
+  workingDaysYear Decimal       @map("working_days_year") @db.Decimal(6, 2)
+  workingHoursDay Decimal       @map("working_hours_day") @db.Decimal(4, 2)
+  active          Boolean       @default(true)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
   @@map("roi_profiles")
   @@schema("public")
 }
 
 model AuditRecommendation {
-  id String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String @map("organization_id") @db.Uuid
-  auditId String @map("audit_id") @db.Uuid
-  recommendationId String @map("recommendation_id") @db.Uuid
-  evaluationId String @map("evaluation_id") @db.Uuid
-  priority String
-  estimatedHoursYear Decimal @map("estimated_hours_year") @db.Decimal(14,2)
-  estimatedSavingsYear Decimal @map("estimated_savings_year") @db.Decimal(14,2)
-  roiPercentage Decimal @map("roi_percentage") @db.Decimal(14,2)
-  implementationCost Decimal @map("implementation_cost") @db.Decimal(14,2)
-  paybackMonths Decimal? @map("payback_months") @db.Decimal(14,2)
-  quickWin Boolean @map("quick_win")
-  strategic Boolean
-  metadataJson Json @default("{}") @map("metadata_json")
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  audit Audit @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  recommendation Recommendation @relation(fields: [recommendationId], references: [id])
+  id                   String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String         @map("organization_id") @db.Uuid
+  auditId              String         @map("audit_id") @db.Uuid
+  recommendationId     String         @map("recommendation_id") @db.Uuid
+  evaluationId         String         @map("evaluation_id") @db.Uuid
+  priority             String
+  estimatedHoursYear   Decimal        @map("estimated_hours_year") @db.Decimal(14, 2)
+  estimatedSavingsYear Decimal        @map("estimated_savings_year") @db.Decimal(14, 2)
+  roiPercentage        Decimal        @map("roi_percentage") @db.Decimal(14, 2)
+  implementationCost   Decimal        @map("implementation_cost") @db.Decimal(14, 2)
+  paybackMonths        Decimal?       @map("payback_months") @db.Decimal(14, 2)
+  quickWin             Boolean        @map("quick_win")
+  strategic            Boolean
+  metadataJson         Json           @default("{}") @map("metadata_json")
+  createdAt            DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime       @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization         Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  audit                Audit          @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  recommendation       Recommendation @relation(fields: [recommendationId], references: [id])
+
   @@unique([auditId, recommendationId])
   @@map("audit_recommendations")
   @@schema("public")
 }
 
+model CompanyProfile {
+  companyId       String   @id @map("company_id") @db.Uuid
+  organizationId  String   @map("organization_id") @db.Uuid
+  industry        String?  @db.Text
+  countryCode     String?  @map("country_code") @db.Char(2)
+  revenueAmount   Decimal? @map("revenue_amount") @db.Decimal(18, 2)
+  revenueCurrency String?  @map("revenue_currency") @db.Char(3)
+  revenueYear     Int?     @map("revenue_year")
+  businessModel   String?  @map("business_model")
+  growthStage     String?  @map("growth_stage")
+  employeeCount   Int?     @map("employee_count")
+  metadataJson    Json     @default("{}") @map("metadata_json")
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  company         Company  @relation(fields: [organizationId, companyId], references: [organizationId, id], onDelete: Cascade)
+
+  @@unique([organizationId, companyId])
+  @@map("company_profiles")
+  @@schema("public")
+}
+
+model CompanyOffering {
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  companyId      String       @map("company_id") @db.Uuid
+  type           OfferingType
+  name           String
+  description    String?
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("company_offerings")
+  @@schema("public")
+}
+
+model Department {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  name           String
+  description    String?
+  headcount      Int?
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("departments")
+  @@schema("public")
+}
+
+model CompanyRole {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  companyId            String   @map("company_id") @db.Uuid
+  departmentId         String?  @map("department_id") @db.Uuid
+  title                String
+  headcount            Int      @default(1)
+  responsibilitiesJson Json     @default("[]") @map("responsibilities_json")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("company_roles")
+  @@schema("public")
+}
+
+model SoftwareCategory {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("software_categories")
+  @@schema("public")
+}
+
+model Software {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  categoryId     String?  @map("category_id") @db.Uuid
+  name           String
+  vendor         String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("software")
+  @@schema("public")
+}
+
+model CompanySoftware {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  softwareId     String?  @map("software_id") @db.Uuid
+  customName     String?  @map("custom_name")
+  purpose        String?
+  criticality    Int?
+  usersCount     Int?     @map("users_count")
+  metadataJson   Json     @default("{}") @map("metadata_json")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("company_software")
+  @@schema("public")
+}
+
+model ProcessCategory {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  code           String
+  name           String
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("process_categories")
+  @@schema("public")
+}
+
+model BusinessProcess {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId   String   @map("organization_id") @db.Uuid
+  companyId        String   @map("company_id") @db.Uuid
+  categoryId       String?  @map("category_id") @db.Uuid
+  departmentId     String?  @map("department_id") @db.Uuid
+  name             String
+  description      String?
+  frequency        String?
+  volume           Decimal? @db.Decimal(14, 2)
+  manualHoursMonth Decimal? @map("manual_hours_month") @db.Decimal(12, 2)
+  painPointsJson   Json     @default("[]") @map("pain_points_json")
+  metadataJson     Json     @default("{}") @map("metadata_json")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("business_processes")
+  @@schema("public")
+}
+
+model CompanyObjective {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  companyId      String    @map("company_id") @db.Uuid
+  title          String
+  description    String?
+  priority       Int       @default(3)
+  targetDate     DateTime? @map("target_date") @db.Date
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime  @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("company_objectives")
+  @@schema("public")
+}
+
+model BusinessChallenge {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  title          String
+  description    String?
+  severity       Int      @default(3)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("business_challenges")
+  @@schema("public")
+}
+
+model DiscoverySession {
+  id             String            @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String            @map("organization_id") @db.Uuid
+  companyId      String            @map("company_id") @db.Uuid
+  status         DiscoveryStatus   @default(draft)
+  currentStep    DiscoveryStep     @default(company) @map("current_step")
+  version        Int               @default(1)
+  lockVersion    Int               @default(1) @map("lock_version")
+  startedBy      String            @map("started_by") @db.Uuid
+  completedAt    DateTime?         @map("completed_at") @db.Timestamptz(6)
+  validatedAt    DateTime?         @map("validated_at") @db.Timestamptz(6)
+  validatedBy    String?           @map("validated_by") @db.Uuid
+  archivedAt     DateTime?         @map("archived_at") @db.Timestamptz(6)
+  createdAt      DateTime          @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime          @default(now()) @map("updated_at") @db.Timestamptz(6)
+  answers        DiscoveryAnswer[]
+
+  @@map("discovery_sessions")
+  @@schema("public")
+}
+
+model DiscoveryAnswer {
+  id                 String           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId     String           @map("organization_id") @db.Uuid
+  discoverySessionId String           @map("discovery_session_id") @db.Uuid
+  step               DiscoveryStep
+  fieldKey           String           @map("field_key")
+  valueJson          Json             @map("value_json")
+  answeredBy         String           @map("answered_by") @db.Uuid
+  createdAt          DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime         @default(now()) @map("updated_at") @db.Timestamptz(6)
+  session            DiscoverySession @relation(fields: [discoverySessionId], references: [id], onDelete: Cascade)
+
+  @@unique([discoverySessionId, fieldKey])
+  @@map("discovery_answers")
+  @@schema("public")
+}
+
 model RuleResult {
-  id           String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  ruleId       String @map("rule_id") @db.Uuid
-  resultKey    String @map("result_key")
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  ruleId       String   @map("rule_id") @db.Uuid
+  resultKey    String   @map("result_key")
   label        String
   description  String?
-  score        Decimal @default(0) @db.Decimal(12, 4)
-  metadataJson Json @default("{}") @map("metadata_json")
+  score        Decimal  @default(0) @db.Decimal(12, 4)
+  metadataJson Json     @default("{}") @map("metadata_json")
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  rule         Rule @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+  rule         Rule     @relation(fields: [ruleId], references: [id], onDelete: Cascade)
+
   @@unique([ruleId, resultKey])
   @@map("rule_results")
   @@schema("public")
 }
 
 model AuditRuleMatch {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String @map("organization_id") @db.Uuid
-  auditId        String @map("audit_id") @db.Uuid
-  ruleId         String @map("rule_id") @db.Uuid
-  evaluationId   String @map("evaluation_id") @db.Uuid
+  id             String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  auditId        String       @map("audit_id") @db.Uuid
+  ruleId         String       @map("rule_id") @db.Uuid
+  evaluationId   String       @map("evaluation_id") @db.Uuid
   matched        Boolean
-  score          Decimal @default(0) @db.Decimal(12, 4)
-  detailsJson    Json @default("{}") @map("details_json")
-  evaluatedAt    DateTime @default(now()) @map("evaluated_at") @db.Timestamptz(6)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+  score          Decimal      @default(0) @db.Decimal(12, 4)
+  detailsJson    Json         @default("{}") @map("details_json")
+  evaluatedAt    DateTime     @default(now()) @map("evaluated_at") @db.Timestamptz(6)
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime     @default(now()) @map("updated_at") @db.Timestamptz(6)
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  audit          Audit @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
-  rule           Rule @relation(fields: [ruleId], references: [id])
+  audit          Audit        @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  rule           Rule         @relation(fields: [ruleId], references: [id])
+
   @@unique([auditId, ruleId])
   @@index([organizationId, auditId], map: "audit_rule_matches_organization_audit_idx")
   @@map("audit_rule_matches")
@@ -463,20 +721,21 @@ model AuditRuleMatch {
 }
 
 model AuditScore {
-  id             String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  organizationId String @map("organization_id") @db.Uuid
-  auditId        String @map("audit_id") @db.Uuid
-  categoryId     String? @map("category_id") @db.Uuid
-  evaluationId   String @map("evaluation_id") @db.Uuid
-  score          Decimal @default(0) @db.Decimal(12, 4)
-  total          Decimal @default(0) @db.Decimal(12, 4)
-  percentage     Decimal @default(0) @db.Decimal(7, 4)
-  evaluatedAt    DateTime @default(now()) @map("evaluated_at") @db.Timestamptz(6)
-  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  audit          Audit @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
+  id             String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  auditId        String        @map("audit_id") @db.Uuid
+  categoryId     String?       @map("category_id") @db.Uuid
+  evaluationId   String        @map("evaluation_id") @db.Uuid
+  score          Decimal       @default(0) @db.Decimal(12, 4)
+  total          Decimal       @default(0) @db.Decimal(12, 4)
+  percentage     Decimal       @default(0) @db.Decimal(7, 4)
+  evaluatedAt    DateTime      @default(now()) @map("evaluated_at") @db.Timestamptz(6)
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  audit          Audit         @relation(fields: [auditId, organizationId], references: [id, organizationId], onDelete: Cascade)
   category       RuleCategory? @relation(fields: [categoryId], references: [id])
+
   @@index([organizationId, auditId], map: "audit_scores_organization_audit_idx")
   @@map("audit_scores")
   @@schema("public")

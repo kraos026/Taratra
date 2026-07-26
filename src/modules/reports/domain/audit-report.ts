@@ -27,7 +27,16 @@ export type ReportRecommendation = {
 export type AuditReport = {
   audit: { id: string; status: string; date: string; maturity: string | null };
   organization: { id: string; name: string };
-  company: { id: string; name: string };
+  company: {
+    id: string;
+    name: string;
+    discovery?: {
+      industry: string | null;
+      countryCode: string | null;
+      businessModel: string | null;
+      growthStage: string | null;
+    };
+  };
   scores: { global: ReportScore; categories: ReportScore[] };
   recommendations: ReportRecommendation[];
   roi: {

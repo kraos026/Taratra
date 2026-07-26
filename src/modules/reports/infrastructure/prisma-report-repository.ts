@@ -12,7 +12,15 @@ export class PrismaReportRepository {
       where: { id: auditId, organizationId, deletedAt: null },
       include: {
         organization: { select: { id: true, name: true } },
-        company: { select: { id: true, name: true } },
+        company: {
+          select: {
+            id: true,
+            name: true,
+            discoveryProfile: {
+              select: { industry: true, countryCode: true, businessModel: true, growthStage: true },
+            },
+          },
+        },
         answers: { include: { question: { select: { code: true } } } },
         scores: { include: { category: { select: { name: true } } } },
         ruleMatches: { include: { rule: { select: { categoryId: true } } } },
