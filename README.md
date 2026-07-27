@@ -39,6 +39,11 @@ Le fonctionnement du CRM, ses permissions et ses contrats HTTP sont décrits dan
 [`docs/companies.md`](docs/companies.md).
 
 Le versionnement des questionnaires et le cycle des audits sont documentés dans
+## 🤖 AI Development
+
+If you are an AI coding assistant, read:
+
+➡️ AUTOMATEX_CODEX.md
 [`docs/audit-questionnaires.md`](docs/audit-questionnaires.md).
 
 Le moteur de règles déterministe et son DSL sont documentés dans
