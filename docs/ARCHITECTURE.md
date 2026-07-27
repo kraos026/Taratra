@@ -222,3 +222,14 @@ Les viewers lisent uniquement. Consultants, admins et owners peuvent produire de
 les permissions du bounded context ; la publication est réservée aux admins/owners. Chaque accès
 reste tenant-scoped par filtres applicatifs, contraintes composites et RLS. `lock_version`
 protège les transitions concurrentes et les conflits sont exposés en HTTP 409.
+
+## Couche V2 — Solution Designer
+
+Solution Designer est une nouvelle couche et ne modifie pas la chaîne V1 gelée. Son unique entrée
+métier est une Recommendation publiée, accompagnée des versions ROI et Automation Opportunity
+publiées déjà référencées. Sa sortie est un Solution Blueprint abstrait et versionné.
+
+Les catalogues versionnés contiennent toutes les matrices de pattern, capacités, connecteurs,
+contraintes, validations, topologies, risques et indices relatifs. Le moteur ne lit ni Discovery,
+Interview, Knowledge, Process Mapping, Business Analysis, ni AI Opportunity. Il ne choisit aucune
+technologie et ne génère ni code, workflow ou déploiement. Voir ADR-0012.
