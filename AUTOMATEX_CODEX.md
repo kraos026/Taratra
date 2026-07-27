@@ -1,176 +1,476 @@
-# Instructions permanentes pour Codex
+# CODEX_CONTEXT.md
 
-Tu es l'ingénieur logiciel principal du projet AutomateX.
+> Primary context document for AI coding assistants working on AutomateX.
+>
+> **Read this document before making ANY modification to the repository.**
+>
+> If this document conflicts with implementation details, architecture decisions (ADR) or immutable contracts, the ADRs and architecture documents take precedence.
 
-Tu dois agir comme un Senior Software Engineer et un Software Architect.
+---
 
-Tu ne développes pas un prototype.
+# Executive Summary
 
-Tu développes un produit SaaS destiné à être utilisé par des entreprises.
+AutomateX is an Enterprise Intelligence & Automation Platform.
 
-## Mission
+Its mission is to transform raw business knowledge into deterministic, explainable and deployable enterprise automation.
 
-Construire AutomateX selon la documentation officielle.
+AutomateX is NOT:
 
-Ne jamais prendre de décisions métier non documentées.
+- a low-code platform
+- a workflow editor
+- an AI chatbot
+- a generic automation tool
 
-Si une information est absente, la signaler explicitement avant d'implémenter une solution.
+AutomateX IS:
 
-## Priorité absolue
+- an Enterprise Decision Platform
+- an Enterprise Intelligence Platform
+- an Automation Engineering Platform
 
-Toujours privilégier :
+---
 
-1. Lisibilité
-2. Maintenabilité
-3. Testabilité
-4. Performance
-5. Sécurité
+# Mission
 
-Ne jamais sacrifier l'architecture pour aller plus vite.
+Help organizations understand themselves before automating.
 
-## Architecture
+The platform progressively transforms business knowledge into executable automation.
 
-Respecter une Clean Architecture.
+Every transformation must be:
 
-Séparer clairement :
+- deterministic
+- explainable
+- versioned
+- immutable
+- traceable
+- auditable
 
-- UI
-- Application
-- Domain
-- Infrastructure
-- Database
+---
 
-La logique métier appartient exclusivement au domaine.
+# Long-Term Vision
 
-## IA
+AutomateX aims to become the operating system for enterprise transformation.
 
-Le LLM n'est jamais responsable des décisions métier.
+Future ecosystem:
 
-Le LLM :
+- Enterprise Intelligence
+- Solution Designer
+- Automation Specification
+- Automation Generator
+- Validation Engine
+- Deployment Engine
+- Monitoring Engine
+- Optimization Engine
+- Enterprise Simulator
+- Marketplace
+- SDK
+- Public API
+- AI Agents
+- AI Cloud
+- Partner Network
 
-- explique
-- résume
-- reformule
-- rédige
+---
 
-Le LLM ne décide jamais.
+# Product Philosophy
 
-Toutes les décisions proviennent du Rule Engine.
+Every feature must help the user:
 
-## Rule Engine
+1. Understand
+2. Decide
+3. Act
 
-Ne jamais coder une règle métier directement dans React.
+Never build features that only display information.
 
-Ne jamais coder une règle directement dans une API.
+Every screen should lead to a business decision.
 
-Toutes les règles doivent être centralisées.
+---
 
-## Base de données
+# Product Constitution
 
-Utiliser Prisma.
+Non-negotiable principles.
 
-Toutes les modifications passent par des migrations.
+1. Human remains in control.
+2. AI explains but does not decide.
+3. Business rules are deterministic.
+4. Published snapshots are immutable.
+5. Everything is versioned.
+6. Everything is traceable.
+7. Every recommendation is explainable.
+8. Domain logic never belongs in infrastructure.
+9. Architecture has priority over implementation speed.
+10. Simplicity is a feature.
 
-Aucune modification manuelle.
+---
 
-## API
+# Current Project Status
 
-Toutes les routes doivent :
+Current major version:
 
-- valider les entrées
-- gérer les erreurs
-- journaliser les actions
-- respecter les permissions
+V2
 
-Réponses JSON cohérentes.
+Completed:
 
-## UI
+- Discovery
+- Adaptive Interview
+- Enterprise Knowledge
+- Process Mapping
+- Business Analysis
+- AI Opportunity Engine
+- Automation Opportunity Engine
+- Recommendation Engine
+- Solution Designer
+- Automation Specification
 
-Utiliser exclusivement :
+Current focus:
 
-- Next.js
-- Tailwind CSS
-- shadcn/ui
+Automation Generator
 
-Créer des composants réutilisables.
+Next modules:
 
-Éviter les duplications.
+- Validation
+- Compilation
+- Deployment
+- Monitoring
+- Optimization
 
-## Code
+---
 
-Écrire du TypeScript strict.
+# Canonical Pipeline
 
-Aucun `any` sauf justification documentée.
+Enterprise Knowledge
 
-Fonctions courtes.
+↓
 
-Classes simples.
+Adaptive Interview
 
-Noms explicites.
+↓
 
-Éviter les commentaires inutiles : le code doit être auto-explicatif.
+Process Mapping
 
-## Sécurité
+↓
 
-Toujours vérifier :
+Business Analysis
 
-- authentification
-- autorisation
+↓
+
+AI Opportunity
+
+↓
+
+Automation Opportunity
+
+↓
+
+Recommendation
+
+↓
+
+Solution Designer
+
+↓
+
+Automation Specification
+
+↓
+
+Automation Generator
+
+↓
+
+Validation
+
+↓
+
+Compilation
+
+↓
+
+Deployment
+
+↓
+
+Monitoring
+
+↓
+
+Optimization
+
+Never bypass this pipeline.
+
+---
+
+# Architecture
+
+Architecture Style:
+
+- Domain Driven Design
+- Clean Architecture
+- Hexagonal Principles
+- CQRS where useful
+- Immutable Snapshots
+
+Technology:
+
+- NestJS
+- TypeScript
+- Prisma
+- PostgreSQL
+- Supabase
+- REST API
+
+---
+
+# Layer Rules
+
+Domain
+
+Contains:
+
+- entities
+- value objects
+- aggregates
+- domain services
+- domain events
+- invariants
+
+Must NOT:
+
+- import Prisma
+- import NestJS
+- import infrastructure
+
+---
+
+Application
+
+Contains:
+
+- use cases
+- orchestration
+- ports
 - validation
-- protection contre les injections
-- protection des secrets
+- transactions
 
-## Tests
+Must NOT:
 
-Toute nouvelle fonctionnalité importante doit être accompagnée de tests.
+- contain business rules
 
-Les nouvelles modifications ne doivent pas casser les fonctionnalités existantes.
+---
 
-## Documentation
+Infrastructure
 
-Toute fonctionnalité ajoutée doit être documentée.
+Contains:
 
-Mettre à jour les spécifications si nécessaire.
+- Prisma
+- repositories
+- persistence
+- adapters
+- HTTP integrations
 
-## Refactoring
+Must NOT:
 
-Si une meilleure architecture est identifiée :
+- own business logic
 
-- proposer le changement ;
-- expliquer les avantages ;
-- ne pas modifier silencieusement l'architecture.
+---
 
-## Si une demande est ambiguë
+Presentation
 
-Ne jamais inventer.
+Contains:
 
-Présenter :
+- REST
+- DTOs
+- Controllers
 
-- ce qui est connu ;
-- ce qui manque ;
-- les options possibles ;
-- la recommandation.
+Only orchestrates requests.
 
-## Développement
+---
 
-Toujours développer dans cet ordre :
+# DDD Rules
 
-1. Architecture
-2. Base de données
-3. API
-4. Logique métier
-5. Interface utilisateur
-6. Tests
-7. Documentation
+Respect aggregate boundaries.
 
-Ne jamais commencer par l'interface si le domaine n'est pas défini.
+Never duplicate business concepts.
 
-## Qualité attendue
+One canonical owner for every business entity.
 
-Le code doit être suffisamment propre pour être maintenu pendant plusieurs années.
+Prefer Value Objects over primitives.
 
-Le projet doit pouvoir accueillir de nouveaux modules sans refonte majeure.
+Always enforce invariants.
 
-## Objectif final
+---
 
-Faire d'AutomateX une plateforme SaaS de référence pour l'audit d'automatisation des entreprises, avec une architecture robuste, un moteur métier indépendant du LLM et une qualité de code de niveau professionnel.
+# Snapshot Rules
+
+Published snapshots are immutable.
+
+Never edit a published snapshot.
+
+Never overwrite history.
+
+Rebuild = new version.
+
+---
+
+# Explainability Rules
+
+Every recommendation must expose:
+
+- Why
+- Evidence
+- Rules
+- Confidence
+- Risks
+- Alternatives
+- Expected ROI
+
+No black-box decisions.
+
+---
+
+# AI Rules
+
+LLMs may:
+
+- summarize
+- explain
+- rewrite
+- classify
+- assist
+
+LLMs must NOT:
+
+- make deterministic business decisions
+- replace business rules
+- bypass validation
+
+---
+
+# Coding Standards
+
+Prefer:
+
+- composition
+- small services
+- explicit naming
+- pure functions
+
+Avoid:
+
+- hidden side effects
+- duplicated logic
+- magic values
+- circular dependencies
+
+---
+
+# Testing Standards
+
+Critical domain logic requires tests.
+
+Priority:
+
+1. Domain
+2. Application
+3. Integration
+4. API
+
+---
+
+# Repository Structure
+
+src/
+
+application/
+
+domain/
+
+infrastructure/
+
+presentation/
+
+docs/
+
+adr/
+
+tests/
+
+---
+
+# Read Before Coding
+
+Always read:
+
+1. CODEX_CONTEXT.md
+2. ARCHITECTURE.md
+3. PROJECT_STATE.md
+4. ROADMAP.md
+
+Then inspect the target bounded context.
+
+Never modify multiple bounded contexts without explicit justification.
+
+---
+
+# Definition of Done
+
+A feature is complete only if:
+
+✓ Architecture respected
+
+✓ Tests added
+
+✓ Documentation updated
+
+✓ No duplicated logic
+
+✓ Explainability preserved
+
+✓ Build passes
+
+✓ Typecheck passes
+
+✓ Lint passes
+
+✓ CI passes
+
+---
+
+# Common Mistakes
+
+Never:
+
+- bypass snapshots
+- duplicate entities
+- place business logic in controllers
+- place business logic in Prisma repositories
+- use mutable published models
+- create hidden coupling between bounded contexts
+
+---
+
+# Future Documentation
+
+The following documents will progressively become mandatory references:
+
+- DESIGN_PRINCIPLES.md
+- PRODUCT_VISION.md
+- PERSONAS.md
+- USER_JOURNEYS.md
+- DESIGN_SYSTEM.md
+- FRONTEND_ARCHITECTURE.md
+- IMPLEMENTATION_GUIDE.md
+
+---
+
+# Final Rule
+
+Whenever a choice exists between:
+
+- faster implementation
+
+or
+
+- better architecture
+
+Choose better architecture.
+
+AutomateX is designed for long-term maintainability rather than short-term speed.
