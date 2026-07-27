@@ -49,6 +49,12 @@ describe("AutomationSpecificationAggregate", () => {
     ).toThrow("lifecycle invariant");
   });
 
+  it("rejects draft to validated when no catalog validation was evaluated", () => {
+    expect(() =>
+      AutomationSpecificationAggregate.rehydrate({ ...state, validations: [] }).validate(2),
+    ).toThrow("lifecycle invariant");
+  });
+
   it("allows validated to published with complete passing validations", () => {
     expect(
       AutomationSpecificationAggregate.rehydrate({
@@ -63,5 +69,15 @@ describe("AutomationSpecificationAggregate", () => {
       from: "draft",
       to: "archived",
     });
+  });
+
+  it("rejects archiving a superseded version before PostgreSQL is called", () => {
+    expect(() =>
+      AutomationSpecificationAggregate.rehydrate({
+        ...state,
+        status: "published",
+        isLatestVersion: false,
+      }).archive(2),
+    ).toThrow("lifecycle invariant");
   });
 });

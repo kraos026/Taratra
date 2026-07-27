@@ -168,8 +168,8 @@ const PROJECTORS: Record<TransformationDecision, Projector> = {
     ),
   ],
   project_steps: (input, rule) =>
-    input.blueprint.components.map((component, index) =>
-      projection(
+    input.blueprint.components.map((component, index) => {
+      const projected = projection(
         `step_${slug(component.code)}_${index + 1}`,
         "step",
         {
@@ -186,8 +186,20 @@ const PROJECTORS: Record<TransformationDecision, Projector> = {
         "component",
         component.code,
         rule,
-      ),
-    ),
+      );
+      projected.provenance.push(
+        ...input.blueprint.capabilities.map((capability) =>
+          provenance(
+            projected.element.localId,
+            "capability",
+            capability.code,
+            rule,
+            "Required by the projected step",
+          ),
+        ),
+      );
+      return projected;
+    }),
   project_dependencies: (input, rule) =>
     input.blueprint.topology.map((edge, index) =>
       projection(
@@ -297,16 +309,32 @@ function projection(
   return {
     element: { localId, type, definition },
     provenance: [
-      {
-        targetLocalId: localId,
+      provenance(
+        localId,
         sourceElementType,
         sourceElementId,
-        ruleCode: rule.code,
-        ruleVersion: rule.version,
-        reason: `Projected by published decision ${rule.code} v${rule.version}`,
-        consumed: true,
-      },
+        rule,
+        `Projected by published decision ${rule.code} v${rule.version}`,
+      ),
     ],
+  };
+}
+
+function provenance(
+  targetLocalId: string,
+  sourceElementType: string,
+  sourceElementId: string,
+  rule: SpecificationRule,
+  reason: string,
+): SpecificationProvenance {
+  return {
+    targetLocalId,
+    sourceElementType,
+    sourceElementId,
+    ruleCode: rule.code,
+    ruleVersion: rule.version,
+    reason,
+    consumed: true,
   };
 }
 

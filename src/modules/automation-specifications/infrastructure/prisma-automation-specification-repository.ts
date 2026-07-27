@@ -14,6 +14,7 @@ import type {
   AutomationSpecificationSnapshot,
 } from "../application/automation-specification-repository";
 import { AutomationSpecificationConflictError } from "../application/automation-specification-errors";
+import { SpecificationRuleCatalogEntry } from "../domain/automation-specification-value-objects";
 
 export class PrismaAutomationSpecificationRepository implements AutomationSpecificationRepository {
   constructor(private readonly db: TransactionClient) {}
@@ -287,24 +288,16 @@ export class PrismaAutomationSpecificationRepository implements AutomationSpecif
     description: string;
     status: string;
   }): SpecificationRule {
-    const result = row.resultJson as Record<string, unknown>;
-    return {
+    return SpecificationRuleCatalogEntry.create({
       id: row.id,
       code: row.code,
       version: row.version,
       ruleType: row.ruleType,
-      decision:
-        row.ruleType === "transformation"
-          ? (result.decision as SpecificationRule["decision"])
-          : undefined,
-      operator:
-        row.ruleType === "validation"
-          ? (result.operator as SpecificationRule["operator"])
-          : undefined,
-      severity: row.severity ?? undefined,
+      result: row.resultJson,
+      severity: row.severity,
       description: row.description,
-      published: row.status === "published",
-    };
+      status: row.status,
+    }).value;
   }
 }
 

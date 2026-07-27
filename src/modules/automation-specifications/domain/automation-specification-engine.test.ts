@@ -3,6 +3,7 @@ import type { AutomationSpecificationInput, SpecificationRule } from "./automati
 import { AutomationSpecificationEngine } from "./automation-specification-engine";
 import {
   SerializedDefinition,
+  SpecificationRuleCatalogEntry,
   SpecificationValueError,
 } from "./automation-specification-value-objects";
 
@@ -116,6 +117,18 @@ describe("AutomationSpecificationEngine", () => {
     );
   });
 
+  it("records a capability used by projected steps as consumed and never ignored", () => {
+    const capabilityLinks = new AutomationSpecificationEngine()
+      .generate(input())
+      .provenance.filter((link) => link.sourceElementType === "capability");
+
+    expect(capabilityLinks).toHaveLength(2);
+    expect(capabilityLinks.every((link) => link.consumed && link.targetLocalId !== null)).toBe(
+      true,
+    );
+    expect(capabilityLinks.some((link) => !link.consumed)).toBe(false);
+  });
+
   it("rejects a cyclic Blueprint through catalog-selected validation", () => {
     const cyclic = input();
     cyclic.blueprint.topology.push({
@@ -160,5 +173,35 @@ describe("AutomationSpecificationEngine", () => {
     expect(() => SerializedDefinition.create({ platform: "vendor" })).toThrow(
       SpecificationValueError,
     );
+  });
+
+  it("rejects unknown catalog decisions before they reach the engine", () => {
+    expect(() =>
+      SpecificationRuleCatalogEntry.create({
+        id: "rule",
+        code: "invalid",
+        version: 1,
+        ruleType: "transformation",
+        result: { decision: "execute_platform_workflow" },
+        severity: null,
+        description: "Invalid",
+        status: "published",
+      }),
+    ).toThrow("Catalog transformation decision is invalid");
+  });
+
+  it("rejects unknown catalog payload fields before they reach the engine", () => {
+    expect(() =>
+      SpecificationRuleCatalogEntry.create({
+        id: "rule",
+        code: "invalid",
+        version: 1,
+        ruleType: "validation",
+        result: { operator: "source_published", executable: true },
+        severity: "error",
+        description: "Invalid",
+        status: "published",
+      }),
+    ).toThrow("Catalog rule result contains unknown data");
   });
 });

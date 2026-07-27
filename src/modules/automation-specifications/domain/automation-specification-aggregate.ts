@@ -34,7 +34,12 @@ export class AutomationSpecificationAggregate {
 
   validate(expectedLockVersion: number) {
     this.assertLock(expectedLockVersion);
-    if (this.state.status !== "draft" || !this.state.isLatestVersion || this.hasBlockingFailures())
+    if (
+      this.state.status !== "draft" ||
+      !this.state.isLatestVersion ||
+      this.state.validations.length === 0 ||
+      this.hasBlockingFailures()
+    )
       throw new AutomationSpecificationInvariantError("validation");
     return { from: "draft" as const, to: "validated" as const };
   }
@@ -53,7 +58,7 @@ export class AutomationSpecificationAggregate {
 
   archive(expectedLockVersion: number) {
     this.assertLock(expectedLockVersion);
-    if (this.state.status === "archived")
+    if (this.state.status === "archived" || !this.state.isLatestVersion)
       throw new AutomationSpecificationInvariantError("validation");
     return { from: this.state.status, to: "archived" as const };
   }

@@ -1,7 +1,11 @@
 import type {
+  SpecificationRule,
+  SpecificationSeverity,
   SpecificationElement,
   SpecificationElementType,
   SpecificationStatus,
+  SpecificationValidationOperator,
+  TransformationDecision,
 } from "./automation-specification";
 
 export class SpecificationValueError extends Error {}
@@ -72,6 +76,61 @@ export class BlueprintReference {
   }
 }
 
+export class SpecificationRuleCatalogEntry {
+  private constructor(readonly value: Readonly<SpecificationRule>) {}
+
+  static create(input: {
+    id: string;
+    code: string;
+    version: number;
+    ruleType: unknown;
+    result: unknown;
+    severity: unknown;
+    description: string;
+    status: unknown;
+  }) {
+    if (!input.id || !input.code || !input.description)
+      throw new SpecificationValueError("Catalog rule identity is invalid");
+    if (input.status !== "published")
+      throw new SpecificationValueError("Catalog rule must be published");
+    if (!isPlainRecord(input.result))
+      throw new SpecificationValueError("Catalog rule result must be a plain object");
+
+    const base = {
+      id: input.id,
+      code: input.code,
+      version: PositiveVersion.create(input.version).value,
+      description: input.description,
+      published: true,
+    };
+
+    if (input.ruleType === "transformation") {
+      assertOnlyKey(input.result, "decision");
+      return new SpecificationRuleCatalogEntry(
+        Object.freeze({
+          ...base,
+          ruleType: "transformation",
+          decision: transformationDecision(input.result.decision),
+        }),
+      );
+    }
+
+    if (input.ruleType === "validation") {
+      assertOnlyKey(input.result, "operator");
+      return new SpecificationRuleCatalogEntry(
+        Object.freeze({
+          ...base,
+          ruleType: "validation",
+          operator: validationOperator(input.result.operator),
+          severity: specificationSeverity(input.severity),
+        }),
+      );
+    }
+
+    throw new SpecificationValueError("Catalog rule type is invalid");
+  }
+}
+
 export const SPECIFICATION_STATUSES: readonly SpecificationStatus[] = [
   "draft",
   "validated",
@@ -106,3 +165,58 @@ function assertSerializable(value: unknown): void {
 
 const FORBIDDEN_DEFINITION_KEYS =
   /^(algorithm|code|script|workflow|platform|provider|execution|decision|rule)$/i;
+
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return (
+    value !== null && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype
+  );
+}
+
+function assertOnlyKey(value: Record<string, unknown>, expected: string) {
+  const keys = Object.keys(value);
+  if (keys.length !== 1 || keys[0] !== expected)
+    throw new SpecificationValueError("Catalog rule result contains unknown data");
+}
+
+function transformationDecision(value: unknown): TransformationDecision {
+  switch (value) {
+    case "project_triggers":
+    case "project_data_contracts":
+    case "project_steps":
+    case "project_dependencies":
+    case "project_controls":
+    case "project_error_policies":
+    case "project_security":
+    case "project_observability":
+    case "project_acceptance_criteria":
+      return value;
+    default:
+      throw new SpecificationValueError("Catalog transformation decision is invalid");
+  }
+}
+
+function validationOperator(value: unknown): SpecificationValidationOperator {
+  switch (value) {
+    case "source_published":
+    case "elements_present":
+    case "unique_local_ids":
+    case "references_valid":
+    case "graph_acyclic":
+    case "data_contracts_resolved":
+    case "provenance_complete":
+      return value;
+    default:
+      throw new SpecificationValueError("Catalog validation operator is invalid");
+  }
+}
+
+function specificationSeverity(value: unknown): SpecificationSeverity {
+  switch (value) {
+    case "error":
+    case "warning":
+    case "information":
+      return value;
+    default:
+      throw new SpecificationValueError("Catalog validation severity is invalid");
+  }
+}
