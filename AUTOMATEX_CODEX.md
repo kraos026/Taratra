@@ -1,3 +1,16 @@
+# 🤖 AI Entry Point
+
+This is the primary context document for AI assistants.
+
+Read this document BEFORE reading the source code.
+
+Then continue with:
+
+1. docs/ARCHITECTURE.md
+2. docs/PROJECT_STATE.md
+3. docs/ROADMAP.md
+4. docs/VISION.md
+
 # CODEX_CONTEXT.md
 
 > Primary context document for AI coding assistants working on AutomateX.
