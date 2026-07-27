@@ -135,26 +135,26 @@ jamais.
 
 ## 3. Value Objects
 
-| Value Object | Rôle et invariants |
-| --- | --- |
-| `SpecificationId` | UUID non vide |
-| `BlueprintReference` | `id`, numéro de version et tenant de la source publiée |
-| `SpecificationVersion` | entier strictement positif |
-| `LockVersion` | entier strictement positif comparé à chaque commande |
-| `SpecificationStatus` | `draft`, `validated`, `published`, `archived` |
-| `LocalElementId` | identifiant stable et unique dans une spécification |
-| `TriggerDefinition` | événement abstrait, conditions d'entrée et provenance |
-| `DataContract` | nom, direction, schéma abstrait, sensibilité et contraintes |
-| `SpecificationStep` | responsabilité atomique abstraite, entrées, sorties et capacité requise |
-| `StepDependency` | source, cible et type de dépendance autorisé |
-| `ControlDefinition` | contrôle automatique ou validation humaine, sans implémentation |
-| `ErrorPolicy` | catégorie d'échec et comportement attendu, sans syntaxe de plateforme |
-| `SecurityRequirement` | exigence d'authentification, autorisation, secret ou protection de données |
-| `ObservabilityRequirement` | événement, métrique ou trace attendue |
-| `AcceptanceCriterion` | condition vérifiable et résultat attendu |
-| `ProvenanceLink` | élément cible, élément Blueprint source, règle et justification |
-| `IgnoredSourceElement` | élément Blueprint non consommé et justification obligatoire |
-| `ValidationResult` | règle/version, sévérité, statut, cible et explication |
+| Value Object               | Rôle et invariants                                                         |
+| -------------------------- | -------------------------------------------------------------------------- |
+| `SpecificationId`          | UUID non vide                                                              |
+| `BlueprintReference`       | `id`, numéro de version et tenant de la source publiée                     |
+| `SpecificationVersion`     | entier strictement positif                                                 |
+| `LockVersion`              | entier strictement positif comparé à chaque commande                       |
+| `SpecificationStatus`      | `draft`, `validated`, `published`, `archived`                              |
+| `LocalElementId`           | identifiant stable et unique dans une spécification                        |
+| `TriggerDefinition`        | événement abstrait, conditions d'entrée et provenance                      |
+| `DataContract`             | nom, direction, schéma abstrait, sensibilité et contraintes                |
+| `SpecificationStep`        | responsabilité atomique abstraite, entrées, sorties et capacité requise    |
+| `StepDependency`           | source, cible et type de dépendance autorisé                               |
+| `ControlDefinition`        | contrôle automatique ou validation humaine, sans implémentation            |
+| `ErrorPolicy`              | catégorie d'échec et comportement attendu, sans syntaxe de plateforme      |
+| `SecurityRequirement`      | exigence d'authentification, autorisation, secret ou protection de données |
+| `ObservabilityRequirement` | événement, métrique ou trace attendue                                      |
+| `AcceptanceCriterion`      | condition vérifiable et résultat attendu                                   |
+| `ProvenanceLink`           | élément cible, élément Blueprint source, règle et justification            |
+| `IgnoredSourceElement`     | élément Blueprint non consommé et justification obligatoire                |
+| `ValidationResult`         | règle/version, sévérité, statut, cible et explication                      |
 
 Les Value Objects sont immuables, validés à leur création et dépourvus de dépendance Prisma,
 HTTP ou Supabase.
@@ -269,15 +269,15 @@ transactionnel et contrainte d'unicité.
 
 ## 7. Permissions
 
-| Action | Viewer | Consultant | Admin | Owner |
-| --- | ---: | ---: | ---: | ---: |
-| Lire/listes dans son organisation | oui | oui | oui | oui |
-| Générer un draft | non | oui | oui | oui |
-| Rebuild d'un draft/version | non | oui | oui | oui |
-| Valider | non | oui | oui | oui |
-| Publier | non | non | oui | oui |
-| Archiver | non | non | oui | oui |
-| Gérer les catalogues organisationnels futurs | non | non | oui | oui |
+| Action                                       | Viewer | Consultant | Admin | Owner |
+| -------------------------------------------- | -----: | ---------: | ----: | ----: |
+| Lire/listes dans son organisation            |    oui |        oui |   oui |   oui |
+| Générer un draft                             |    non |        oui |   oui |   oui |
+| Rebuild d'un draft/version                   |    non |        oui |   oui |   oui |
+| Valider                                      |    non |        oui |   oui |   oui |
+| Publier                                      |    non |        non |   oui |   oui |
+| Archiver                                     |    non |        non |   oui |   oui |
+| Gérer les catalogues organisationnels futurs |    non |        non |   oui |   oui |
 
 Toutes les autorisations sont vérifiées dans le service applicatif et dans les politiques RLS.
 L'identité tenant ne vient jamais d'un champ libre du client. Une lecture par identifiant reste

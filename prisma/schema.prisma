@@ -436,6 +436,48 @@ enum SolutionValidationSeverity {
   @@schema("public")
 }
 
+enum AutomationSpecificationStatus {
+  draft
+  validated
+  published
+  archived
+
+  @@map("automation_specification_status")
+  @@schema("public")
+}
+
+enum AutomationSpecificationSeverity {
+  error
+  warning
+  information
+
+  @@map("automation_specification_severity")
+  @@schema("public")
+}
+
+enum AutomationSpecificationRuleType {
+  transformation
+  validation
+
+  @@map("automation_specification_rule_type")
+  @@schema("public")
+}
+
+enum AutomationSpecificationElementType {
+  trigger
+  data_contract
+  step
+  dependency
+  control
+  error_policy
+  security
+  observability
+  acceptance_criterion
+
+  @@map("automation_specification_element_type")
+  @@schema("public")
+}
+
 model Organization {
   id                     String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   name                   String
@@ -2340,6 +2382,112 @@ model SolutionBlueprintValidation {
   passed         Boolean                    @default(false)
   createdAt      DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
   @@map("solution_blueprint_validations")
+  @@schema("public")
+}
+
+model AutomationSpecificationRuleCatalog {
+  id             String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String?                         @map("organization_id") @db.Uuid
+  code           String
+  version        Int
+  status         String                          @default("draft")
+  ruleType       AutomationSpecificationRuleType @map("rule_type")
+  conditionJson  Json                            @default("{}") @map("condition_json")
+  resultJson     Json                            @default("{}") @map("result_json")
+  severity       AutomationSpecificationSeverity?
+  description    String
+  createdAt      DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+  publishedAt    DateTime?                       @map("published_at") @db.Timestamptz(6)
+
+  @@unique([code, version, organizationId])
+  @@map("automation_specification_rule_catalog")
+  @@schema("public")
+}
+
+model AutomationSpecification {
+  id                             String                        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId                 String                        @map("organization_id") @db.Uuid
+  solutionBlueprintId            String                        @map("solution_blueprint_id") @db.Uuid
+  solutionBlueprintVersionNumber Int                           @map("solution_blueprint_version_number")
+  previousVersionId              String?                       @map("previous_version_id") @db.Uuid
+  versionNumber                  Int                           @map("version_number")
+  status                         AutomationSpecificationStatus @default(draft)
+  lockVersion                    Int                           @default(1) @map("lock_version")
+  name                           String
+  objective                      String
+  scope                          String
+  sourceFingerprint              String                        @map("source_fingerprint")
+  catalogVersionsJson            Json                          @map("catalog_versions_json")
+  createdBy                      String                        @map("created_by") @db.Uuid
+  validatedAt                    DateTime?                     @map("validated_at") @db.Timestamptz(6)
+  publishedAt                    DateTime?                     @map("published_at") @db.Timestamptz(6)
+  archivedAt                     DateTime?                     @map("archived_at") @db.Timestamptz(6)
+  createdAt                      DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                      DateTime                      @default(now()) @map("updated_at") @db.Timestamptz(6)
+  elements                       AutomationSpecificationElement[]
+  provenance                     AutomationSpecificationProvenance[]
+  validations                    AutomationSpecificationValidation[]
+
+  @@unique([id, organizationId])
+  @@unique([organizationId, solutionBlueprintId, versionNumber])
+  @@index([organizationId, solutionBlueprintId, status])
+  @@map("automation_specifications")
+  @@schema("public")
+}
+
+model AutomationSpecificationElement {
+  id                        String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId            String                             @map("organization_id") @db.Uuid
+  automationSpecificationId String                             @map("automation_specification_id") @db.Uuid
+  localId                   String                             @map("local_id")
+  elementType               AutomationSpecificationElementType @map("element_type")
+  definitionJson            Json                               @map("definition_json")
+  displayOrder              Int                                @map("display_order")
+  createdAt                 DateTime                           @default(now()) @map("created_at") @db.Timestamptz(6)
+  specification             AutomationSpecification            @relation(fields: [automationSpecificationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationSpecificationId, localId])
+  @@index([organizationId, automationSpecificationId, elementType])
+  @@map("automation_specification_elements")
+  @@schema("public")
+}
+
+model AutomationSpecificationProvenance {
+  id                        String                  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId            String                  @map("organization_id") @db.Uuid
+  automationSpecificationId String                  @map("automation_specification_id") @db.Uuid
+  targetLocalId             String?                 @map("target_local_id")
+  sourceElementType         String                  @map("source_element_type")
+  sourceElementId           String                  @map("source_element_id")
+  catalogRuleCode           String?                 @map("catalog_rule_code")
+  catalogRuleVersion        Int?                    @map("catalog_rule_version")
+  reason                    String
+  consumed                  Boolean                 @default(true)
+  createdAt                 DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  specification             AutomationSpecification @relation(fields: [automationSpecificationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, automationSpecificationId])
+  @@map("automation_specification_provenance")
+  @@schema("public")
+}
+
+model AutomationSpecificationValidation {
+  id                        String                          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId            String                          @map("organization_id") @db.Uuid
+  automationSpecificationId String                          @map("automation_specification_id") @db.Uuid
+  ruleCode                  String                          @map("rule_code")
+  ruleVersion               Int                             @map("rule_version")
+  severity                  AutomationSpecificationSeverity
+  passed                    Boolean                         @default(false)
+  targetLocalId             String?                         @map("target_local_id")
+  message                   String
+  detailsJson               Json                            @map("details_json")
+  createdAt                 DateTime                        @default(now()) @map("created_at") @db.Timestamptz(6)
+  specification             AutomationSpecification         @relation(fields: [automationSpecificationId], references: [id], onDelete: Cascade)
+
+  @@unique([automationSpecificationId, ruleCode, ruleVersion])
+  @@index([organizationId, automationSpecificationId])
+  @@map("automation_specification_validations")
   @@schema("public")
 }
 
