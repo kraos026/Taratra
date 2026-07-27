@@ -43,6 +43,12 @@
 
 ## Tests de contrat HTTP
 
+- endpoint Knowledge read-only : `ready` uniquement, tenant et DTO public ;
+- routes test-support absentes en production ;
+- nettoyage refusé sans `SYNTHETIC_TEST`, run concordant et permission dédiée ;
+- identité synthétique limitée à un tenant, un run, un rôle autorisé et 24 heures ;
+- `Idempotency-Key` UUIDv7 obligatoire, retry identique et conflit de payload ;
+- `X-Correlation-ID` UUIDv7 propagé et renvoyé ;
 - authentification absente/expirée ;
 - 400, 401, 403, 404, 409, 422, 429 et 5xx ;
 - timeout ;
@@ -52,6 +58,9 @@
 - validation des DTO ;
 - organisation attendue sur chaque snapshot ;
 - redaction des headers.
+
+Les tests statiques de PR 1 vérifient également les noms de headers, routes dédiées, marqueur de
+tenant, permission de nettoyage, durées maximales et absence de dépendance Prisma/PostgreSQL.
 
 ## Tests end-to-end
 

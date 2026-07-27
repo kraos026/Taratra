@@ -6,6 +6,9 @@ Cette PR contient uniquement l'architecture, les contrats, les schémas, la prop
 catalogues et le plan de tests. Elle ne contient ni moteur de génération, ni client HTTP
 opérationnel, ni scénario exécutable.
 
+Les contrats publics requis pour Knowledge, les identités synthétiques, le nettoyage sécurisé,
+l'idempotence et la corrélation sont définis mais ne sont pas implémentés dans cette PR.
+
 Référence : [architecture](../../ENTERPRISE_SIMULATOR_ARCHITECTURE.md).
 
 ## Frontière

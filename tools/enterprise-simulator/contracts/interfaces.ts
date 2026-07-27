@@ -45,6 +45,7 @@ export interface InterviewResponder {
 }
 
 export interface RequestContext {
+  simulationRunId: string;
   correlationId: string;
   idempotencyKey?: string;
   expectedLockVersion?: number;
@@ -58,9 +59,65 @@ export interface SnapshotReference {
   organizationId: string;
 }
 
+export interface PublicKnowledgeSnapshotDto extends SnapshotReference {
+  status: "ready";
+  companyId: string;
+  fingerprint: string;
+  generatedAt: string;
+  lineage: {
+    lineageId: string;
+    previousSnapshotId: string | null;
+  };
+  sourceVersions: {
+    discoverySessionId: string;
+    discoveryVersion: number;
+    interviewSessionIds: string[];
+    interviewVersions: number[];
+  };
+  facts: Array<{
+    id: string;
+    domain: string;
+    code: string;
+    value: unknown;
+    confidence: number;
+    sourceType: string;
+    evidenceIds: string[];
+  }>;
+  relationships: Array<{
+    id: string;
+    fromFactId: string;
+    toFactId: string;
+    type: string;
+  }>;
+}
+
+export interface SyntheticIdentityDto {
+  identityId: string;
+  simulationRunId: string;
+  organizationId: string;
+  role: "synthetic_owner" | "synthetic_consultant";
+  expiresAt: string;
+  provenance: "ENTERPRISE_SIMULATOR";
+  accessToken: string;
+}
+
+export interface SyntheticCleanupDto {
+  cleanupOperationId: string;
+  simulationRunId: string;
+  state: "pending" | "running" | "completed" | "partially_failed";
+  completedSteps: string[];
+  pendingSteps: string[];
+  failedSteps: Array<{ step: string; errorCode: string }>;
+}
+
 export interface AutomateXClient {
-  createTestIdentity(context: RequestContext): Promise<{ accessToken: string; userId: string }>;
-  createTestOrganization(context: RequestContext): Promise<{ organizationId: string }>;
+  createTestIdentity(
+    context: RequestContext,
+    role: "synthetic_owner" | "synthetic_consultant",
+  ): Promise<SyntheticIdentityDto>;
+  createTestOrganization(
+    context: RequestContext,
+  ): Promise<{ organizationId: string; classification: "SYNTHETIC_TEST" }>;
   createCompany(context: RequestContext, payload: unknown): Promise<{ companyId: string }>;
   startDiscovery(context: RequestContext, companyId: string): Promise<SnapshotReference>;
   submitDiscovery(context: RequestContext, sessionId: string, payload: unknown): Promise<void>;
@@ -76,7 +133,7 @@ export interface AutomateXClient {
   resolveReadyKnowledgeSnapshot(
     context: RequestContext,
     companyId: string,
-  ): Promise<SnapshotReference>;
+  ): Promise<PublicKnowledgeSnapshotDto>;
   buildProcessMap(context: RequestContext, knowledgeSnapshotId: string): Promise<SnapshotReference>;
   validateAndPublishProcessMap(
     context: RequestContext,
@@ -91,7 +148,9 @@ export interface AutomateXClient {
   createRoi(context: RequestContext, automationOpportunityId: string): Promise<SnapshotReference>;
   createRecommendations(context: RequestContext, roiId: string): Promise<SnapshotReference>;
   getSnapshot(context: RequestContext, reference: SnapshotReference): Promise<unknown>;
-  cleanupTestTenant(context: RequestContext, organizationId: string): Promise<void>;
+  cleanupTestTenant(context: RequestContext, organizationId: string): Promise<SyntheticCleanupDto>;
+  getCleanupStatus(context: RequestContext): Promise<SyntheticCleanupDto>;
+  revokeTestIdentity(context: RequestContext, identityId: string): Promise<void>;
 }
 
 export interface MatchDecision {

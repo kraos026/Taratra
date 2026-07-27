@@ -182,14 +182,14 @@ contrats HTTP observables.
 | Entreprise             | `POST /api/companies`                                                                | disponible                                        |
 | Discovery              | `POST /api/companies/:id/discovery`, `PATCH /api/discovery-sessions/:id`, validation | disponible                                        |
 | Interview              | création, réponse, navigation, completion et validation                              | disponible                                        |
-| Knowledge              | aucune création/lecture publique directe observée                                    | blocage contractuel à confirmer                   |
-| Process Mapping        | création depuis `knowledge-snapshots/:id`, lecture et lifecycle                      | nécessite l'identifiant Knowledge                 |
+| Knowledge              | aucune lecture publique directe observée                                             | contrat read-only futur défini                    |
+| Process Mapping        | création depuis `knowledge-snapshots/:id`, lecture et lifecycle                      | utilisera le DTO Knowledge public                 |
 | Business Analysis      | création depuis Process Map, lecture et lifecycle                                    | disponible                                        |
 | AI Opportunity         | création, lecture et lifecycle                                                       | disponible                                        |
 | Automation Opportunity | création, lecture et lifecycle                                                       | disponible                                        |
 | ROI                    | création, lecture et lifecycle                                                       | disponible                                        |
 | Recommendation         | création, lecture et lifecycle                                                       | disponible                                        |
-| Nettoyage tenant       | aucune suppression publique de tenant observée                                       | blocage                                           |
+| Nettoyage tenant       | aucune suppression publique de tenant observée                                       | test control plane futur défini                   |
 
 L'inventaire détaillé est dans
 `tools/enterprise-simulator/contracts/automatex-public-api.md`.
@@ -198,15 +198,16 @@ L'inventaire détaillé est dans
 
 - timeout explicite par requête et par étape ;
 - retries bornés seulement pour les erreurs transitoires et les opérations sûres/idempotentes ;
-- `Idempotency-Key` unique par commande lorsque le serveur la prend en charge ;
+- `Idempotency-Key` UUIDv7 obligatoire pour chaque commande mutante ;
 - `X-Correlation-ID` commun au run ;
 - contrôle des versions et `lockVersion` ;
 - journal d'exécution sans headers sensibles ;
 - validation de chaque réponse avant consommation ;
 - arrêt immédiat sur violation tenant, version ou provenance.
 
-Le simulateur n'invente pas de garantie d'idempotence côté serveur. Tant que ce contrat public
-n'existe pas, une commande non idempotente incertaine n'est pas rejouée automatiquement.
+Une commande mutante n'est jamais envoyée tant que l'API cible ne respecte pas le contrat
+d'idempotence défini. Un endpoint ne propageant pas le correlation ID est considéré incompatible
+avec l'intégration complète.
 
 ## 8. Génération déterministe
 
@@ -481,33 +482,182 @@ score artificiellement réussi.
 - tous les seuils configurables ;
 - build, lint, typecheck, tests et GitHub Actions verts.
 
-## Risques identifiés
+## Architecture Review Resolution
 
-1. **API Knowledge incomplète** : le simulateur ne peut pas supposer comment obtenir ou publier un
-   Knowledge Snapshot sans contrat HTTP public.
-2. **Nettoyage tenant absent** : l'API actuelle ne permet pas de supprimer sûrement un tenant de
-   test ; archiver une entreprise ne satisfait pas le nettoyage demandé.
-3. **Idempotence non contractuelle** : rejouer une commande après timeout peut créer un doublon.
-4. **Correlation ID non contractuel** : le header peut être envoyé mais sa propagation n'est pas
-   garantie.
-5. **Authentification de comptes synthétiques** : le flux public autorisé pour créer une identité
-   de test doit être figé.
-6. **Contrats HTTP non versionnés** : des DTO actuellement implicites peuvent évoluer sans signal.
-7. **Données système et catalogues V1** : un changement de seed V1 peut modifier les attentes ;
-   leurs versions doivent être exposées dans les snapshots.
-8. **Coût CI** : vingt pipelines complets nécessitent une stratégie de parallélisme bornée.
+Les décisions suivantes ferment les contrats précédemment ouverts. Leur implémentation dans
+AutomateX exige une PR séparée et une Architecture Review propre. La PR #21 ne les implémente pas.
 
-## Questions réellement bloquantes avant PR 2
+### 1. Enterprise Knowledge Snapshot public
 
-1. Quel contrat public retourne l'identifiant du Knowledge Snapshot `ready` produit après
-   validation Discovery/Interview, ou faut-il créer une API publique dédiée dans une PR AutomateX
-   séparée soumise à Architecture Review ?
-2. Quel mécanisme public et sûr autorise la suppression d'un tenant marqué test, sans service role
-   dans le simulateur ?
-3. Le flux d'identité synthétique doit-il utiliser Supabase Auth public directement ou une API
-   AutomateX de test explicitement autorisée ?
-4. Les commandes publiques V1 accepteront-elles formellement `Idempotency-Key` et
-   `X-Correlation-ID` avant la PR 2 ?
+**Décision.** Aucun endpoint existant ne fournit la lecture publique nécessaire. Le contrat requis
+est :
 
-Ces questions n'autorisent aucun contournement. Tant qu'elles ne sont pas résolues, la PR 2 peut
-implémenter le domaine pur mais ne peut pas prétendre exécuter ni nettoyer le pipeline complet.
+```text
+GET /api/companies/:companyId/knowledge-snapshots/latest?status=ready
+```
+
+Le statut `ready` est le statut canonique d'un snapshot Knowledge publié et consommable.
+
+**Justification.** La résolution par entreprise évite de demander au simulateur un identifiant
+interne qu'il ne peut découvrir par une API publique. La lecture reste alignée sur la frontière
+tenant et ne déclenche aucune projection.
+
+**Contrat.** Bearer token d'un membre du tenant ; rôles viewer, consultant, admin ou owner ;
+dernière version `ready` uniquement ; DTO versionné contenant identité, version, lineage,
+fingerprint, versions sources, faits publics, relations et preuves publiques. Erreurs 400, 401,
+403, 404 et 500. Le DTO complet est défini dans
+`tools/enterprise-simulator/contracts/automatex-public-api.md`.
+
+**Invariants.**
+
+- lecture seule ;
+- tenant résolu depuis l'identité ;
+- filtre applicatif et RLS ;
+- aucune donnée brute non validée, secret ou champ Auth ;
+- aucun fallback vers Discovery/Interview ;
+- aucun accès direct à la base.
+
+**Limites.** L'endpoint est un contrat futur. Le simulateur ne peut exécuter Process Mapping tant
+qu'il n'est pas implémenté et approuvé.
+
+**Risques résiduels.** Taille du DTO, stabilité du schéma public et redaction des valeurs sensibles
+doivent être testées lors de l'implémentation.
+
+### 2. Safe synthetic tenant cleanup
+
+**Décision.** Le nettoyage appartient à un test control plane absent de production :
+
+```text
+DELETE /api/test-support/simulation-runs/:simulationRunId/tenant
+GET    /api/test-support/simulation-runs/:simulationRunId/cleanup
+```
+
+Il n'existe aucun endpoint générique de suppression d'organisation.
+
+**Justification.** La route centrée sur le run permet de vérifier simultanément environnement,
+classification, provenance et permission sans accepter un tenant arbitraire.
+
+**Contrat.** Tenant créé atomiquement avec `classification = SYNTHETIC_TEST` et
+`simulationRunId` immuables. Permission `synthetic_test:cleanup`. Suppression idempotente,
+asynchrone et auditée. Réponse avec opération, étapes terminées/restantes et erreurs.
+
+**Invariants.**
+
+- route non enregistrée en production ;
+- refus d'un tenant réel ;
+- concordance run/tenant obligatoire ;
+- identité limitée au run ;
+- idempotency key et correlation ID obligatoires ;
+- chaque étape de suppression auditée.
+
+**Limites.** Une suppression partielle n'est pas annulée. La récupération reprend les étapes
+restantes depuis le journal jusqu'à convergence.
+
+**Risques résiduels.** Les dépendances externes peuvent retarder la convergence ; un réconciliateur
+et une alerte sur les opérations `partially_failed` seront nécessaires.
+
+### 3. Synthetic identity
+
+**Décision.** Un test identity broker côté serveur crée des identités Supabase Auth ordinaires,
+éphémères et tenant-scoped :
+
+```text
+POST   /api/test-support/simulation-runs/:simulationRunId/identities
+DELETE /api/test-support/simulation-runs/:simulationRunId/identities/:identityId
+```
+
+**Justification.** Le broker garde les privilèges Auth Admin côté serveur. Le simulateur ne reçoit
+jamais de service role et aucun administrateur global partagé n'est utilisé.
+
+**Contrat.** Deux profils minimaux : `synthetic_owner` pour les publications imposées par V1 et
+`synthetic_consultant` pour la collecte/génération. Une permission de nettoyage dédiée est limitée
+à l'orchestrateur du run. Durée du run plus une heure, maximum absolu 24 heures. Révocation au
+nettoyage ou à l'expiration.
+
+**Invariants.**
+
+- une identité appartient à un seul run et un seul tenant ;
+- provenance `ENTERPRISE_SIMULATOR` ;
+- permissions minimales ;
+- aucun rôle global ;
+- aucune réutilisation inter-run ;
+- tokens absents des logs, rapports et fixtures.
+
+**Limites.** En local, bootstrap par broker local éphémère. En CI, échange GitHub OIDC limité au
+repository/workflow/environnement/run. Hors test, les routes sont absentes.
+
+**Risques résiduels.** Une panne avant révocation nécessite un réconciliateur TTL et une alerte sur
+les identités expirées encore actives.
+
+### 4. Idempotency
+
+**Décision.** Chaque opération mutante du simulateur exige :
+
+```text
+Idempotency-Key: <UUIDv7>
+```
+
+**Justification.** Les timeouts et retries ne doivent jamais créer une deuxième organisation,
+session, version ou publication.
+
+**Contrat.** Portée `(tenant ou simulationRunId, principal, méthode, route canonique, clé)`.
+Fingerprint SHA-256 du payload JSON canonique. Rétention jusqu'à 24 heures après la fin du run et
+au moins 48 heures après la première requête. Retry identique : même status/body et
+`Idempotency-Replayed: true`. Payload différent : `409 IDEMPOTENCY_KEY_REUSED`. Requête active :
+`409 IDEMPOTENCY_IN_PROGRESS`.
+
+**Invariants.**
+
+- persistance côté serveur ;
+- clé liée au run pour test-support ;
+- aucune mutation si le store est indisponible ;
+- aucun token ou secret stocké ;
+- une clé par commande logique.
+
+**Limites.** Les mutations V1 ne sont appelables par le simulateur qu'après adoption de ce contrat
+par leurs routes.
+
+**Risques résiduels.** Volumétrie du store, purge et réponses trop volumineuses nécessitent quotas,
+redaction et supervision.
+
+### 5. Correlation ID
+
+**Décision.** Tous les appels utilisent :
+
+```text
+X-Correlation-ID: <UUIDv7>
+```
+
+**Justification.** Une simulation complète traverse plusieurs moteurs et doit être retraçable sans
+utiliser un identifiant de tenant comme corrélation.
+
+**Contrat.** UUIDv7 racine généré par le simulateur, associé au `simulationRunId`, validé par
+AutomateX, renvoyé dans chaque réponse, présent dans les logs/audits et propagé aux appels
+downstream. Obligatoire sur test-support ; généré par le serveur s'il manque sur une API publique
+ordinaire.
+
+**Invariants.**
+
+- ne participe jamais à l'autorisation ;
+- ne remplace ni tenant ID, ni idempotency key ;
+- même valeur propagée pendant le run ;
+- conflit avec un autre run refusé ;
+- format invalide refusé.
+
+**Limites.** La propagation ne peut être considérée complète avant des tests de contrat sur chaque
+frontière HTTP et événementielle.
+
+**Risques résiduels.** Les bibliothèques ou services externes peuvent perdre le header ; chaque
+adaptateur downstream devra être vérifié.
+
+## Risques résiduels globaux
+
+1. Les cinq contrats publics nécessitent encore une implémentation AutomateX indépendante.
+2. Les contrats HTTP V1 existants ne sont pas encore tous versionnés.
+3. Les versions de catalogues V1 doivent rester exposées dans les snapshots publics.
+4. Vingt pipelines complets nécessiteront un parallélisme CI borné.
+5. Les politiques de purge idempotency/audit et les réconciliateurs identité/nettoyage devront
+   être supervisés.
+
+Toutes les décisions contractuelles sont résolues. Ces risques décrivent des travaux
+d'implémentation futurs, sans autoriser de contournement ni de modification silencieuse de V1/V2.
