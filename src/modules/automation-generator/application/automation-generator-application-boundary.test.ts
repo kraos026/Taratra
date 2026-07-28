@@ -9,6 +9,7 @@ describe("Automation Generator Application boundary", () => {
   it("keeps Domain, Application and Infrastructure as distinct layers", () => {
     expect(readdirSync(moduleDirectory).sort()).toEqual([
       "application",
+      "composition",
       "domain",
       "infrastructure",
     ]);
