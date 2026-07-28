@@ -1,61 +1,70 @@
-# AutomateX — État final Version 1
+# AutomateX — Project State
 
-Dernière mise à jour : 2026-07-26. Version : `1.0.0`.
+Last verified: 2026-07-28.
 
-AutomateX V1 est fonctionnellement livrée. L’architecture V1 est gelée : aucune fonctionnalité
-Execution Platform V2 n’est incluse.
+This file is the canonical implementation-status matrix. Status is based on repository evidence,
+not roadmap intent.
 
-## Sprints livrés
+## Platform capabilities
 
-| Sprint    | Livraison                                                | Migration principale                                     |
-| --------- | -------------------------------------------------------- | -------------------------------------------------------- |
-| 1         | Auth, onboarding atomique, multi-tenant, Prisma, RLS, CI | `0001_foundations.sql`                                   |
-| 2         | Questionnaires et Audit Engine foundation                | `20260722064705_add_audit_questionnaire.sql`             |
-| 3         | ReportBuilder, dashboard exécutif et API Report v1       | aucune migration dédiée                                  |
-| 4         | Discovery, profil canonique et wizard                    | `20260726033231_add_discovery_engine.sql`                |
-| 5         | Adaptive Interview Engine                                | `20260726042817_add_adaptive_interview_engine.sql`       |
-| Fondation | Enterprise Knowledge                                     | `20260726050014_add_enterprise_knowledge_foundation.sql` |
-| 6         | Process Mapping Engine                                   | `20260726051835_add_process_mapping_engine.sql`          |
-| 7         | Business Analysis Engine                                 | `20260726060854_add_business_analysis_engine.sql`        |
-| 8         | AI Opportunity Engine déterministe                       | `20260726070749_add_ai_opportunity_engine.sql`           |
-| 9         | Automation Opportunity Engine                            | `20260726074924_add_automation_opportunity_engine.sql`   |
-| 10        | ROI Engine versionné                                     | `20260726082805_add_roi_engine.sql`                      |
-| 11        | Recommendation Portfolio et roadmap                      | `20260726091105_add_recommendation_engine_v2.sql`        |
+| Capability                                  | State       | Evidence                                                   |
+| ------------------------------------------- | ----------- | ---------------------------------------------------------- |
+| Authentication and atomic onboarding        | Implemented | onboarding module, foundation migration and tests          |
+| Multi-tenancy, PostgreSQL RLS and Prisma    | Implemented | migrations, Prisma schema, pgTAP and authenticated DB flow |
+| CI quality and database-security jobs       | Implemented | `.github/workflows`                                        |
+| Audit questionnaires and audit sessions     | Implemented | questionnaire/audit modules and API routes                 |
+| Executive Report v1                         | Implemented | report module, dashboard, charts and report API            |
+| V1 Enterprise Intelligence chain            | Implemented | Discovery through Recommendation Portfolio                 |
+| Solution Designer                           | Implemented | domain, application, infrastructure, API and persistence   |
+| Automation Specification                    | Implemented | bounded context, API, migration and tests                  |
+| Automation Generator Domain                 | Implemented | aggregate, graph model, provenance, catalogs and tests     |
+| Automation Generator Application            | Implemented | commands, queries, ports, transactions and tests           |
+| Automation Generator Infrastructure         | Implemented | Prisma adapters, outbox, idempotency and RLS migration     |
+| Automation Generator Composition Root       | Implemented | providers, factories and architecture tests                |
+| Automation Generator real graph compiler    | Planned     | placeholder intentionally throws NotImplemented            |
+| Automation Generator REST interface         | Planned     | no controller, route or HTTP DTO exists                    |
+| Sandbox Validation and platform compilation | Planned     | no bounded context implementation                          |
+| Deployment, Monitoring and Optimization     | Planned     | no bounded context implementation                          |
+| Enterprise Simulator                        | Planned     | not implemented in this repository                         |
 
-## État final
+Automation Generator as a product capability is therefore **In Progress**.
 
-Chaîne canonique :
+## Canonical V1 chain
 
-`Discovery → Interview → Enterprise Knowledge → Process Mapping → Business Analysis → AI Opportunity → Automation Opportunity → ROI → Recommendation`.
+```mermaid
+flowchart LR
+  D["Discovery"] --> I["Interview"]
+  D --> K["Enterprise Knowledge"]
+  I --> K
+  K --> P["Process Mapping"]
+  P --> B["Business Analysis"]
+  B --> AI["AI Opportunity"]
+  AI --> A["Automation Opportunity"]
+  A --> R["ROI"]
+  R --> REC["Recommendation"]
+```
 
-Chaque moteur aval consomme des snapshots publiés ou `ready`, conserve la provenance, applique
-des catalogues et formules versionnés, et ne réécrit jamais ses sources. Les snapshots publiés
-sont immuables. Un rebuild crée une nouvelle version. Les écritures concurrentes utilisent
-`lock_version` et renvoient HTTP 409 en cas de conflit.
+All contexts in this chain are Implemented. Historical Rules, ROI and Recommendations modules also
+remain Implemented for backward compatibility; they are not the canonical V1 chain.
 
-Catalogues versionnés : questionnaires, interviews, process patterns, règles et scores Business
-Analysis, capacités et règles AI, patterns/connecteurs/règles Automation, modèles/hypothèses ROI,
-règles Recommendation et définitions de priorité.
+## V2 chain
 
-## Qualité de la release
+```mermaid
+flowchart LR
+  REC["Published Recommendation"] --> SD["Solution Designer"]
+  SD --> AS["Automation Specification"]
+  AS --> AG["Automation Generator"]
+  AG -. Planned .-> V["Sandbox Validation"]
+  V -. Planned .-> PC["Platform Compilation"]
+  PC -. Planned .-> DEP["Deployment"]
+```
 
-- Vitest : 47 fichiers, 189 tests ;
-- pgTAP/RLS : 15 fichiers, 174 tests ;
-- lint, format, typecheck et build obligatoires en CI ;
-- audit initial : 17 alertes ; après correction : 13 (9 élevées dev-only, 4 modérées CLI),
-  documentées dans `docs/security/DEPENDENCY_AUDIT_V1.md`.
+Solution Designer and Automation Specification are Implemented. Automation Generator is In
+Progress as detailed above. Everything downstream is Planned.
 
-## Contraintes et dette connue
+## Known documentation divergence
 
-- les moteurs historiques Rules, ROI et Recommendations restent présents pour compatibilité ;
-- les doublons historiques `employee_count` et secteur entre Companies et Discovery nécessitent
-  une migration de compatibilité future ;
-- la résolution du contexte tenant et certaines enveloppes HTTP restent répétées ;
-- neuf alertes de globbing restent dans ESLint/plug-ins et quatre dans le CLI Prisma ;
-- PostgreSQL 17 doit être la cible de validation avant déploiement Supabase.
-
-## Prochaine étape
-
-AutomateX V2 Sprint 1 — Solution Designer est en développement comme couche indépendante. Il
-consomme uniquement Recommendation, ROI et Automation Opportunity publiés et ne modifie aucun
-bounded context V1.
+Before this documentation foundation, `ROADMAP.md`, `ARCHITECTURE.md` and the old project state
+contained pre-implementation language for V2 and stale V1 status labels. This file supersedes those
+status statements. Consolidating duplicated long-form architecture text is Planned; frozen
+architecture contracts remain unchanged.

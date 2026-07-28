@@ -1,3 +1,0 @@
-# TERMINOLOGY
-
-Documentation placeholder.
