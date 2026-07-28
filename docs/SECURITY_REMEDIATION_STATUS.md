@@ -56,6 +56,21 @@ Therefore no ESLint mutation was applied. `--force`, `--legacy-peer-deps`, rule 
 override or a Next.js configuration downgrade would create an invalid or unreviewed toolchain and
 would not constitute remediation.
 
+### Rejected compatibility override
+
+An override of `brace-expansion` to the corrected 5.0.8 release was tested and rejected before
+commit:
+
+- npm resolved every vulnerable path to 5.0.8;
+- `npm audit` temporarily reported zero findings;
+- a direct compatibility test failed because minimatch 3 expects
+  `require("brace-expansion")` to return a callable CommonJS function, while 5.0.8 exposes a
+  different module API.
+
+Keeping that override would make the audit appear green while breaking brace-based glob behavior.
+The override and lockfile changes were fully removed. No forced transitive major override is
+present in the branch.
+
 ## Risk statement
 
 The remaining findings:
