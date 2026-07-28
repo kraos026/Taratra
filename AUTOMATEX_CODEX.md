@@ -1,489 +1,210 @@
-# 🤖 AI Entry Point
+# AutomateX — Engineering and Architecture Handbook
 
-This is the primary context document for AI assistants.
+Status: **Implemented**
 
-Read this document BEFORE reading the source code.
+Role: primary entry point for developers, reviewers and AI agents.
 
-Then continue with:
+This document defines how work is performed in AutomateX. The repository and its executable tests
+remain the evidence for implementation status; the documentation explains that evidence and must
+be updated in the same change whenever architecture or behavior changes.
 
-1. docs/ARCHITECTURE.md
-2. docs/PROJECT_STATE.md
-3. docs/ROADMAP.md
-4. docs/VISION.md
+## Vision
 
-# CODEX_CONTEXT.md
+AutomateX is a multi-tenant enterprise platform that converts validated company knowledge into
+deterministic, explainable transformation decisions and, in V2, into abstract automation designs.
+Business decisions come from domain engines and versioned catalogs, never from a language model.
 
-> Primary context document for AI coding assistants working on AutomateX.
->
-> **Read this document before making ANY modification to the repository.**
->
-> If this document conflicts with implementation details, architecture decisions (ADR) or immutable contracts, the ADRs and architecture documents take precedence.
+AutomateX is an Enterprise Intelligence, Decision and Automation Engineering Platform. It is not a
+generic low-code editor, workflow editor or AI chatbot. Every product capability must help an
+organization understand, decide or act while preserving human control.
 
----
+Long-term capabilities such as platform compilation, deployment, monitoring, optimization,
+Marketplace, SDK, AI agents, Enterprise Simulator and partner tooling remain **Planned** unless the
+canonical Project State explicitly marks them otherwise.
 
-# Executive Summary
+See [Product Vision](docs/product/PRODUCT_VISION.md) and
+[Product Constitution](docs/product/PRODUCT_CONSTITUTION.md).
 
-AutomateX is an Enterprise Intelligence & Automation Platform.
+## Status vocabulary
 
-Its mission is to transform raw business knowledge into deterministic, explainable and deployable enterprise automation.
+Only these states are allowed in product and architecture documentation:
 
-AutomateX is NOT:
+| State       | Meaning                                                                  |
+| ----------- | ------------------------------------------------------------------------ |
+| Implemented | Present in code, covered by the applicable tests and available as built. |
+| In Progress | Partially implemented; missing parts are named explicitly.               |
+| Planned     | Not implemented. It must not be presented as available.                  |
 
-- a low-code platform
-- a workflow editor
-- an AI chatbot
-- a generic automation tool
+The canonical status matrix is [Project State](docs/PROJECT_STATE.md).
 
-AutomateX IS:
+## Architecture
 
-- an Enterprise Decision Platform
-- an Enterprise Intelligence Platform
-- an Automation Engineering Platform
+AutomateX uses bounded contexts, DDD and Clean Architecture:
 
----
+```mermaid
+flowchart LR
+  I["Interfaces / Next.js"] --> A["Application / Use cases"]
+  C["Composition Root"] --> A
+  C --> F["Infrastructure adapters"]
+  A --> D["Domain"]
+  F --> A
+  F --> D
+  F --> P["Prisma / PostgreSQL"]
+```
 
-# Mission
+Dependencies point inward. Domain imports no Application, Infrastructure, interface framework,
+database client or other bounded context. Application orchestrates Domain through ports.
+Infrastructure implements ports. Interfaces translate transport concerns only. Composition Roots
+perform wiring only.
 
-Help organizations understand themselves before automating.
+Read:
 
-The platform progressively transforms business knowledge into executable automation.
+- [System Architecture](docs/architecture/SYSTEM_ARCHITECTURE.md)
+- [Dependency Rules](docs/architecture/DEPENDENCY_RULES.md)
+- [Data Access](docs/data-access.md)
+- [Bounded Context Catalog](docs/enterprise/BOUNDED_CONTEXTS.md)
 
-Every transformation must be:
+## DDD rules
 
-- deterministic
-- explainable
-- versioned
-- immutable
-- traceable
-- auditable
+- Business invariants belong to aggregates, Value Objects or Domain Services.
+- Aggregate references across bounded contexts are identifiers or published contracts, not object
+  imports.
+- Published snapshots are immutable.
+- Rebuild creates a new version when the relevant contract requires version lineage.
+- Runtime input is validated before it enters the Domain.
+- Domain events describe completed domain facts; they are persisted atomically through the outbox.
+- Catalogs configure versioned decisions but never replace algorithms, invariants or lifecycle.
 
----
+## CQRS rules
 
-# Long-Term Vision
+- Commands mutate one aggregate boundary within an explicit transaction.
+- Queries never perform business transitions.
+- Command and Query models are internal Application objects, not HTTP DTOs.
+- Handlers orchestrate ports and Domain behavior; they contain no business rule.
+- A read model may be optimized independently but cannot become a second source of business truth.
 
-AutomateX aims to become the operating system for enterprise transformation.
+## Data, tenancy and security
 
-Future ecosystem:
+- Supabase provides PostgreSQL, Auth and RLS.
+- `supabase/migrations` is the source of truth for tables, constraints, triggers, grants and RLS.
+- `prisma/schema.prisma` is the typed server projection.
+- Every tenant-owned query carries `organization_id`.
+- Authenticated Prisma work runs inside a transaction configured with the authenticated PostgreSQL
+  role and user identity.
+- Composite foreign keys protect tenant-scoped cross-record references where possible.
+- Never use a service key to bypass authorization in a publicly reachable route.
 
-- Enterprise Intelligence
-- Solution Designer
-- Automation Specification
-- Automation Generator
-- Validation Engine
-- Deployment Engine
-- Monitoring Engine
-- Optimization Engine
-- Enterprise Simulator
-- Marketplace
-- SDK
-- Public API
-- AI Agents
-- AI Cloud
-- Partner Network
+See [Security Model](docs/security/SECURITY_MODEL.md).
 
----
+## Transactions, idempotency and events
 
-# Product Philosophy
+- Transaction boundaries are controlled by Application ports.
+- Repository, outbox and idempotency writes for one command share one database transaction.
+- Optimistic locking uses `lock_version`; stale mutations fail explicitly.
+- Idempotency keys are scoped by tenant and command.
+- The transactional outbox stores events before commit; external publication is separate.
 
-Every feature must help the user:
+## AI rules
 
-1. Understand
-2. Decide
-3. Act
+The LLM may explain, summarize, reformulate or draft. It never makes a business decision, computes a
+score, selects a recommendation, changes a lifecycle, or silently repairs invalid business data.
+Deterministic engines and published catalogs own those responsibilities.
 
-Never build features that only display information.
+## Repository structure
 
-Every screen should lead to a business decision.
-
----
-
-# Product Constitution
-
-Non-negotiable principles.
-
-1. Human remains in control.
-2. AI explains but does not decide.
-3. Business rules are deterministic.
-4. Published snapshots are immutable.
-5. Everything is versioned.
-6. Everything is traceable.
-7. Every recommendation is explainable.
-8. Domain logic never belongs in infrastructure.
-9. Architecture has priority over implementation speed.
-10. Simplicity is a feature.
-
----
-
-# Current Project Status
-
-Current major version:
-
-V2
-
-Completed:
-
-- Discovery
-- Adaptive Interview
-- Enterprise Knowledge
-- Process Mapping
-- Business Analysis
-- AI Opportunity Engine
-- Automation Opportunity Engine
-- Recommendation Engine
-- Solution Designer
-- Automation Specification
-
-Current focus:
-
-Automation Generator
-
-Next modules:
-
-- Validation
-- Compilation
-- Deployment
-- Monitoring
-- Optimization
-
----
-
-# Canonical Pipeline
-
-Enterprise Knowledge
-
-↓
-
-Adaptive Interview
-
-↓
-
-Process Mapping
-
-↓
-
-Business Analysis
-
-↓
-
-AI Opportunity
-
-↓
-
-Automation Opportunity
-
-↓
-
-Recommendation
-
-↓
-
-Solution Designer
-
-↓
-
-Automation Specification
-
-↓
-
-Automation Generator
-
-↓
-
-Validation
-
-↓
-
-Compilation
-
-↓
-
-Deployment
-
-↓
-
-Monitoring
-
-↓
-
-Optimization
-
-Never bypass this pipeline.
-
----
-
-# Architecture
-
-Architecture Style:
-
-- Domain Driven Design
-- Clean Architecture
-- Hexagonal Principles
-- CQRS where useful
-- Immutable Snapshots
-
-Technology:
-
-- NestJS
-- TypeScript
-- Prisma
-- PostgreSQL
-- Supabase
-- REST API
-
----
-
-# Layer Rules
-
-Domain
-
-Contains:
-
-- entities
-- value objects
-- aggregates
-- domain services
-- domain events
-- invariants
-
-Must NOT:
-
-- import Prisma
-- import NestJS
-- import infrastructure
-
----
-
-Application
-
-Contains:
-
-- use cases
-- orchestration
-- ports
-- validation
-- transactions
-
-Must NOT:
-
-- contain business rules
-
----
-
-Infrastructure
-
-Contains:
-
-- Prisma
-- repositories
-- persistence
-- adapters
-- HTTP integrations
-
-Must NOT:
-
-- own business logic
-
----
-
-Presentation
-
-Contains:
-
-- REST
-- DTOs
-- Controllers
-
-Only orchestrates requests.
-
----
-
-# DDD Rules
-
-Respect aggregate boundaries.
-
-Never duplicate business concepts.
-
-One canonical owner for every business entity.
-
-Prefer Value Objects over primitives.
-
-Always enforce invariants.
-
----
-
-# Snapshot Rules
-
-Published snapshots are immutable.
-
-Never edit a published snapshot.
-
-Never overwrite history.
-
-Rebuild = new version.
-
----
-
-# Explainability Rules
-
-Every recommendation must expose:
-
-- Why
-- Evidence
-- Rules
-- Confidence
-- Risks
-- Alternatives
-- Expected ROI
-
-No black-box decisions.
-
----
-
-# AI Rules
-
-LLMs may:
-
-- summarize
-- explain
-- rewrite
-- classify
-- assist
-
-LLMs must NOT:
-
-- make deterministic business decisions
-- replace business rules
-- bypass validation
-
----
-
-# Coding Standards
-
-Prefer:
-
-- composition
-- small services
-- explicit naming
-- pure functions
-
-Avoid:
-
-- hidden side effects
-- duplicated logic
-- magic values
-- circular dependencies
-
----
-
-# Testing Standards
-
-Critical domain logic requires tests.
-
-Priority:
-
-1. Domain
-2. Application
-3. Integration
-4. API
-
----
-
-# Repository Structure
-
+```text
 src/
+  app/                         Next.js routes and pages
+  components/                  reusable UI components
+  infrastructure/              shared platform adapters
+  modules/<bounded-context>/
+    domain/
+    application/
+    infrastructure/
+    composition/               when a context has explicit wiring
+prisma/schema.prisma            typed database projection
+supabase/migrations/            database source of truth
+supabase/tests/                 pgTAP and RLS tests
+docs/                           product and engineering source of truth
+```
 
-application/
+See [Repository Map](docs/reference/REPOSITORY_MAP.md).
 
-domain/
+## Coding conventions
 
-infrastructure/
+- TypeScript strict; no `any` without a documented and reviewed exception.
+- Prefer explicit names, short functions and immutable domain values.
+- Validate unknown runtime data with Zod or Domain Value Objects.
+- Do not put business logic in React, route handlers, Prisma mappers or SQL adapters.
+- Use Prisma only in Infrastructure.
+- Avoid duplicate rules and hidden constants.
 
-presentation/
+See [Coding Standards](docs/development/CODING_STANDARDS.md) and
+[Naming Conventions](docs/development/NAMING_CONVENTIONS.md).
 
-docs/
+## Test rules
 
-adr/
+Every significant change must preserve existing tests and add the lowest useful test:
 
-tests/
+- Domain unit tests for invariants and deterministic calculations;
+- Application tests for orchestration, transactions and port usage;
+- Infrastructure tests for adapters and serialization;
+- API/component tests for interface behavior;
+- pgTAP tests for constraints, lifecycle and RLS;
+- architecture tests for forbidden dependency directions.
 
----
+Required validation:
 
-# Read Before Coding
+```bash
+npm ci
+npm run db:generate
+npm run lint
+npm run format:check
+npm run typecheck
+npm test
+npm run build
+supabase test db
+```
 
-Always read:
+See [Testing Guide](docs/development/TESTING_GUIDE.md).
 
-1. CODEX_CONTEXT.md
-2. ARCHITECTURE.md
-3. PROJECT_STATE.md
-4. ROADMAP.md
+## Workflow
 
-Then inspect the target bounded context.
+1. Read `docs/PROJECT_STATE.md`, the relevant bounded-context document and applicable ADRs.
+2. Confirm whether the requested capability is Implemented, In Progress or Planned.
+3. Clarify missing business decisions; never invent them.
+4. Work on a dedicated branch.
+5. Implement in order: Domain, Application, Infrastructure, Interfaces, tests, documentation.
+6. Run the full validation appropriate to the change.
+7. Commit and push; do not merge without explicit authorization.
 
-Never modify multiple bounded contexts without explicit justification.
+See [Git Workflow](docs/development/GIT_WORKFLOW.md),
+[Review Process](docs/development/REVIEW_PROCESS.md) and
+[Definition of Done](docs/development/DEFINITION_OF_DONE.md).
 
----
+## Documentation policy
 
-# Definition of Done
+- Documentation changes accompany code changes in the same PR.
+- Each important architecture decision receives an ADR.
+- Frozen contracts are not rewritten silently.
+- A detected divergence is recorded with evidence and a proposed correction; code is not changed
+  solely to match documentation without approval.
+- Links must be relative and valid.
+- Mermaid is preferred when relationships are easier to understand visually.
 
-A feature is complete only if:
+## Documentation index
 
-✓ Architecture respected
-
-✓ Tests added
-
-✓ Documentation updated
-
-✓ No duplicated logic
-
-✓ Explainability preserved
-
-✓ Build passes
-
-✓ Typecheck passes
-
-✓ Lint passes
-
-✓ CI passes
-
----
-
-# Common Mistakes
-
-Never:
-
-- bypass snapshots
-- duplicate entities
-- place business logic in controllers
-- place business logic in Prisma repositories
-- use mutable published models
-- create hidden coupling between bounded contexts
-
----
-
-# Future Documentation
-
-The following documents will progressively become mandatory references:
-
-- DESIGN_PRINCIPLES.md
-- PRODUCT_VISION.md
-- PERSONAS.md
-- USER_JOURNEYS.md
-- DESIGN_SYSTEM.md
-- FRONTEND_ARCHITECTURE.md
-- IMPLEMENTATION_GUIDE.md
-
----
-
-# Final Rule
-
-Whenever a choice exists between:
-
-- faster implementation
-
-or
-
-- better architecture
-
-Choose better architecture.
-
-AutomateX is designed for long-term maintainability rather than short-term speed.
+- [Documentation Home](docs/README.md)
+- [Project Audit](docs/PROJECT_AUDIT.md)
+- [Prioritized Next Steps](docs/NEXT_STEPS.md)
+- [Architecture](docs/architecture/README.md)
+- [Product](docs/product/README.md)
+- [Development](docs/development/README.md)
+- [Frontend](docs/frontend/README.md)
+- [Enterprise](docs/enterprise/README.md)
+- [API](docs/api/README.md)
+- [Security](docs/security/README.md)
+- [Testing](docs/testing/README.md)
+- [Operations](docs/operations/README.md)
+- [ADRs](docs/adr/README.md)
+- [Reference](docs/reference/README.md)
