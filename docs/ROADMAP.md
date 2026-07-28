@@ -1,33 +1,38 @@
-# Roadmap AutomateX
+# AutomateX Roadmap
 
-## Version 1 — Enterprise Intelligence Platform
+Last verified: 2026-07-28.
 
-Les Sprints 1 à 11 sont livrés. La V1 est gelée et entre en maintenance corrective.
+## Implemented
 
-- Foundation, Auth, multi-tenancy, Prisma et RLS ;
-- Audit Engine foundation et Executive Report v1 ;
-- Discovery et Adaptive Interview ;
-- Enterprise Knowledge ;
-- Process Mapping ;
-- Business Analysis ;
-- AI Opportunity ;
-- Automation Opportunity ;
-- ROI ;
-- Recommendation et roadmap exécutive.
+- V1 Foundation through Recommendation Portfolio;
+- Executive Report v1;
+- V2 Solution Designer;
+- V2 Automation Specification;
+- Automation Generator Domain, Application, Infrastructure and Composition Root.
 
-Aucun nouveau comportement métier ne doit être ajouté à la branche de release V1.
+## In Progress
 
-## AutomateX V2 — Execution Platform
+### Automation Generator
 
-Roadmap conceptuelle, non implémentée :
+Implemented layers are wired and tested. Remaining scope:
 
-1. Solution Designer — Sprint V2-1 en développement ;
-2. Automation Specification ;
-3. Automation Generator ;
-4. Sandbox Validation ;
-5. Deployment Engine ;
-6. Monitoring Engine ;
-7. Optimization Engine.
+- real deterministic `GenerationCompiler`;
+- complete persistence mapping for generated canonical graphs;
+- public REST interface and transport validation;
+- integration tests for the completed generation flow.
 
-Chaque module exigera un contrat canonique, un ADR, une analyse de sécurité et une validation
-humaine distincte. La V2 ne devra pas modifier les snapshots V1 publiés.
+No workflow-provider artifact, deployment or execution belongs to this scope.
+
+## Planned
+
+1. Sandbox Validation;
+2. Platform-specific compilation;
+3. controlled Deployment Engine;
+4. Monitoring Engine;
+5. Optimization Engine;
+6. Executive Report evolution consuming V2 outputs;
+7. Enterprise Simulator as a separate internal tool, subject to its own approved implementation
+   roadmap.
+
+Every Planned bounded context requires an architecture contract, ADRs, threat analysis, tests and
+an explicit approval before implementation.
