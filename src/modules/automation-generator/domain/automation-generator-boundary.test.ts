@@ -5,9 +5,13 @@ import { describe, expect, it } from "vitest";
 const domainDirectory = join(process.cwd(), "src", "modules", "automation-generator", "domain");
 
 describe("Automation Generator domain boundary", () => {
-  it("contains no Application, Infrastructure, REST or persistence layer", () => {
+  it("contains no Infrastructure, REST or persistence layer", () => {
     const boundedContextDirectory = join(domainDirectory, "..");
-    expect(readdirSync(boundedContextDirectory).filter((entry) => entry !== "domain")).toEqual([]);
+    expect(
+      readdirSync(boundedContextDirectory).filter(
+        (entry) => entry !== "domain" && entry !== "application",
+      ),
+    ).toEqual([]);
   });
 
   it("imports no bounded context, Prisma, PostgreSQL, NestJS or vendor SDK", () => {
