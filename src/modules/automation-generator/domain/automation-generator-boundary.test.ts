@@ -5,11 +5,11 @@ import { describe, expect, it } from "vitest";
 const domainDirectory = join(process.cwd(), "src", "modules", "automation-generator", "domain");
 
 describe("Automation Generator domain boundary", () => {
-  it("contains no Infrastructure, REST or persistence layer", () => {
+  it("contains only the approved Domain, Application and Infrastructure layers", () => {
     const boundedContextDirectory = join(domainDirectory, "..");
     expect(
       readdirSync(boundedContextDirectory).filter(
-        (entry) => entry !== "domain" && entry !== "application",
+        (entry) => entry !== "domain" && entry !== "application" && entry !== "infrastructure",
       ),
     ).toEqual([]);
   });

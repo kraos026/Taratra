@@ -2491,6 +2491,60 @@ model AutomationSpecificationValidation {
   @@schema("public")
 }
 
+model AutomationGenerationRecord {
+  id                      String   @id @db.Uuid
+  organizationId          String   @map("organization_id") @db.Uuid
+  lineageId               String   @map("lineage_id") @db.Uuid
+  generationVersion       Int      @map("generation_version")
+  specificationSnapshotId String   @map("specification_snapshot_id") @db.Uuid
+  specificationLineageId  String   @map("specification_lineage_id")
+  status                  String
+  lockVersion             Int      @map("lock_version")
+  isLatestVersion         Boolean  @map("is_latest_version")
+  stateJson               Json     @map("state_json")
+  createdAt               DateTime @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, lineageId, generationVersion])
+  @@unique([id, organizationId])
+  @@index([organizationId, specificationLineageId, generationVersion])
+  @@index([organizationId, lineageId, status, isLatestVersion])
+  @@map("automation_generations")
+  @@schema("public")
+}
+
+model AutomationGenerationOutboxRecord {
+  id             String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String    @map("organization_id") @db.Uuid
+  aggregateId    String    @map("aggregate_id") @db.Uuid
+  eventName      String    @map("event_name")
+  payloadJson    Json      @map("payload_json")
+  occurredAt     DateTime  @map("occurred_at") @db.Timestamptz(6)
+  publishedAt    DateTime? @map("published_at") @db.Timestamptz(6)
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([publishedAt, createdAt])
+  @@index([organizationId, aggregateId])
+  @@map("automation_generation_outbox")
+  @@schema("public")
+}
+
+model AutomationGenerationIdempotencyRecord {
+  organizationId String    @map("organization_id") @db.Uuid
+  commandName    String    @map("command_name")
+  idempotencyKey String    @map("idempotency_key") @db.Uuid
+  fingerprint    String
+  state          String
+  resultJson     Json?     @map("result_json")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  completedAt    DateTime? @map("completed_at") @db.Timestamptz(6)
+
+  @@id([organizationId, commandName, idempotencyKey])
+  @@index([createdAt])
+  @@map("automation_generation_idempotency")
+  @@schema("public")
+}
+
 model RuleResult {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ruleId       String   @map("rule_id") @db.Uuid

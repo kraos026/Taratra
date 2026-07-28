@@ -6,8 +6,12 @@ const moduleDirectory = join(process.cwd(), "src", "modules", "automation-genera
 const applicationDirectory = join(moduleDirectory, "application");
 
 describe("Automation Generator Application boundary", () => {
-  it("adds only Domain and Application layers", () => {
-    expect(readdirSync(moduleDirectory).sort()).toEqual(["application", "domain"]);
+  it("keeps Domain, Application and Infrastructure as distinct layers", () => {
+    expect(readdirSync(moduleDirectory).sort()).toEqual([
+      "application",
+      "domain",
+      "infrastructure",
+    ]);
   });
 
   it("contains no concrete infrastructure, REST, Prisma, SQL or vendor dependency", () => {
