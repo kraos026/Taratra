@@ -24,6 +24,8 @@ This directory is the product and engineering source of truth. Start with
 [`PROJECT_STATE.md`](PROJECT_STATE.md) is the authoritative implementation matrix.
 [`ROADMAP.md`](ROADMAP.md) lists only unfinished or future work as In Progress or Planned.
 [`DOCUMENTATION_BACKLOG.md`](DOCUMENTATION_BACKLOG.md) tracks the remaining documentation work.
+[`PROJECT_AUDIT.md`](PROJECT_AUDIT.md) records the Enterprise architecture audit.
+[`NEXT_STEPS.md`](NEXT_STEPS.md) prioritizes the remaining work without authorizing implementation.
 
 ## Legacy documents
 

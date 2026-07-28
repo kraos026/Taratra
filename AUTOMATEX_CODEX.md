@@ -187,6 +187,8 @@ See [Git Workflow](docs/development/GIT_WORKFLOW.md),
 ## Documentation index
 
 - [Documentation Home](docs/README.md)
+- [Project Audit](docs/PROJECT_AUDIT.md)
+- [Prioritized Next Steps](docs/NEXT_STEPS.md)
 - [Architecture](docs/architecture/README.md)
 - [Product](docs/product/README.md)
 - [Development](docs/development/README.md)
