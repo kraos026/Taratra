@@ -21,16 +21,24 @@ The evidence stages are explicit and irreversible in meaning:
 1. **Declared work** — what an audit or human states normally happens.
 2. **Observed work** — a persistence-safe activity explicitly captured or imported.
 3. **Inferred pattern** — deterministic aggregation of confirmed observations only.
-4. **Automation opportunity** — an explainable hypothesis, never an executable automation.
-5. **Automation candidate** — a qualified, traceable application contract for a future
-   Opportunity→Specification use case.
+4. **Work automation hypothesis** — an explainable hypothesis, distinct from the canonical V1
+   Automation Opportunity and never an executable automation.
+5. **Automation candidate** — a qualified, traceable hypothesis intended for projection into
+   Enterprise Knowledge, not for direct solution design or specification.
 
 Human correction creates a new activity version and supersedes inference for that lineage. No
 employee productivity, ranking, disciplinary or hidden-monitoring score is permitted. Analysis is
 limited to processes, activities, workflows and tools.
 
-The V1→V2 boundary remains application-owned. Domain code never calls Automation Specification,
-Graph Compiler or Runtime. Financial ROI remains unavailable unless explicit cost inputs exist.
+Enterprise Knowledge is the convergence boundary for Audit and Work Intelligence. Canonical ROI is
+the economic-evaluation authority, Recommendation is the business-decision authority, and Solution
+Designer is the future-state design authority. Work Intelligence never calls Solution Designer,
+Automation Specification, Graph Compiler or Runtime directly.
+
+Work Intelligence may produce only a `TimeSavingsEstimate`, never financial ROI. It may propose an
+automation-governance signal, but Recommendation remains the future canonical authority. Observed
+process ordering describes current work only; capabilities, connectors, future triggers and future
+steps belong downstream to Solution Designer.
 Normalization knowledge is injected as versioned configuration; the Domain Core contains no
 industry, profession, vendor or application taxonomy.
 

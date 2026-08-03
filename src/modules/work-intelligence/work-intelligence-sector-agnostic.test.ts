@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  AutomationOpportunityEngine,
+  WorkAutomationHypothesisEngine,
   DeterministicActivityNormalizer,
   qualifyAutomationCandidate,
-  timeRoiBaseline,
+  estimateTimeSavings,
   WorkActivity,
   WorkPatternEngine,
 } from "./domain/work-intelligence";
@@ -77,7 +77,7 @@ describe("sector-agnostic Work Intelligence", () => {
       }),
     );
     const pattern = new WorkPatternEngine().analyze(observations).patterns[0]!;
-    const opportunity = new AutomationOpportunityEngine().evaluate(pattern, {
+    const opportunity = new WorkAutomationHypothesisEngine().evaluate(pattern, {
       knownToolIds: [],
       declaredActivityCodes: [],
       evidenceReferences: [`audit:${fixture.sector}`],
@@ -88,7 +88,9 @@ describe("sector-agnostic Work Intelligence", () => {
     expect(pattern.sampleCount).toBe(6);
     expect(opportunity.score).toBeGreaterThanOrEqual(65);
     expect(opportunity.contributions.toolReadiness).toBeDefined();
-    expect(timeRoiBaseline(pattern, opportunity.level).financialRoi).toBe("UNAVAILABLE");
+    expect(estimateTimeSavings(pattern, opportunity.proposedGovernance)).not.toHaveProperty(
+      "financialRoi",
+    );
     expect(candidate?.provenance).toContain(`audit:${fixture.sector}`);
   });
 

@@ -2,7 +2,7 @@ export type WorkEvidenceKind = "DECLARED" | "OBSERVED";
 export type WorkActivitySource = "MANUAL" | "AUDIT" | "IMPORT" | "CONNECTOR" | "INFERRED";
 export type HumanConfirmationState = "PENDING" | "CONFIRMED" | "CORRECTED" | "REJECTED";
 export type PatternConfidence = "LOW" | "MEDIUM" | "HIGH";
-export type AutomationLevel =
+export type ProposedAutomationGovernance =
   | "HUMAN_ONLY"
   | "AI_ASSISTED"
   | "AUTOMATION_WITH_APPROVAL"
@@ -357,8 +357,8 @@ export interface AutomationOpportunityDimensions {
   dataQuality: number;
 }
 
-export interface WorkAutomationOpportunity {
-  opportunityId: string;
+export interface WorkAutomationHypothesis {
+  hypothesisId: string;
   patternId: string;
   tenantId: string;
   companyId: string;
@@ -366,7 +366,7 @@ export interface WorkAutomationOpportunity {
   dimensions: Readonly<AutomationOpportunityDimensions>;
   contributions: Readonly<Record<string, number>>;
   confidence: number;
-  level: AutomationLevel;
+  proposedGovernance: ProposedAutomationGovernance;
   explanation: string;
   tools: readonly string[];
   provenance: readonly string[];
@@ -383,10 +383,10 @@ const OPPORTUNITY_WEIGHTS = Object.freeze({
   riskSuitability: 0.1,
 });
 
-export class AutomationOpportunityEngine {
-  readonly version = "work-opportunity-v1";
+export class WorkAutomationHypothesisEngine {
+  readonly version = "work-automation-hypothesis-v1";
 
-  evaluate(pattern: WorkPattern, audit: AuditWorkContext): WorkAutomationOpportunity {
+  evaluate(pattern: WorkPattern, audit: AuditWorkContext): WorkAutomationHypothesis {
     assertTenant(pattern.tenantId, pattern.companyId);
     const knownTools = new Set(audit.knownToolIds);
     const knownToolCount = pattern.tools.filter((tool) => knownTools.has(tool)).length;
@@ -418,9 +418,9 @@ export class AutomationOpportunityEngine {
       ),
     });
     const total = round(Object.values(contributions).reduce((sum, value) => sum + value, 0));
-    const level = automationLevel(dimensions, pattern.confidenceScore);
+    const proposedGovernance = proposeAutomationGovernance(dimensions, pattern.confidenceScore);
     return Object.freeze({
-      opportunityId: `${pattern.patternId}:${this.version}`,
+      hypothesisId: `${pattern.patternId}:${this.version}`,
       patternId: pattern.patternId,
       tenantId: pattern.tenantId,
       companyId: pattern.companyId,
@@ -428,8 +428,8 @@ export class AutomationOpportunityEngine {
       dimensions,
       contributions,
       confidence: pattern.confidenceScore,
-      level,
-      explanation: explanation(pattern, dimensions, level),
+      proposedGovernance,
+      explanation: explanation(pattern, dimensions, proposedGovernance),
       tools: pattern.tools,
       provenance: strings([...pattern.provenance, ...audit.evidenceReferences]),
       ruleVersion: this.version,
@@ -437,31 +437,40 @@ export class AutomationOpportunityEngine {
   }
 }
 
-export interface TimeRoiBaseline {
-  currentTimePerWeekMinutes: number;
+export interface TimeSavingsEstimate {
+  observedTimePerWeekMinutes: number;
+  frequencyDaysPerWeek: number;
   estimatedAutomatableTimeMinutes: number;
   estimatedHumanTimeRemainingMinutes: number;
-  financialRoi: "UNAVAILABLE";
+  confidence: number;
+  assumptions: readonly string[];
+  provenance: readonly string[];
 }
 
-export function timeRoiBaseline(
+export function estimateTimeSavings(
   pattern: WorkPattern,
-  level: AutomationLevel,
-): Readonly<TimeRoiBaseline> {
+  governance: ProposedAutomationGovernance,
+): Readonly<TimeSavingsEstimate> {
   const current = round(pattern.frequencyDaysPerWeek * pattern.averageDurationMinutes, 2);
-  const ratio: Record<AutomationLevel, number> = {
+  const ratio: Record<ProposedAutomationGovernance, number> = {
     HUMAN_ONLY: 0,
     AI_ASSISTED: 0.25,
     AUTOMATION_WITH_APPROVAL: 0.6,
     AUTOMATION_WITH_EXCEPTION_HANDLING: 0.8,
     AUTONOMOUS: 0.9,
   };
-  const automatable = round(current * ratio[level], 2);
+  const automatable = round(current * ratio[governance], 2);
   return Object.freeze({
-    currentTimePerWeekMinutes: current,
+    observedTimePerWeekMinutes: current,
+    frequencyDaysPerWeek: pattern.frequencyDaysPerWeek,
     estimatedAutomatableTimeMinutes: automatable,
     estimatedHumanTimeRemainingMinutes: round(current - automatable, 2),
-    financialRoi: "UNAVAILABLE",
+    confidence: pattern.confidenceScore,
+    assumptions: Object.freeze([
+      `Observed average duration: ${pattern.averageDurationMinutes} minutes`,
+      `Proposed governance time ratio: ${ratio[governance]}`,
+    ]),
+    provenance: pattern.provenance,
   });
 }
 
@@ -469,44 +478,44 @@ export interface AutomationCandidate {
   candidateId: string;
   tenantId: string;
   companyId: string;
-  sourceOpportunityId: string;
+  sourceHypothesisId: string;
   sourcePatternIds: readonly string[];
   supportingObservationIds: readonly string[];
   score: number;
   confidence: number;
-  automationLevel: AutomationLevel;
+  proposedGovernance: ProposedAutomationGovernance;
   tools: readonly string[];
   requiresHumanApproval: boolean;
-  expectedBenefit: Readonly<TimeRoiBaseline>;
+  timeSavingsEstimate: Readonly<TimeSavingsEstimate>;
   riskClassification: "LOW" | "MEDIUM" | "HIGH";
   explanation: string;
   provenance: readonly string[];
 }
 
 export function qualifyAutomationCandidate(
-  opportunity: WorkAutomationOpportunity,
+  opportunity: WorkAutomationHypothesis,
   pattern: WorkPattern,
 ): Readonly<AutomationCandidate> | null {
   if (
     opportunity.score < 65 ||
     opportunity.confidence < 50 ||
-    opportunity.level === "HUMAN_ONLY" ||
+    opportunity.proposedGovernance === "HUMAN_ONLY" ||
     pattern.sampleCount < WorkPatternEngine.minimumSamples
   )
     return null;
   return Object.freeze({
-    candidateId: `${opportunity.opportunityId}:candidate-v1`,
+    candidateId: `${opportunity.hypothesisId}:candidate-v1`,
     tenantId: opportunity.tenantId,
     companyId: opportunity.companyId,
-    sourceOpportunityId: opportunity.opportunityId,
+    sourceHypothesisId: opportunity.hypothesisId,
     sourcePatternIds: Object.freeze([pattern.patternId]),
     supportingObservationIds: pattern.provenance,
     score: opportunity.score,
     confidence: opportunity.confidence,
-    automationLevel: opportunity.level,
+    proposedGovernance: opportunity.proposedGovernance,
     tools: opportunity.tools,
-    requiresHumanApproval: opportunity.level !== "AUTONOMOUS",
-    expectedBenefit: timeRoiBaseline(pattern, opportunity.level),
+    requiresHumanApproval: opportunity.proposedGovernance !== "AUTONOMOUS",
+    timeSavingsEstimate: estimateTimeSavings(pattern, opportunity.proposedGovernance),
     riskClassification:
       opportunity.dimensions.operationalRisk >= 70
         ? "HIGH"
@@ -514,16 +523,16 @@ export function qualifyAutomationCandidate(
           ? "MEDIUM"
           : "LOW",
     explanation: opportunity.explanation,
-    provenance: strings([...opportunity.provenance, opportunity.opportunityId]),
+    provenance: strings([...opportunity.provenance, opportunity.hypothesisId]),
   });
 }
 
 export class WorkIntelligenceError extends Error {}
 
-function automationLevel(
+function proposeAutomationGovernance(
   dimensions: AutomationOpportunityDimensions,
   confidence: number,
-): AutomationLevel {
+): ProposedAutomationGovernance {
   if (dimensions.operationalRisk >= 80 || dimensions.humanJudgment >= 85) return "HUMAN_ONLY";
   if (confidence < 50) return "AI_ASSISTED";
   if (dimensions.operationalRisk >= 50 || dimensions.humanJudgment >= 50)
@@ -536,9 +545,9 @@ function automationLevel(
 function explanation(
   pattern: WorkPattern,
   dimensions: AutomationOpportunityDimensions,
-  level: AutomationLevel,
+  governance: ProposedAutomationGovernance,
 ): string {
-  return `${pattern.normalizedActivity}: observed ${pattern.sampleCount} times over ${pattern.observationWindow.days} days; repetition ${dimensions.repetition}/100, predictability ${dimensions.predictability}/100, human judgment ${dimensions.humanJudgment}/100, risk ${dimensions.operationalRisk}/100; level ${level}.`;
+  return `${pattern.normalizedActivity}: observed ${pattern.sampleCount} times over ${pattern.observationWindow.days} days; repetition ${dimensions.repetition}/100, predictability ${dimensions.predictability}/100, human judgment ${dimensions.humanJudgment}/100, risk ${dimensions.operationalRisk}/100; proposed governance ${governance}.`;
 }
 
 function latestActivities(activities: readonly WorkActivity[]): WorkActivity[] {

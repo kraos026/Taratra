@@ -2,10 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import { WorkIntelligenceService } from "./application/work-intelligence-service";
 import {
-  AutomationOpportunityEngine,
+  WorkAutomationHypothesisEngine,
   DeterministicActivityNormalizer,
   qualifyAutomationCandidate,
-  timeRoiBaseline,
+  estimateTimeSavings,
   WorkActivity,
   WorkIntelligenceError,
   WorkPatternEngine,
@@ -174,11 +174,11 @@ describe("deterministic normalization and patterns", () => {
   });
 });
 
-describe("opportunity, ROI, and V1 to V2 candidate bridge", () => {
+describe("work hypothesis, time savings, and candidate qualification", () => {
   const pattern = new WorkPatternEngine().analyze(
     Array.from({ length: 6 }, (_, index) => activity(`a${index + 1}`)),
   ).patterns[0]!;
-  const opportunity = new AutomationOpportunityEngine().evaluate(pattern, {
+  const opportunity = new WorkAutomationHypothesisEngine().evaluate(pattern, {
     knownToolIds: ["shopify"],
     declaredActivityCodes: ["PRODUCT_CATALOG_UPDATE"],
     evidenceReferences: ["audit:published:42"],
@@ -196,14 +196,16 @@ describe("opportunity, ROI, and V1 to V2 candidate bridge", () => {
   });
 
   it("uses a time-only ROI baseline", () => {
-    expect(timeRoiBaseline(pattern, opportunity.level)).toMatchObject({
-      financialRoi: "UNAVAILABLE",
-    });
+    const estimate = estimateTimeSavings(pattern, opportunity.proposedGovernance);
+    expect(estimate.estimatedAutomatableTimeMinutes).toBeGreaterThan(0);
+    expect(estimate.provenance).toEqual(pattern.provenance);
+    expect(estimate).not.toHaveProperty("financialRoi");
+    expect(estimate).not.toHaveProperty("salary");
   });
 
   it("qualifies a traceable candidate without invoking compiler or runtime", () => {
     const candidate = qualifyAutomationCandidate(opportunity, pattern);
-    expect(candidate?.sourceOpportunityId).toBe(opportunity.opportunityId);
+    expect(candidate?.sourceHypothesisId).toBe(opportunity.hypothesisId);
     expect(candidate?.supportingObservationIds).toHaveLength(6);
   });
 
@@ -313,7 +315,7 @@ describe("e-commerce acceptance scenario", () => {
     const analysis = new WorkPatternEngine().analyze(observations);
     const opportunities = analysis.patterns.map((pattern) => ({
       pattern,
-      opportunity: new AutomationOpportunityEngine().evaluate(pattern, {
+      opportunity: new WorkAutomationHypothesisEngine().evaluate(pattern, {
         knownToolIds: ["gmail", "shopify", "sheets", "advertising", "payments", "canva"],
         declaredActivityCodes: analysis.patterns.map((item) => item.normalizedActivity),
         evidenceReferences: ["audit:published:ecommerce"],
@@ -326,11 +328,11 @@ describe("e-commerce acceptance scenario", () => {
       ({ pattern }) => pattern.normalizedActivity === "CUSTOMER_SUPPORT_RESPONSE",
     );
     expect(analysis.patterns.length).toBeGreaterThanOrEqual(3);
-    expect(product?.opportunity.level).toBe("AUTONOMOUS");
+    expect(product?.opportunity.proposedGovernance).toBe("AUTONOMOUS");
     expect(
       qualifyAutomationCandidate(product!.opportunity, product!.pattern)?.provenance,
     ).toContain("audit:published:ecommerce");
-    expect(support?.opportunity.level).toBe("AUTOMATION_WITH_APPROVAL");
+    expect(support?.opportunity.proposedGovernance).toBe("AUTOMATION_WITH_APPROVAL");
     expect(
       qualifyAutomationCandidate(support!.opportunity, support!.pattern)?.requiresHumanApproval,
     ).toBe(true);
