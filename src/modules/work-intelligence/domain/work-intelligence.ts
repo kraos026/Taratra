@@ -474,6 +474,7 @@ export interface AutomationCandidate {
   supportingObservationIds: readonly string[];
   score: number;
   confidence: number;
+  automationLevel: AutomationLevel;
   tools: readonly string[];
   requiresHumanApproval: boolean;
   expectedBenefit: Readonly<TimeRoiBaseline>;
@@ -502,6 +503,7 @@ export function qualifyAutomationCandidate(
     supportingObservationIds: pattern.provenance,
     score: opportunity.score,
     confidence: opportunity.confidence,
+    automationLevel: opportunity.level,
     tools: opportunity.tools,
     requiresHumanApproval: opportunity.level !== "AUTONOMOUS",
     expectedBenefit: timeRoiBaseline(pattern, opportunity.level),

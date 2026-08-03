@@ -8,6 +8,7 @@ const productionFiles = [
   "domain/work-intelligence.ts",
   "application/work-activity-repository.ts",
   "application/work-intelligence-service.ts",
+  "application/automation-candidate-specification-bridge.ts",
   "infrastructure/in-memory-work-activity-repository.ts",
 ];
 
@@ -21,5 +22,14 @@ describe("work-intelligence architecture", () => {
   it("keeps domain independent from application and infrastructure", () => {
     const source = readFileSync(join(root, "domain/work-intelligence.ts"), "utf8");
     expect(source).not.toMatch(/application|infrastructure|prisma|supabase/i);
+  });
+
+  it("keeps the specification bridge out of Generator, Compiler, Runtime, and persistence", () => {
+    const source = readFileSync(
+      join(root, "application/automation-candidate-specification-bridge.ts"),
+      "utf8",
+    );
+    expect(source).toMatch(/automation-specifications\/domain\/automation-specification/);
+    expect(source).not.toMatch(/automation-generator|compiler|runtime|prisma|supabase|fetch\(/i);
   });
 });
