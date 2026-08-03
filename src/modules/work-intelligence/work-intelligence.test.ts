@@ -12,7 +12,38 @@ import {
 } from "./domain/work-intelligence";
 import { InMemoryWorkActivityRepository } from "./infrastructure/in-memory-work-activity-repository";
 
-const normalizer = new DeterministicActivityNormalizer();
+const normalizer = new DeterministicActivityNormalizer(
+  [
+    {
+      code: "CUSTOMER_SUPPORT_RESPONSE",
+      category: "Customer Support",
+      terms: [
+        "mail client",
+        "mails clients",
+        "email support",
+        "sav",
+        "customer email",
+        "complaint",
+      ],
+    },
+    {
+      code: "PRODUCT_CATALOG_UPDATE",
+      category: "E-commerce",
+      terms: ["product update", "catalogue", "fiche produit", "product sheet"],
+    },
+    {
+      code: "PERFORMANCE_REPORTING",
+      category: "Reporting",
+      terms: ["report", "reporting", "rapport", "dashboard"],
+    },
+    {
+      code: "CONTENT_CREATION",
+      category: "Marketing",
+      terms: ["content", "contenu", "canva", "creative"],
+    },
+  ],
+  "ecommerce-acceptance-rules-v1",
+);
 
 function activity(
   id: string,

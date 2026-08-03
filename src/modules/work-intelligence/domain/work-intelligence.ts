@@ -199,35 +199,40 @@ export interface ActivityNormalizer {
   normalize(originalDescription: string): ActivityNormalization;
 }
 
-const NORMALIZATION_RULES = Object.freeze([
-  {
-    code: "CUSTOMER_SUPPORT_RESPONSE",
-    category: "Customer Support",
-    terms: ["mail client", "mails clients", "email support", "sav", "customer email", "complaint"],
-  },
-  {
-    code: "PRODUCT_CATALOG_UPDATE",
-    category: "E-commerce",
-    terms: ["product update", "catalogue", "fiche produit", "product sheet"],
-  },
-  {
-    code: "PERFORMANCE_REPORTING",
-    category: "Reporting",
-    terms: ["report", "reporting", "rapport", "dashboard"],
-  },
-  {
-    code: "CONTENT_CREATION",
-    category: "Marketing",
-    terms: ["content", "contenu", "canva", "creative"],
-  },
-]);
+export interface ActivityNormalizationRule {
+  readonly code: string;
+  readonly category: string;
+  readonly terms: readonly string[];
+}
 
 export class DeterministicActivityNormalizer implements ActivityNormalizer {
-  readonly version = "work-normalization-v1";
+  readonly version: string;
+  private readonly rules: readonly ActivityNormalizationRule[];
+
+  constructor(rules: readonly ActivityNormalizationRule[] = [], version = "work-normalization-v1") {
+    this.version = required(version, "Normalization rule version");
+    const codes = new Set<string>();
+    this.rules = Object.freeze(
+      rules.map((rule) => {
+        const code = required(rule.code, "Normalization rule code");
+        if (codes.has(code))
+          throw new WorkIntelligenceError(`Duplicate normalization rule: ${code}`);
+        codes.add(code);
+        const terms = strings(rule.terms);
+        if (terms.length === 0)
+          throw new WorkIntelligenceError(`Normalization rule ${code} requires at least one term`);
+        return Object.freeze({
+          code,
+          category: required(rule.category, "Activity category"),
+          terms,
+        });
+      }),
+    );
+  }
 
   normalize(originalDescription: string): ActivityNormalization {
     const normalized = normalizeText(originalDescription);
-    const rule = NORMALIZATION_RULES.find((candidate) =>
+    const rule = this.rules.find((candidate) =>
       candidate.terms.some((term) => normalized.includes(normalizeText(term))),
     );
     const matchedTerms =

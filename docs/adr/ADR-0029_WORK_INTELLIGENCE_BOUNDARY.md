@@ -31,6 +31,8 @@ limited to processes, activities, workflows and tools.
 
 The V1→V2 boundary remains application-owned. Domain code never calls Automation Specification,
 Graph Compiler or Runtime. Financial ROI remains unavailable unless explicit cost inputs exist.
+Normalization knowledge is injected as versioned configuration; the Domain Core contains no
+industry, profession, vendor or application taxonomy.
 
 ## Consequences
 
