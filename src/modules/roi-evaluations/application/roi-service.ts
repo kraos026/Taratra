@@ -22,7 +22,11 @@ export class RoiEvaluationService {
   }
   async evaluate(
     automationSnapshotId: string,
-    request: { currency: string; assumptions: Record<AssumptionCode, number> },
+    request: {
+      currency: string;
+      suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
+      unknownAssumptions: AssumptionCode[];
+    },
   ) {
     const context = await this.context();
     this.editor(context.role);
@@ -30,7 +34,8 @@ export class RoiEvaluationService {
       context.organizationId,
       automationSnapshotId,
       request.currency,
-      request.assumptions,
+      request.suppliedAssumptions,
+      request.unknownAssumptions,
     );
     const source = await this.repo.automationSnapshot(context.organizationId, automationSnapshotId);
     if (!input || !source)
@@ -57,7 +62,8 @@ export class RoiEvaluationService {
       context.organizationId,
       current.automationOpportunitySnapshotId,
       current.currency,
-      frozen,
+      frozen.suppliedAssumptions,
+      frozen.unknownAssumptions,
     );
     if (!input) throw new RoiValidationError("Published source contracts are unavailable");
     return this.repo.persist(

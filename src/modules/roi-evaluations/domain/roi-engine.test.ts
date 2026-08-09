@@ -37,6 +37,7 @@ const input = (): RoiInput => ({
     infrastructure_cost: 200,
     error_cost: 10,
   },
+  unknownAssumptions: [],
   opportunities: [
     {
       id: "opportunity",
@@ -113,6 +114,24 @@ describe("RoiEvaluationEngine", () => {
       "automation_not_published",
       "unknown_assumption",
     ]);
+  });
+  it("keeps an explicitly unknown assumption unknown even when a catalog default exists", () => {
+    const value = input();
+    value.assumptions.find((item) => item.code === "maintenance_cost")!.defaultValue = 250;
+    value.unknownAssumptions = ["maintenance_cost"];
+    const result = engine.evaluate(value);
+    expect(result.scenarios).toEqual([]);
+    expect(result.validations).toContainEqual(
+      expect.objectContaining({ code: "unknown_assumption" }),
+    );
+  });
+  it("distinguishes known zero from unknown", () => {
+    const known = input();
+    known.suppliedAssumptions.maintenance_cost = 0;
+    expect(engine.evaluate(known).scenarios).toHaveLength(3);
+    const unknown = input();
+    unknown.unknownAssumptions = ["maintenance_cost"];
+    expect(engine.evaluate(unknown).scenarios).toEqual([]);
   });
   it("rebuild remains deterministic", () =>
     expect(engine.rebuild(input())).toEqual(engine.evaluate(input())));

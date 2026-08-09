@@ -50,6 +50,7 @@ export interface RoiInput {
   knowledgeSnapshotId: string;
   currency: string;
   suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
+  unknownAssumptions: AssumptionCode[];
   opportunities: RoiOpportunityInput[];
   models: RoiModelDefinition[];
   assumptions: RoiAssumptionDefinition[];
@@ -157,6 +158,7 @@ export class RoiEvaluationEngine {
   }
   private resolveAssumptions(input: RoiInput) {
     const values = input.assumptions.map((definition) => {
+      if (input.unknownAssumptions.includes(definition.code)) return null;
       const provided = input.suppliedAssumptions[definition.code];
       const value = provided ?? definition.defaultValue;
       return value === null || value === undefined
@@ -172,6 +174,7 @@ export class RoiEvaluationEngine {
       : (values as NonNullable<(typeof values)[number]>[]);
   }
   private value(definition: RoiAssumptionDefinition, input: RoiInput) {
+    if (input.unknownAssumptions.includes(definition.code)) return null;
     return input.suppliedAssumptions[definition.code] ?? definition.defaultValue;
   }
   private scenario(

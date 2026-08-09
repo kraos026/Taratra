@@ -36,6 +36,7 @@ export class PrismaRoiEvaluationRepository {
     automationSnapshotId: string,
     currency: string,
     suppliedAssumptions: Partial<Record<AssumptionCode, number>>,
+    unknownAssumptions: AssumptionCode[],
   ): Promise<RoiInput | null> {
     const automation = await this.automationSnapshot(organizationId, automationSnapshotId);
     if (!automation) return null;
@@ -93,6 +94,7 @@ export class PrismaRoiEvaluationRepository {
       knowledgeSnapshotId: knowledge.id,
       currency,
       suppliedAssumptions,
+      unknownAssumptions,
       opportunities: opportunities.map((item) => ({
         id: item.id,
         identifier: item.identifier,
@@ -130,10 +132,13 @@ export class PrismaRoiEvaluationRepository {
     };
   }
   async frozenAssumptions(organizationId: string, snapshotId: string) {
+    const snapshot = await this.snapshot(organizationId, snapshotId);
+    const frozen = readFrozenAssumptions(snapshot?.provenanceJson);
+    if (frozen) return frozen;
     const scenario = await this.db.roiScenario.findFirst({
       where: { organizationId, snapshotId, type: "expected" },
     });
-    if (!scenario) return {};
+    if (!scenario) return { suppliedAssumptions: {}, unknownAssumptions: [] };
     const rows = await this.db.roiScenarioAssumption.findMany({
       where: { organizationId, snapshotId, scenarioId: scenario.id },
     });
@@ -141,11 +146,14 @@ export class PrismaRoiEvaluationRepository {
       where: { id: { in: rows.map((item) => item.assumptionId) } },
     });
     const codes = new Map(catalog.map((item) => [item.id, item.code as AssumptionCode]));
-    return Object.fromEntries(
-      rows
-        .map((item) => [codes.get(item.assumptionId)!, Number(item.value)])
-        .filter(([code]) => code),
-    ) as Partial<Record<AssumptionCode, number>>;
+    return {
+      suppliedAssumptions: Object.fromEntries(
+        rows
+          .map((item) => [codes.get(item.assumptionId)!, Number(item.value)])
+          .filter(([code]) => code),
+      ) as Partial<Record<AssumptionCode, number>>,
+      unknownAssumptions: [],
+    };
   }
   async detail(organizationId: string, id: string) {
     const snapshot = await this.snapshot(organizationId, id);
@@ -234,6 +242,15 @@ export class PrismaRoiEvaluationRepository {
           businessAnalysisId: input.analysisId,
           processMapId: input.processMapId,
           knowledgeSnapshotId: input.knowledgeSnapshotId,
+          assumptionInputs: input.assumptions.map((definition) =>
+            input.unknownAssumptions.includes(definition.code)
+              ? { code: definition.code, status: "unknown" }
+              : {
+                  code: definition.code,
+                  status: "known",
+                  value: input.suppliedAssumptions[definition.code] ?? definition.defaultValue,
+                },
+          ),
         } as Prisma.InputJsonValue,
         createdBy: userId,
       },
@@ -346,3 +363,36 @@ export class PrismaRoiEvaluationRepository {
     return this.snapshot(organizationId, id);
   }
 }
+
+export function readFrozenAssumptions(value: Prisma.JsonValue | undefined) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return null;
+  const inputs = value.assumptionInputs;
+  if (!Array.isArray(inputs)) return null;
+  const suppliedAssumptions: Partial<Record<AssumptionCode, number>> = {};
+  const unknownAssumptions: AssumptionCode[] = [];
+  for (const item of inputs) {
+    if (!item || typeof item !== "object" || Array.isArray(item) || typeof item.code !== "string")
+      return null;
+    if (!ASSUMPTION_CODES.has(item.code)) return null;
+    const code = item.code as AssumptionCode;
+    if (item.status === "unknown") unknownAssumptions.push(code);
+    else if (item.status === "known" && typeof item.value === "number")
+      suppliedAssumptions[code] = item.value;
+    else return null;
+  }
+  return { suppliedAssumptions, unknownAssumptions };
+}
+
+const ASSUMPTION_CODES = new Set<string>([
+  "hourly_cost",
+  "working_days",
+  "working_hours",
+  "monthly_frequency",
+  "annual_frequency",
+  "hours_saved_per_occurrence",
+  "implementation_cost",
+  "maintenance_cost",
+  "training_cost",
+  "infrastructure_cost",
+  "error_cost",
+]);
