@@ -121,6 +121,45 @@ describe("Assisted Audit presentation action plan", () => {
     lock.release();
     expect(lock.acquire()).toBe(true);
   });
+
+  it.each([
+    ["VALIDATE_ROI", "ROI", "/api/roi/real-artifact/validate"],
+    ["PUBLISH_ROI", "ROI", "/api/roi/real-artifact/publish"],
+    ["VALIDATE_RECOMMENDATIONS", "RECOMMENDATIONS", "/api/recommendations/real-artifact/validate"],
+    ["PUBLISH_RECOMMENDATIONS", "RECOMMENDATIONS", "/api/recommendations/real-artifact/publish"],
+  ] as const)("makes %s customer-accessible with the real artifact", (action, stage, url) => {
+    expect(
+      presentNextAction(
+        model(stage, action, {
+          id: "real-artifact",
+          version: 3,
+          status: action.startsWith("PUBLISH_") ? "validated" : "draft",
+          lockVersion: 9,
+        }),
+        "company",
+      ),
+    ).toMatchObject({
+      kind: "command",
+      request: { url, init: { body: JSON.stringify({ lockVersion: 9 }) } },
+    });
+  });
+
+  it("generates Recommendations only from the real published ROI", () => {
+    const value = model("RECOMMENDATIONS", "GENERATE_RECOMMENDATIONS");
+    value.stages.unshift({
+      stage: "ROI",
+      label: "ROI",
+      status: "COMPLETED",
+      artifact: { id: "published-roi", version: 2, status: "published", lockVersion: 2 },
+      candidateArtifacts: [],
+      availableActions: [],
+      blockingReason: null,
+    });
+    expect(presentNextAction(value, "company")).toMatchObject({
+      kind: "command",
+      request: { url: "/api/roi/published-roi/recommendations" },
+    });
+  });
 });
 
 function model(

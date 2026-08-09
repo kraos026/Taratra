@@ -154,12 +154,56 @@ describe("AssistedAuditService", () => {
     expect(result).toMatchObject({ currentStage: "ROI", nextAction: "VALIDATE_ROI" });
   });
 
+  it("requires ROI publication after validation", async () => {
+    const result = await evaluate({ roi: record("roi", "validated", 2) });
+    expect(result).toMatchObject({ currentStage: "ROI", nextAction: "PUBLISH_ROI" });
+  });
+
   it("moves published ROI to Recommendations", async () => {
     const result = await evaluate({ recommendations: null });
     expect(result).toMatchObject({
       currentStage: "RECOMMENDATIONS",
       nextAction: "GENERATE_RECOMMENDATIONS",
     });
+  });
+
+  it("requires Recommendation validation before publication", async () => {
+    const draft = await evaluate({ recommendations: record("recommendations", "draft", 2) });
+    expect(draft).toMatchObject({
+      currentStage: "RECOMMENDATIONS",
+      nextAction: "VALIDATE_RECOMMENDATIONS",
+    });
+    const validated = await evaluate({
+      recommendations: record("recommendations", "validated", 2),
+    });
+    expect(validated).toMatchObject({
+      currentStage: "RECOMMENDATIONS",
+      nextAction: "PUBLISH_RECOMMENDATIONS",
+    });
+  });
+
+  it("allows consultants to validate ROI but never publish it", async () => {
+    const draft = await evaluate({ role: "consultant", roi: record("roi", "draft", 2) });
+    expect(draft.nextAction).toBe("VALIDATE_ROI");
+    const validated = await evaluate({
+      role: "consultant",
+      roi: record("roi", "validated", 2),
+    });
+    expect(validated.nextAction).toBeNull();
+    expect(validated.blockingReason).toContain("owner or admin");
+  });
+
+  it("allows consultants to validate Recommendations but never publish them", async () => {
+    const draft = await evaluate({
+      role: "consultant",
+      recommendations: record("recommendations", "draft", 2),
+    });
+    expect(draft.nextAction).toBe("VALIDATE_RECOMMENDATIONS");
+    const validated = await evaluate({
+      role: "consultant",
+      recommendations: record("recommendations", "validated", 2),
+    });
+    expect(validated.nextAction).toBeNull();
   });
 
   it("completes only after Recommendations are published", async () => {
