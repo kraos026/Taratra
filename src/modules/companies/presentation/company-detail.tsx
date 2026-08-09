@@ -93,6 +93,11 @@ export function CompanyDetail({ id }: { id: string }) {
           </div>
         </div>
         <div className="flex gap-2">
+          {!company.deletedAt && (
+            <Button onClick={() => router.push(`/companies/${id}/automation-audit`)}>
+              Automation Audit
+            </Button>
+          )}
           {permissions.canWrite && !company.deletedAt && (
             <Button variant="outline" onClick={() => router.push(`/companies/${id}/discovery`)}>
               Discovery
