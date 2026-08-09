@@ -1,4 +1,6 @@
-export type KnowledgeSourceType = "discovery" | "interview";
+import type { WorkActivity } from "@/modules/work-intelligence/domain/work-intelligence";
+
+export type KnowledgeSourceType = "discovery" | "interview" | "work_intelligence";
 
 export interface KnowledgeSourceInput {
   key: string;
@@ -28,7 +30,8 @@ export interface KnowledgeFactProjection {
   sourceKey: string;
   sourceRecordType: string;
   sourceRecordId: string;
-  evidenceType: "validated_entity" | "validated_answer";
+  evidenceType:
+    "validated_entity" | "validated_answer" | "confirmed_work_activity" | "corrected_work_activity";
 }
 
 export interface KnowledgeRelationshipProjection {
@@ -273,6 +276,82 @@ export class EnterpriseKnowledgeProjector {
   }
 }
 
+export class WorkIntelligenceKnowledgeProjector {
+  project(activity: WorkActivity, projectedAt: Date): KnowledgeProjection {
+    const sourceKey = `work_intelligence:${activity.lineageId}:${activity.version}`;
+    const nodeKey = `work_activity:${activity.activityId}`;
+    return {
+      sources: [
+        {
+          key: sourceKey,
+          type: "work_intelligence",
+          sourceId: activity.lineageId,
+          version: activity.version,
+          validatedAt: projectedAt,
+        },
+      ],
+      nodes: [
+        {
+          key: nodeKey,
+          type: "work_activity",
+          domain: "operations",
+          label: activity.normalizedActivity,
+          canonicalEntityType: "work_activity_version",
+          canonicalEntityId: activity.activityId,
+          confidence: activity.confidence,
+        },
+      ],
+      facts: [
+        fact(
+          `work_activity:${activity.activityId}.normalized_activity`,
+          nodeKey,
+          "operations",
+          activity.normalizedActivity,
+          sourceKey,
+          "work_activity_version",
+          activity.activityId,
+          evidenceType(activity),
+          activity.confidence,
+        ),
+        fact(
+          `work_activity:${activity.activityId}.category`,
+          nodeKey,
+          "operations",
+          activity.category,
+          sourceKey,
+          "work_activity_version",
+          activity.activityId,
+          evidenceType(activity),
+          activity.confidence,
+        ),
+        fact(
+          `work_activity:${activity.activityId}.duration_minutes`,
+          nodeKey,
+          "operations",
+          activity.durationMinutes,
+          sourceKey,
+          "work_activity_version",
+          activity.activityId,
+          evidenceType(activity),
+          activity.confidence,
+        ),
+        fact(
+          `work_activity:${activity.activityId}.tools`,
+          nodeKey,
+          "software",
+          activity.tools,
+          sourceKey,
+          "work_activity_version",
+          activity.activityId,
+          evidenceType(activity),
+          activity.confidence,
+        ),
+      ],
+      relationships: [],
+    };
+  }
+}
+
 function node(type: string, domain: string, id: string, label: string): KnowledgeNodeProjection {
   return {
     key: `${type}:${id}`,
@@ -293,7 +372,7 @@ function fact(
   sourceKey: string,
   sourceRecordType: string,
   sourceRecordId: string,
-  evidenceType: "validated_entity" | "validated_answer",
+  evidenceType: KnowledgeFactProjection["evidenceType"],
   confidence: number,
 ): KnowledgeFactProjection {
   return {
@@ -308,6 +387,14 @@ function fact(
     sourceRecordId,
     evidenceType,
   };
+}
+
+function evidenceType(
+  activity: WorkActivity,
+): "confirmed_work_activity" | "corrected_work_activity" {
+  return activity.confirmationState === "CORRECTED"
+    ? "corrected_work_activity"
+    : "confirmed_work_activity";
 }
 
 function valueType(value: unknown): KnowledgeFactProjection["valueType"] {

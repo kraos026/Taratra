@@ -9,6 +9,43 @@ export type ProposedAutomationGovernance =
   | "AUTOMATION_WITH_EXCEPTION_HANDLING"
   | "AUTONOMOUS";
 
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+export class WorkActivityId {
+  private constructor(readonly value: string) {
+    Object.freeze(this);
+  }
+
+  static create(value: string): WorkActivityId {
+    return new WorkActivityId(uuid(value, "Work activity id"));
+  }
+}
+
+export class WorkActivityLineageId {
+  private constructor(readonly value: string) {
+    Object.freeze(this);
+  }
+
+  static create(value: string): WorkActivityLineageId {
+    return new WorkActivityLineageId(uuid(value, "Work activity lineage id"));
+  }
+}
+
+export class WorkActivityVersion {
+  private constructor(readonly value: number) {
+    Object.freeze(this);
+  }
+
+  static create(value: number): WorkActivityVersion {
+    return new WorkActivityVersion(positiveInteger(value, "Work activity version"));
+  }
+}
+
+export interface WorkIntelligenceRetentionPolicyReference {
+  readonly policyId: string;
+  readonly version: number;
+}
+
 export interface WorkActivityInput {
   activityId: string;
   lineageId?: string;
@@ -35,6 +72,10 @@ export interface WorkActivityInput {
   metadata?: Readonly<Record<string, unknown>>;
   provenance: readonly string[];
   supersedesActivityId?: string | null;
+  retentionPolicy?: WorkIntelligenceRetentionPolicyReference;
+  capturedBy?: string | null;
+  confirmedBy?: string | null;
+  confirmedAt?: Date | null;
 }
 
 export class WorkActivity {
@@ -63,11 +104,15 @@ export class WorkActivity {
   readonly metadata: Readonly<Record<string, unknown>>;
   readonly provenance: readonly string[];
   readonly supersedesActivityId: string | null;
+  readonly retentionPolicy: WorkIntelligenceRetentionPolicyReference | null;
+  readonly capturedBy: string | null;
+  readonly confirmedBy: string | null;
+  readonly confirmedAt: Date | null;
 
   private constructor(input: WorkActivityInput) {
-    this.activityId = required(input.activityId, "Activity id");
-    this.lineageId = required(input.lineageId ?? input.activityId, "Activity lineage id");
-    this.version = positiveInteger(input.version ?? 1, "Activity version");
+    this.activityId = WorkActivityId.create(input.activityId).value;
+    this.lineageId = WorkActivityLineageId.create(input.lineageId ?? input.activityId).value;
+    this.version = WorkActivityVersion.create(input.version ?? 1).value;
     this.tenantId = required(input.tenantId, "Tenant id");
     this.companyId = required(input.companyId, "Company id");
     this.actorRole = required(input.actorRole, "Actor role");
@@ -105,7 +150,19 @@ export class WorkActivity {
     this.provenance = strings(input.provenance);
     if (this.provenance.length === 0)
       throw new WorkIntelligenceError("Activity provenance is required");
-    this.supersedesActivityId = optional(input.supersedesActivityId);
+    this.supersedesActivityId =
+      input.supersedesActivityId === null || input.supersedesActivityId === undefined
+        ? null
+        : WorkActivityId.create(input.supersedesActivityId).value;
+    this.retentionPolicy = input.retentionPolicy
+      ? Object.freeze({
+          policyId: uuid(input.retentionPolicy.policyId, "Retention policy id"),
+          version: positiveInteger(input.retentionPolicy.version, "Retention policy version"),
+        })
+      : null;
+    this.capturedBy = optionalUuid(input.capturedBy, "Captured by");
+    this.confirmedBy = optionalUuid(input.confirmedBy, "Confirmed by");
+    this.confirmedAt = input.confirmedAt ? validDate(input.confirmedAt, "Confirmed at") : null;
     Object.freeze(this);
   }
 
@@ -163,6 +220,10 @@ export class WorkActivity {
       metadata: this.metadata,
       provenance: this.provenance,
       supersedesActivityId: this.supersedesActivityId,
+      retentionPolicy: this.retentionPolicy ?? undefined,
+      capturedBy: this.capturedBy,
+      confirmedBy: this.confirmedBy,
+      confirmedAt: this.confirmedAt,
     };
   }
 }
@@ -584,6 +645,17 @@ function required(value: string, label: string): string {
   if (!normalized || normalized.length > 512)
     throw new WorkIntelligenceError(`${label} is invalid`);
   return normalized;
+}
+
+function uuid(value: string, label: string): string {
+  const normalized = required(value, label).toLowerCase();
+  if (!UUID_PATTERN.test(normalized)) throw new WorkIntelligenceError(`${label} must be a UUID`);
+  return normalized;
+}
+
+function optionalUuid(value: string | null | undefined, label: string): string | null {
+  if (value === null || value === undefined) return null;
+  return uuid(value, label);
 }
 
 function optional(value: string | null | undefined): string | null {

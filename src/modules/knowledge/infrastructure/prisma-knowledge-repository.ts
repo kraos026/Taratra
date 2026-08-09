@@ -16,6 +16,13 @@ export class PrismaKnowledgeRepository {
     });
   }
 
+  contextForOrganization(userId: string, organizationId: string) {
+    return this.db.organizationMember.findUnique({
+      where: { organizationId_userId: { organizationId, userId } },
+      select: { organizationId: true, role: true },
+    });
+  }
+
   async inputs(
     organizationId: string,
     companyId: string,

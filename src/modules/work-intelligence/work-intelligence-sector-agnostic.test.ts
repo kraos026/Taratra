@@ -47,6 +47,11 @@ const sectors = [
   },
 ] as const;
 
+function uuid(index: number, bucket: string): string {
+  const bucketCode = String(bucket.charCodeAt(0)).padStart(3, "0");
+  return `41000000-0000-4000-8000-${bucketCode}${String(index).padStart(9, "0")}`;
+}
+
 describe("sector-agnostic Work Intelligence", () => {
   it.each(sectors)("uses the same pipeline for $sector", (fixture) => {
     const normalizer = new DeterministicActivityNormalizer(
@@ -56,9 +61,9 @@ describe("sector-agnostic Work Intelligence", () => {
     const normalization = normalizer.normalize(fixture.description);
     const observations = Array.from({ length: 6 }, (_, index) =>
       WorkActivity.create({
-        activityId: `${fixture.code}-${index}`,
-        tenantId: "tenant-sector-test",
-        companyId: `company-${fixture.sector}`,
+        activityId: uuid(index + 1, fixture.sector),
+        tenantId: "42000000-0000-4000-8000-000000000001",
+        companyId: uuid(1, fixture.code),
         actorRole: "operator",
         evidenceKind: "OBSERVED",
         activityType: "WORK",

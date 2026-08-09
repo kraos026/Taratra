@@ -27,6 +27,19 @@ export class InMemoryWorkActivityRepository implements WorkActivityRepository {
       ]);
   }
 
+  async get(tenantId: string, companyId: string, activityId: string): Promise<WorkActivity | null> {
+    return (
+      [...this.records.values()]
+        .flat()
+        .find(
+          (activity) =>
+            activity.tenantId === tenantId &&
+            activity.companyId === companyId &&
+            activity.activityId === activityId,
+        ) ?? null
+    );
+  }
+
   async latest(
     tenantId: string,
     companyId: string,

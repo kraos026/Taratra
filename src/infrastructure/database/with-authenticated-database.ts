@@ -1,10 +1,7 @@
-import type { Prisma, PrismaClient } from "@/generated/prisma/client";
+import type { Prisma } from "@/generated/prisma/client";
 import { getPrismaClient } from "./prisma";
 
-export type TransactionClient = Omit<
-  PrismaClient,
-  "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends"
->;
+export type TransactionClient = Prisma.TransactionClient;
 
 export async function withAuthenticatedDatabase<Result>(
   userId: string,

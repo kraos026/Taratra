@@ -186,8 +186,63 @@ enum KnowledgeSourceType {
   connector
   manual_validation
   ai_inference
+  work_intelligence
 
   @@map("knowledge_source_type")
+  @@schema("public")
+}
+
+enum WorkActivityConfirmationState {
+  PENDING
+  CONFIRMED
+  CORRECTED
+  REJECTED
+
+  @@map("work_activity_confirmation_state")
+  @@schema("public")
+}
+
+enum WorkActivityEvidenceKind {
+  DECLARED
+  OBSERVED
+
+  @@map("work_activity_evidence_kind")
+  @@schema("public")
+}
+
+enum WorkActivitySource {
+  MANUAL
+  AUDIT
+  IMPORT
+  CONNECTOR
+  INFERRED
+
+  @@map("work_activity_source")
+  @@schema("public")
+}
+
+enum WorkIntelligenceRetentionMode {
+  finite
+  indefinite
+
+  @@map("work_intelligence_retention_mode")
+  @@schema("public")
+}
+
+enum WorkIntelligenceRetentionDisposition {
+  anonymize
+  delete
+
+  @@map("work_intelligence_retention_disposition")
+  @@schema("public")
+}
+
+enum WorkIntelligenceRetentionOperation {
+  retention
+  anonymization
+  deletion
+
+  @@map("work_intelligence_retention_operation")
   @@schema("public")
 }
 
@@ -1254,6 +1309,95 @@ model KnowledgeEvidence {
 
   @@unique([factId, sourceId, sourceRecordType, sourceRecordId])
   @@map("knowledge_evidence")
+  @@schema("public")
+}
+
+model WorkIntelligenceRetentionPolicy {
+  id                                String                               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId                    String                               @map("organization_id") @db.Uuid
+  policyKey                         String                               @map("policy_key")
+  version                           Int
+  status                            String
+  pendingMode                       WorkIntelligenceRetentionMode        @map("pending_mode")
+  pendingDurationDays               Int?                                 @map("pending_duration_days")
+  pendingDisposition                WorkIntelligenceRetentionDisposition @map("pending_disposition")
+  confirmedMode                     WorkIntelligenceRetentionMode        @map("confirmed_mode")
+  confirmedDurationDays             Int?                                 @map("confirmed_duration_days")
+  confirmedDisposition              WorkIntelligenceRetentionDisposition @map("confirmed_disposition")
+  supersededMode                    WorkIntelligenceRetentionMode        @map("superseded_mode")
+  supersededDurationDays            Int?                                 @map("superseded_duration_days")
+  supersededDisposition             WorkIntelligenceRetentionDisposition @map("superseded_disposition")
+  metadataSanitizationPolicyVersion String                               @map("metadata_sanitization_policy_version")
+  createdBy                         String                               @map("created_by") @db.Uuid
+  publishedAt                       DateTime?                            @map("published_at") @db.Timestamptz(6)
+  createdAt                         DateTime                             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                         DateTime                             @default(now()) @map("updated_at") @db.Timestamptz(6)
+  activities                        WorkActivity[]
+
+  @@unique([organizationId, policyKey, version])
+  @@unique([id, organizationId])
+  @@map("work_intelligence_retention_policies")
+  @@schema("public")
+}
+
+model WorkActivity {
+  id                     String                        @id @db.Uuid
+  organizationId         String                        @map("organization_id") @db.Uuid
+  companyId              String                        @map("company_id") @db.Uuid
+  lineageId              String                        @map("lineage_id") @db.Uuid
+  version                Int
+  supersedesActivityId   String?                       @map("supersedes_activity_id") @db.Uuid
+  confirmationState      WorkActivityConfirmationState @map("confirmation_state")
+  evidenceKind           WorkActivityEvidenceKind      @map("evidence_kind")
+  source                 WorkActivitySource
+  actorRole              String                        @map("actor_role")
+  departmentId           String?                       @map("department_id") @db.Uuid
+  activityType           String                        @map("activity_type")
+  originalDescription    String?                       @map("original_description")
+  normalizedActivity     String                        @map("normalized_activity")
+  category               String
+  toolsJson              Json                          @default("[]") @map("tools_json")
+  startedAt              DateTime                      @map("started_at") @db.Timestamptz(6)
+  endedAt                DateTime                      @map("ended_at") @db.Timestamptz(6)
+  durationMinutes        Decimal                       @map("duration_minutes") @db.Decimal(12, 2)
+  confidence             Decimal                       @db.Decimal(5, 2)
+  recurrenceHintsJson    Json                          @default("[]") @map("recurrence_hints_json")
+  humanJudgment          Decimal                       @map("human_judgment") @db.Decimal(5, 2)
+  operationalRisk        Decimal                       @map("operational_risk") @db.Decimal(5, 2)
+  metadataJson           Json                          @default("{}") @map("metadata_json")
+  provenanceJson         Json                          @map("provenance_json")
+  retentionPolicyId      String                        @map("retention_policy_id") @db.Uuid
+  retentionPolicyVersion Int                           @map("retention_policy_version")
+  capturedBy             String?                       @map("captured_by") @db.Uuid
+  confirmedBy            String?                       @map("confirmed_by") @db.Uuid
+  confirmedAt            DateTime?                     @map("confirmed_at") @db.Timestamptz(6)
+  createdAt              DateTime                      @default(now()) @map("created_at") @db.Timestamptz(6)
+  retentionPolicy        WorkIntelligenceRetentionPolicy @relation(fields: [retentionPolicyId, organizationId], references: [id, organizationId])
+
+  @@unique([organizationId, lineageId, version])
+  @@unique([id, organizationId])
+  @@unique([id, organizationId, lineageId, version])
+  @@index([organizationId, companyId, startedAt(sort: Desc)], map: "work_activities_company_idx")
+  @@index([organizationId, lineageId, version(sort: Desc)], map: "work_activities_lineage_idx")
+  @@index([organizationId, retentionPolicyId, retentionPolicyVersion], map: "work_activities_retention_idx")
+  @@map("work_activities")
+  @@schema("public")
+}
+
+model WorkIntelligenceRetentionEvent {
+  id             String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String                             @map("organization_id") @db.Uuid
+  activityId     String?                            @map("activity_id") @db.Uuid
+  operation      WorkIntelligenceRetentionOperation
+  policyId       String                             @map("policy_id") @db.Uuid
+  policyVersion  Int                                @map("policy_version")
+  actorId        String                             @map("actor_id") @db.Uuid
+  reason         String
+  metadataJson   Json                               @default("{}") @map("metadata_json")
+  createdAt      DateTime                           @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([organizationId, activityId, createdAt(sort: Desc)], map: "work_retention_events_activity_idx")
+  @@map("work_intelligence_retention_events")
   @@schema("public")
 }
 

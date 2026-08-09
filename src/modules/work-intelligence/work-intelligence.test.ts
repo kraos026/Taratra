@@ -45,16 +45,28 @@ const normalizer = new DeterministicActivityNormalizer(
   "ecommerce-acceptance-rules-v1",
 );
 
+function uuid(label: string): string {
+  const digits = label.replace(/\D/g, "").padStart(12, "0").slice(-12);
+  const code = String(
+    label
+      .replace(/[^a-z]/gi, "")
+      .toLowerCase()
+      .charCodeAt(0) || 1,
+  ).padStart(3, "0");
+  return `10000000-0000-4000-8000-${code}${digits.slice(3)}`;
+}
+
 function activity(
   id: string,
   description = "Update product catalogue",
   options: Partial<Parameters<typeof WorkActivity.create>[0]> = {},
 ): WorkActivity {
   const normalized = normalizer.normalize(description);
+  const activityId = uuid(id);
   return WorkActivity.create({
-    activityId: id,
-    tenantId: "tenant-a",
-    companyId: "company-a",
+    activityId,
+    tenantId: "20000000-0000-4000-8000-000000000001",
+    companyId: "30000000-0000-4000-8000-000000000001",
     actorRole: "operations",
     evidenceKind: "OBSERVED",
     activityType: "WORK",
@@ -71,7 +83,7 @@ function activity(
     confirmationState: "CONFIRMED",
     humanJudgment: 10,
     operationalRisk: 15,
-    provenance: [`capture:${id}`],
+    provenance: [`capture:${activityId}`],
     ...options,
   });
 }
@@ -92,22 +104,24 @@ describe("WorkActivity", () => {
   });
 
   it("creates a new confirmed version", () => {
-    const confirmed = activity("a1", "work", { confirmationState: "PENDING" }).confirm("a2");
+    const confirmed = activity("a1", "work", { confirmationState: "PENDING" }).confirm(uuid("a2"));
     expect(confirmed).toMatchObject({ version: 2, confidence: 100, source: "MANUAL" });
   });
 
   it("creates a traceable corrected version", () => {
-    const corrected = activity("a1").correct("a2", { durationMinutes: 20 });
+    const corrected = activity("a1").correct(uuid("a2"), { durationMinutes: 20 });
     expect(corrected).toMatchObject({
       version: 2,
-      supersedesActivityId: "a1",
+      supersedesActivityId: uuid("a1"),
       durationMinutes: 20,
     });
-    expect(corrected.provenance).toContain("human-correction:a2");
+    expect(corrected.provenance).toContain(`human-correction:${uuid("a2")}`);
   });
 
   it("does not confirm rejected evidence", () => {
-    expect(() => activity("a1", "work", { confirmationState: "REJECTED" }).confirm("a2")).toThrow();
+    expect(() =>
+      activity("a1", "work", { confirmationState: "REJECTED" }).confirm(uuid("a2")),
+    ).toThrow();
   });
 });
 
@@ -159,7 +173,7 @@ describe("deterministic normalization and patterns", () => {
 
   it("gives the human correction priority over its prior version", () => {
     const original = activity("a1");
-    const corrected = original.correct("a2", { normalizedActivity: "PERFORMANCE_REPORTING" });
+    const corrected = original.correct(uuid("a2"), { normalizedActivity: "PERFORMANCE_REPORTING" });
     const analysis = new WorkPatternEngine().analyze([
       original,
       corrected,
@@ -192,7 +206,7 @@ describe("work hypothesis, time savings, and candidate qualification", () => {
 
   it("preserves audit and observation provenance", () => {
     expect(opportunity.provenance).toContain("audit:published:42");
-    expect(opportunity.provenance).toContain("a1");
+    expect(opportunity.provenance).toContain(uuid("a1"));
   });
 
   it("uses a time-only ROI baseline", () => {
@@ -221,12 +235,12 @@ describe("work hypothesis, time savings, and candidate qualification", () => {
 describe("capture application and repository", () => {
   const clock = { now: () => new Date("2026-08-02T10:00:00Z") };
   let sequence = 0;
-  const identities = { nextId: () => `generated-${++sequence}` };
+  const identities = { nextId: () => uuid(`generated-${++sequence}`) };
 
   function input(description: string) {
     return {
-      tenantId: "tenant-a",
-      companyId: "company-a",
+      tenantId: "20000000-0000-4000-8000-000000000001",
+      companyId: "30000000-0000-4000-8000-000000000001",
       actorRole: "support",
       evidenceKind: "OBSERVED" as const,
       activityType: "WORK",
@@ -246,39 +260,66 @@ describe("capture application and repository", () => {
     const repository = new InMemoryWorkActivityRepository();
     const service = new WorkIntelligenceService(repository, normalizer, identities, clock);
     const captured = await service.capture(input("répondre aux mails clients"));
-    const confirmed = await service.confirm("tenant-a", "company-a", captured.lineageId);
+    const confirmed = await service.confirm(
+      "20000000-0000-4000-8000-000000000001",
+      "30000000-0000-4000-8000-000000000001",
+      captured.lineageId,
+    );
     expect(confirmed.version).toBe(2);
-    expect(await repository.history("tenant-a", "company-a", captured.lineageId)).toHaveLength(2);
+    expect(
+      await repository.history(
+        "20000000-0000-4000-8000-000000000001",
+        "30000000-0000-4000-8000-000000000001",
+        captured.lineageId,
+      ),
+    ).toHaveLength(2);
   });
 
   it("isolates tenant reads", async () => {
     const repository = new InMemoryWorkActivityRepository();
     const service = new WorkIntelligenceService(repository, normalizer, identities, clock);
     await service.capture(input("customer email support"));
-    expect(await repository.list("tenant-b", "company-a")).toHaveLength(0);
+    expect(
+      await repository.list(
+        "20000000-0000-4000-8000-000000000002",
+        "30000000-0000-4000-8000-000000000001",
+      ),
+    ).toHaveLength(0);
   });
 
   it("applies a day atomically", async () => {
     const repository = new InMemoryWorkActivityRepository();
     const service = new WorkIntelligenceService(repository, normalizer, identities, clock);
     await service.captureDay([input("customer support email"), input("weekly report")]);
-    expect(await repository.list("tenant-a", "company-a")).toHaveLength(2);
+    expect(
+      await repository.list(
+        "20000000-0000-4000-8000-000000000001",
+        "30000000-0000-4000-8000-000000000001",
+      ),
+    ).toHaveLength(2);
   });
 
   it("rejects a stale optimistic version", async () => {
     const repository = new InMemoryWorkActivityRepository();
     const value = activity("a1");
     await repository.append(value, 0);
-    await expect(repository.append(value.confirm("a2"), 0)).rejects.toThrow("version conflict");
+    await expect(repository.append(value.confirm(uuid("a2")), 0)).rejects.toThrow(
+      "version conflict",
+    );
   });
 
   it("does not expose another tenant through correction", async () => {
     const repository = new InMemoryWorkActivityRepository();
     const service = new WorkIntelligenceService(repository, normalizer, identities, clock);
     const captured = await service.capture(input("weekly report"));
-    await expect(service.correct("tenant-b", "company-a", captured.lineageId, {})).rejects.toThrow(
-      "not found",
-    );
+    await expect(
+      service.correct(
+        "20000000-0000-4000-8000-000000000002",
+        "30000000-0000-4000-8000-000000000001",
+        captured.lineageId,
+        {},
+      ),
+    ).rejects.toThrow("not found");
   });
 });
 

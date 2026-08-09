@@ -9,6 +9,7 @@ import type {
   WorkActivityIdentityProvider,
   WorkActivityRepository,
   WorkIntelligenceClock,
+  WorkIntelligenceRetentionPolicyResolver,
 } from "./work-activity-repository";
 
 export type CaptureWorkActivityInput = Omit<
@@ -22,16 +23,17 @@ export class WorkIntelligenceService {
     private readonly normalizer: ActivityNormalizer,
     private readonly identities: WorkActivityIdentityProvider,
     private readonly clock: WorkIntelligenceClock,
+    private readonly retentionPolicies?: WorkIntelligenceRetentionPolicyResolver,
   ) {}
 
   async capture(input: CaptureWorkActivityInput): Promise<WorkActivity> {
-    const activity = this.build(input);
+    const activity = await this.build(input);
     await this.repository.append(activity, 0);
     return activity;
   }
 
   async captureDay(inputs: readonly CaptureWorkActivityInput[]): Promise<readonly WorkActivity[]> {
-    const activities = inputs.map((input) => this.build(input));
+    const activities = await Promise.all(inputs.map((input) => this.build(input)));
     await this.repository.appendBatch(activities);
     return Object.freeze(activities);
   }
@@ -55,8 +57,11 @@ export class WorkIntelligenceService {
     return corrected;
   }
 
-  private build(input: CaptureWorkActivityInput): WorkActivity {
+  private async build(input: CaptureWorkActivityInput): Promise<WorkActivity> {
     const normalized = this.normalizer.normalize(input.originalDescription);
+    const retentionPolicy = this.retentionPolicies
+      ? await this.retentionPolicies.currentPublishedPolicy(input.tenantId)
+      : null;
     return WorkActivity.create({
       ...input,
       activityId: this.identities.nextId(),
@@ -68,6 +73,9 @@ export class WorkIntelligenceService {
         `normalization:${normalized.ruleVersion}`,
         `captured-at:${this.clock.now().toISOString()}`,
       ],
+      retentionPolicy: retentionPolicy
+        ? { policyId: retentionPolicy.policyId, version: retentionPolicy.version }
+        : undefined,
     });
   }
 
