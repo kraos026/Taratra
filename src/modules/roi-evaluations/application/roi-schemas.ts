@@ -22,6 +22,9 @@ export const roiEvaluateSchema = z.object({
     error_cost: publicAssumption,
   }),
 });
+export const roiReviseSchema = roiEvaluateSchema.extend({
+  lockVersion: z.number().int().positive(),
+});
 export type RoiEvaluateRequest = z.infer<typeof roiEvaluateSchema>;
 
 export function normalizeRoiAssumptions(assumptions: RoiEvaluateRequest["assumptions"]) {

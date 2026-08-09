@@ -216,6 +216,8 @@ export class PrismaRoiEvaluationRepository {
     input: RoiInput,
     result: Result,
     previousVersionId: string | null,
+    expectedPreviousLockVersion?: number,
+    expectedPreviousStatus?: "draft",
   ) {
     await this.db
       .$executeRaw`select pg_advisory_xact_lock(hashtextextended(${`${organizationId}:${input.automationSnapshotId}:roi`},0))`;
@@ -223,6 +225,13 @@ export class PrismaRoiEvaluationRepository {
       where: { organizationId, automationOpportunitySnapshotId: input.automationSnapshotId },
       orderBy: { versionNumber: "desc" },
     });
+    if (
+      previousVersionId &&
+      (latestSnapshot?.id !== previousVersionId ||
+        latestSnapshot.lockVersion !== expectedPreviousLockVersion ||
+        (expectedPreviousStatus && latestSnapshot.status !== expectedPreviousStatus))
+    )
+      throw new RoiConflictError();
     const snapshot = await this.db.roiEvaluationSnapshot.create({
       data: {
         organizationId,

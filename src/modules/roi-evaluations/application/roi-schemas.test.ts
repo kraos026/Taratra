@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { normalizeRoiAssumptions, roiEvaluateSchema } from "./roi-schemas";
+import { normalizeRoiAssumptions, roiEvaluateSchema, roiReviseSchema } from "./roi-schemas";
 
 const numericAssumptions = {
   hourly_cost: 35,
@@ -56,5 +56,25 @@ describe("ROI public assumptions contract", () => {
 
   it("keeps currency mandatory and explicit", () => {
     expect(roiEvaluateSchema.safeParse({ assumptions: numericAssumptions }).success).toBe(false);
+  });
+
+  it("requires a positive lock version for revision", () => {
+    expect(
+      roiReviseSchema.safeParse({
+        currency: "EUR",
+        assumptions: numericAssumptions,
+        lockVersion: 1,
+      }).success,
+    ).toBe(true);
+    expect(
+      roiReviseSchema.safeParse({ currency: "EUR", assumptions: numericAssumptions }).success,
+    ).toBe(false);
+    expect(
+      roiReviseSchema.safeParse({
+        currency: "EUR",
+        assumptions: numericAssumptions,
+        lockVersion: 0,
+      }).success,
+    ).toBe(false);
   });
 });

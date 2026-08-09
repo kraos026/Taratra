@@ -73,6 +73,41 @@ export class RoiEvaluationService {
       input,
       this.engine.rebuild(input),
       current.id,
+      current.lockVersion,
+    );
+  }
+  async revise(
+    id: string,
+    request: {
+      lockVersion: number;
+      currency: string;
+      suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
+      unknownAssumptions: AssumptionCode[];
+    },
+  ) {
+    const context = await this.context();
+    this.editor(context.role);
+    const current = await this.repo.snapshot(context.organizationId, id);
+    if (!current) throw new RoiNotFoundError();
+    if (current.status !== "draft") throw new RoiValidationError("Only a draft ROI can be revised");
+    if (current.lockVersion !== request.lockVersion) throw new RoiConflictError();
+    const input = await this.repo.input(
+      context.organizationId,
+      current.automationOpportunitySnapshotId,
+      request.currency,
+      request.suppliedAssumptions,
+      request.unknownAssumptions,
+    );
+    if (!input) throw new RoiValidationError("Published source contracts are unavailable");
+    return this.repo.persist(
+      context.organizationId,
+      current.companyId,
+      this.userId,
+      input,
+      this.engine.evaluate(input),
+      current.id,
+      request.lockVersion,
+      "draft",
     );
   }
   async get(id: string) {
