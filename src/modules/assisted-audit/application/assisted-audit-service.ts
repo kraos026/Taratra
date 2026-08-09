@@ -155,14 +155,24 @@ function deriveStages(state: AssistedAuditState): AssistedAuditStageView[] {
   if (!isComplete(automation))
     return blockedRemainder(stages, "Publish Automation Opportunities first");
 
-  const roi = versionedStage(
-    "ROI",
-    state.roi,
-    "ENTER_ROI_ASSUMPTIONS",
-    "VALIDATE_ROI",
-    "PUBLISH_ROI",
-    state.role,
-  );
+  const roi =
+    state.roi?.status === "draft" && state.roi.incomplete
+      ? active(
+          "ROI",
+          "IN_PROGRESS",
+          state.roi,
+          "ENTER_ROI_ASSUMPTIONS",
+          state.role,
+          "Some ROI assumptions still need to be confirmed",
+        )
+      : versionedStage(
+          "ROI",
+          state.roi,
+          "ENTER_ROI_ASSUMPTIONS",
+          "VALIDATE_ROI",
+          "PUBLISH_ROI",
+          state.role,
+        );
   stages.push(roi);
   if (!isComplete(roi)) return blockedRemainder(stages, "Publish the ROI first");
 

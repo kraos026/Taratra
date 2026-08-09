@@ -49,10 +49,26 @@ describe("Assisted Audit presentation action plan", () => {
     });
   });
 
-  it("does not fabricate an ROI assumptions screen", () => {
-    expect(presentNextAction(model("ROI", "ENTER_ROI_ASSUMPTIONS"), "company")).toMatchObject({
-      kind: "unavailable",
+  it("opens the ROI assumptions screen with real Automation Opportunity and ROI IDs", () => {
+    const value = model("ROI", "ENTER_ROI_ASSUMPTIONS", {
+      id: "real-roi-id",
+      version: 2,
+      status: "draft",
+      lockVersion: 1,
+    });
+    value.stages.unshift({
+      stage: "AUTOMATION_OPPORTUNITIES",
+      label: "Automation Opportunities",
+      status: "COMPLETED",
+      artifact: { id: "real-opportunity-id", version: 1, status: "published" },
+      candidateArtifacts: [],
+      availableActions: [],
+      blockingReason: null,
+    });
+    expect(presentNextAction(value, "company")).toMatchObject({
+      kind: "navigate",
       label: "Complete ROI assumptions",
+      href: "/companies/company/automation-audit/roi/real-opportunity-id?roiId=real-roi-id",
     });
   });
 

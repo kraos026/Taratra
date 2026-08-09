@@ -121,6 +121,7 @@ function database() {
     aiOpportunitySnapshot: { findFirst: vi.fn().mockResolvedValue(null) },
     automationOpportunitySnapshot: { findFirst: vi.fn().mockResolvedValue(null) },
     roiEvaluationSnapshot: { findFirst: vi.fn().mockResolvedValue(null) },
+    roiValidation: { findFirst: vi.fn().mockResolvedValue(null) },
     recommendationPortfolioSnapshot: { findFirst: vi.fn().mockResolvedValue(null) },
   };
 }

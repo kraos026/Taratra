@@ -144,7 +144,17 @@ export function presentNextAction(
       : { kind: "unavailable", ...text };
   }
   if (action === "SELECT_PROCESS_MAP") return { kind: "unavailable", ...text };
-  if (action === "ENTER_ROI_ASSUMPTIONS") return { kind: "unavailable", ...text };
+  if (action === "ENTER_ROI_ASSUMPTIONS") {
+    const opportunity = artifact(model, "AUTOMATION_OPPORTUNITIES");
+    const roi = artifact(model, "ROI");
+    return opportunity
+      ? {
+          kind: "navigate",
+          ...text,
+          href: `/companies/${companyId}/automation-audit/roi/${opportunity.id}${roi ? `?roiId=${roi.id}` : ""}`,
+        }
+      : { kind: "unavailable", ...text };
+  }
   const request = commandFor(action, model, companyId);
   return request ? { kind: "command", ...text, request } : { kind: "unavailable", ...text };
 }

@@ -6,6 +6,7 @@ export interface AssistedAuditRecord {
   status: string;
   lockVersion?: number;
   lineageKey?: string;
+  incomplete?: boolean;
 }
 
 export interface AssistedAuditState {

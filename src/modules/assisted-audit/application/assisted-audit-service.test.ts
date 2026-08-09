@@ -136,6 +136,24 @@ describe("AssistedAuditService", () => {
     expect(result).toMatchObject({ currentStage: "ROI", nextAction: "ENTER_ROI_ASSUMPTIONS" });
   });
 
+  it("keeps an incomplete ROI draft on the assumptions action", async () => {
+    const result = await evaluate({ roi: { ...record("roi", "draft", 2), incomplete: true } });
+    expect(result).toMatchObject({
+      currentStage: "ROI",
+      overallStatus: "IN_PROGRESS",
+      nextAction: "ENTER_ROI_ASSUMPTIONS",
+    });
+    expect(result.stages.find((stage) => stage.stage === "ROI")?.artifact).toMatchObject({
+      id: "roi",
+      version: 2,
+    });
+  });
+
+  it("moves a complete ROI draft to its real validation action", async () => {
+    const result = await evaluate({ roi: { ...record("roi", "draft", 2), incomplete: false } });
+    expect(result).toMatchObject({ currentStage: "ROI", nextAction: "VALIDATE_ROI" });
+  });
+
   it("moves published ROI to Recommendations", async () => {
     const result = await evaluate({ recommendations: null });
     expect(result).toMatchObject({

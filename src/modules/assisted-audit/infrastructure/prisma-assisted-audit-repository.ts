@@ -116,6 +116,19 @@ export class PrismaAssistedAuditRepository implements AssistedAuditRepositoryPor
           select: lifecycleSelect,
         })
       : null;
+    const roiIncomplete = roi
+      ? Boolean(
+          await this.db.roiValidation.findFirst({
+            where: {
+              organizationId,
+              snapshotId: roi.id,
+              code: "unknown_assumption",
+              severity: "error",
+            },
+            select: { id: true },
+          }),
+        )
+      : false;
     const recommendations = roi
       ? await this.db.recommendationPortfolioSnapshot.findFirst({
           where: {
@@ -145,7 +158,7 @@ export class PrismaAssistedAuditRepository implements AssistedAuditRepositoryPor
       automationOpportunities: automationOpportunities
         ? versionedRecord(automationOpportunities)
         : null,
-      roi: roi ? versionedRecord(roi) : null,
+      roi: roi ? { ...versionedRecord(roi), incomplete: roiIncomplete } : null,
       recommendations: recommendations ? versionedRecord(recommendations) : null,
     };
   }
