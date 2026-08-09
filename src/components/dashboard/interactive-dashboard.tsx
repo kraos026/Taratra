@@ -282,8 +282,8 @@ export function InteractiveDashboard() {
                       </div>
                       <Link
                         className="company-open"
-                        href={companyRoute(company.id)}
-                        aria-label={`Ouvrir ${company.name}`}
+                        href={`/companies/${company.id}/automation-audit`}
+                        aria-label={`Ouvrir l'audit avancé de ${company.name}`}
                       >
                         <ChevronRight />
                       </Link>
@@ -347,11 +347,11 @@ export function InteractiveDashboard() {
               </div>
               <div>
                 <span>PRÊT À COMMENCER ?</span>
-                <h2>Lancez votre prochain audit</h2>
-                <p>Sélectionnez une entreprise puis un questionnaire publié.</p>
+                <h2>Lancez votre prochain audit d'automatisation</h2>
+                <p>Sélectionnez une entreprise pour ouvrir son parcours d'analyse avancé.</p>
               </div>
-              <Link className="cta-link" href={dashboardRoutes.newAudit}>
-                Démarrer un audit <ArrowRight size={17} />
+              <Link className="cta-link" href={dashboardRoutes.companies}>
+                Choisir une entreprise <ArrowRight size={17} />
               </Link>
             </section>
           </div>

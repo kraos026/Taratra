@@ -138,9 +138,8 @@ export function presentNextAction(
   if (action === "START_INTERVIEW" || action === "CONTINUE_INTERVIEW")
     return { kind: "navigate", ...text, href: `/companies/${companyId}/interview` };
   if (action === "VIEW_RESULTS") {
-    const recommendation = artifact(model, "RECOMMENDATIONS");
-    return recommendation
-      ? { kind: "navigate", ...text, href: `/recommendations/${recommendation.id}` }
+    return artifact(model, "RECOMMENDATIONS")
+      ? { kind: "navigate", ...text, href: `/companies/${companyId}/automation-audit/results` }
       : { kind: "unavailable", ...text };
   }
   if (action === "SELECT_PROCESS_MAP") return { kind: "unavailable", ...text };

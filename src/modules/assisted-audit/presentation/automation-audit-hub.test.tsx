@@ -79,7 +79,7 @@ describe("AutomationAuditView", () => {
       blockingReason: null,
     };
     expect(render(completed)).toContain("Automation Audit Complete");
-    expect(render(completed)).toContain("/recommendations/real-recommendation-id");
+    expect(render(completed)).toContain("/companies/company-id/automation-audit/results");
   });
 
   it("renders safe API errors", () => {
