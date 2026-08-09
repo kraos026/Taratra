@@ -169,6 +169,10 @@ using((select private.has_organization_role(work_activities.organization_id,arra
 create policy "editors create work activities"
 on public.work_activities for insert to authenticated
 with check((select private.has_organization_role(work_activities.organization_id,array['owner','admin','consultant']::public.organization_role[])));
+create policy "admins verify immutable work activities"
+on public.work_activities for update to authenticated
+using((select private.has_organization_role(work_activities.organization_id,array['owner','admin']::public.organization_role[])))
+with check((select private.has_organization_role(work_activities.organization_id,array['owner','admin']::public.organization_role[])));
 create policy "admins delete unprotected work activities"
 on public.work_activities for delete to authenticated
 using((select private.has_organization_role(work_activities.organization_id,array['owner','admin']::public.organization_role[])));
@@ -180,6 +184,6 @@ create policy "admins create work retention events"
 on public.work_intelligence_retention_events for insert to authenticated
 with check((select private.has_organization_role(work_intelligence_retention_events.organization_id,array['owner','admin']::public.organization_role[])));
 
-grant select,insert,delete on public.work_activities to authenticated;
+grant select,insert,update,delete on public.work_activities to authenticated;
 grant select,insert,update,delete on public.work_intelligence_retention_policies to authenticated;
 grant select,insert on public.work_intelligence_retention_events to authenticated;

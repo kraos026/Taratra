@@ -11,7 +11,7 @@ insert into public.organizations(id,name) values
 ('97000000-0000-4000-8000-000000000011','WI A'),
 ('97000000-0000-4000-8000-000000000012','WI B');
 insert into public.organization_members(organization_id,user_id,role) values
-('97000000-0000-4000-8000-000000000011','97000000-0000-4000-8000-000000000001','consultant'),
+('97000000-0000-4000-8000-000000000011','97000000-0000-4000-8000-000000000001','admin'),
 ('97000000-0000-4000-8000-000000000011','97000000-0000-4000-8000-000000000002','viewer'),
 ('97000000-0000-4000-8000-000000000012','97000000-0000-4000-8000-000000000003','owner');
 insert into public.companies(id,organization_id,name) values
@@ -29,7 +29,7 @@ superseded_disposition,metadata_sanitization_policy_version,created_by,published
 '97000000-0000-4000-8000-000000000031','97000000-0000-4000-8000-000000000011','default',1,'published',
 'finite',30,'anonymize','indefinite',null,'anonymize','finite',365,'anonymize','metadata-v1',
 '97000000-0000-4000-8000-000000000001',now()
-)$$,'admin/editor creates configurable retention policy');
+)$$,'admin creates configurable retention policy');
 
 select lives_ok($$insert into public.work_activities(
 id,organization_id,company_id,lineage_id,version,confirmation_state,evidence_kind,source,actor_role,activity_type,
