@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { readApiResponse } from "@/shared/presentation/api-client";
 type Version = {
   id: string;
   versionNumber: number;
@@ -42,9 +43,7 @@ type Template = {
 type Detail = { item: Template; permissions: { canManage: boolean; canUse: boolean } };
 async function json<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, init);
-  const payload = (await response.json()) as { data?: T; error?: { message: string } };
-  if (!response.ok) throw new Error(payload.error?.message ?? "Une erreur est survenue.");
-  return payload.data as T;
+  return readApiResponse<T>(response, "Une erreur est survenue.");
 }
 export function QuestionnaireList() {
   const [data, setData] = useState<{ items: Template[]; permissions: { canManage: boolean } }>();

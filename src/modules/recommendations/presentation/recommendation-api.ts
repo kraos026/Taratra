@@ -1,4 +1,4 @@
-import { createClient } from "@/infrastructure/supabase/server";
+import { authenticateApiRequest } from "@/shared/presentation/authenticated-api";
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { PrismaRecommendationRepository } from "../infrastructure/prisma-recommendation-repository";
 import { RecommendationService } from "../application/recommendation-service";
@@ -6,10 +6,9 @@ import { apiError } from "@/shared/presentation/api-response";
 export async function withRecommendationService<T>(
   operation: (service: RecommendationService) => Promise<T>,
 ): Promise<T | Response> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
-  const userId = data?.claims?.sub;
-  if (error || !userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
+  const authentication = await authenticateApiRequest("recommendations.request");
+  if (authentication.response) return authentication.response;
+  const { userId } = authentication;
   try {
     return await withAuthenticatedDatabase(userId, (db) =>
       operation(new RecommendationService(new PrismaRecommendationRepository(db), userId)),

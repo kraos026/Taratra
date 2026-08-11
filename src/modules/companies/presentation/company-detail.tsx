@@ -8,12 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompanyStatusBadge } from "./company-status-badge";
 import type { CompanyDetailResponse } from "./company-view";
+import { readApiResponse } from "@/shared/presentation/api-client";
 
 async function fetchCompany(id: string): Promise<CompanyDetailResponse> {
   const response = await fetch(`/api/companies/${id}`, { cache: "no-store" });
-  if (!response.ok) throw new Error("Entreprise introuvable.");
-  const payload = (await response.json()) as { data: CompanyDetailResponse };
-  return payload.data;
+  return readApiResponse(response, "Entreprise introuvable.");
 }
 
 export function CompanyDetail({ id }: { id: string }) {

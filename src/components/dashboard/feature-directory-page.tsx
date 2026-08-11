@@ -8,7 +8,7 @@ export function FeatureDirectoryPage({
   description: string;
 }) {
   return (
-    <main className="mx-auto max-w-3xl space-y-6 p-8">
+    <main className="mx-auto max-w-3xl space-y-6">
       <p className="text-sm font-semibold text-violet-600">AutomateX</p>
       <h1 className="text-3xl font-bold">{title}</h1>
       <p className="text-neutral-600">{description}</p>

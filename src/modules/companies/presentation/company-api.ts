@@ -1,7 +1,7 @@
 import type { CompanyService } from "../application/company-service";
 import { CompanyError } from "../domain/company-errors";
 import { PrismaCompanyRepository } from "../infrastructure/prisma-company-repository";
-import { createClient } from "@/infrastructure/supabase/server";
+import { authenticateApiRequest } from "@/shared/presentation/authenticated-api";
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { logError, logInfo } from "@/shared/infrastructure/logger";
 import { apiError } from "@/shared/presentation/api-response";
@@ -11,13 +11,9 @@ export async function withCompanyService<Result>(
   action: string,
   operation: (service: CompanyService, userId: string) => Promise<Result>,
 ): Promise<Result | Response> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
-  const userId = data?.claims?.sub;
-
-  if (error || !userId) {
-    return apiError("UNAUTHENTICATED", "Authentication required", 401);
-  }
+  const authentication = await authenticateApiRequest(action);
+  if (authentication.response) return authentication.response;
+  const { userId } = authentication;
 
   try {
     const result = await withAuthenticatedDatabase(userId, async (database) => {

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import type { CompanyDetailResponse } from "./company-view";
 import { CompanyForm } from "./company-form";
+import { readApiResponse } from "@/shared/presentation/api-client";
 
 export function CompanyEditLoader({ id }: { id: string }) {
   const [data, setData] = useState<CompanyDetailResponse>();
@@ -10,10 +11,9 @@ export function CompanyEditLoader({ id }: { id: string }) {
   useEffect(() => {
     void fetch(`/api/companies/${id}`, { cache: "no-store" })
       .then(async (response) => {
-        if (!response.ok) throw new Error();
-        return response.json() as Promise<{ data: CompanyDetailResponse }>;
+        return readApiResponse<CompanyDetailResponse>(response, "Entreprise introuvable.");
       })
-      .then((payload) => setData(payload.data))
+      .then(setData)
       .catch(() => setError("Entreprise introuvable."));
   }, [id]);
   if (error) return <p className="text-red-600">{error}</p>;

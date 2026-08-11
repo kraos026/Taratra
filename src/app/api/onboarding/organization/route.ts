@@ -4,8 +4,18 @@ import { logError, logInfo } from "@/shared/infrastructure/logger";
 import { apiError, apiSuccess } from "@/shared/presentation/api-response";
 
 export async function POST(request: Request) {
-  const supabase = await createClient();
-  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims();
+  let supabase: Awaited<ReturnType<typeof createClient>>;
+  try {
+    supabase = await createClient();
+  } catch {
+    logError({ action: "onboarding.organization.create", error: "AUTH_CONFIGURATION_ERROR" });
+    return apiError("AUTH_SERVICE_UNAVAILABLE", "Authentication service is unavailable", 503);
+  }
+
+  const { data: claimsData, error: claimsError } = await supabase.auth.getClaims().catch(() => ({
+    data: null,
+    error: { message: "Authentication service unavailable" },
+  }));
   const userId = claimsData?.claims?.sub;
 
   if (claimsError || !userId) {
