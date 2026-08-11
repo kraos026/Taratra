@@ -1,4 +1,4 @@
-import { createClient } from "@/infrastructure/supabase/server";
+import { authenticateApiRequest } from "@/shared/presentation/authenticated-api";
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { apiError } from "@/shared/presentation/api-response";
 import { ReportService } from "../application/report-service";
@@ -6,10 +6,9 @@ import { PrismaReportRepository } from "../infrastructure/prisma-report-reposito
 export async function withReportService<T>(
   operation: (service: ReportService) => Promise<T>,
 ): Promise<T | Response> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
-  const userId = data?.claims?.sub;
-  if (error || !userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
+  const authentication = await authenticateApiRequest("reports.request");
+  if (authentication.response) return authentication.response;
+  const { userId } = authentication;
   try {
     return await withAuthenticatedDatabase(userId, (db) =>
       operation(new ReportService(new PrismaReportRepository(db), userId)),

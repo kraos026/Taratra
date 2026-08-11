@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { readApiResponse } from "@/shared/presentation/api-client";
 type Question = {
   id: string;
   label: string;
@@ -35,9 +36,7 @@ type Audit = {
 type Detail = { item: Audit; permissions: { canWrite: boolean; canValidate: boolean } };
 async function json<T>(url: string, init?: RequestInit) {
   const r = await fetch(url, init);
-  const p = (await r.json()) as { data?: T; error?: { message: string } };
-  if (!r.ok) throw new Error(p.error?.message ?? "Erreur");
-  return p.data as T;
+  return readApiResponse<T>(r, "Impossible de traiter la demande.");
 }
 export function NewAudit({ companyId }: { companyId: string }) {
   const router = useRouter();

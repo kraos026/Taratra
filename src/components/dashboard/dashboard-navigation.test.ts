@@ -15,7 +15,7 @@ function sourceFiles(directory: string): string[] {
 }
 
 describe("dashboard interactions", () => {
-  it("maps every sidebar entry to a real non-placeholder route", () => {
+  it("maps every sidebar entry to a real route", () => {
     expect(dashboardRoutes).toEqual({
       overview: "/",
       companies: "/companies",
@@ -30,42 +30,44 @@ describe("dashboard interactions", () => {
     expect(Object.values(dashboardRoutes)).not.toContain("#");
   });
 
-  it("builds tenant-safe navigation without hardcoded identifiers", () => {
+  it("builds tenant-safe paths without hardcoded identifiers", () => {
     expect(companyRoute("company-id")).toBe("/companies/company-id");
     expect(companyRoute("company/id")).toBe("/companies/company%2Fid");
   });
 
-  it("connects dashboard search to the existing company list", () => {
+  it("connects search to the company list", () => {
     expect(dashboardSearchRoute(" Nova Conseil ")).toBe("/companies?search=Nova%20Conseil");
     expect(dashboardSearchRoute("   ")).toBe("/companies");
   });
 
   it("contains no href placeholder anywhere in src", () => {
-    const offenders = sourceFiles(join(process.cwd(), "src")).filter((file) => {
-      const source = readFileSync(file, "utf8");
-      return /href\s*=\s*["'](?:#|\s*)["']/.test(source);
-    });
+    const offenders = sourceFiles(join(process.cwd(), "src")).filter((file) =>
+      /href\s*=\s*["'](?:#|\s*)["']/.test(readFileSync(file, "utf8")),
+    );
     expect(offenders).toEqual([]);
   });
 
-  it("exposes the new-audit and company-analysis navigation controls", () => {
+  it("exposes canonical shell navigation and dashboard company navigation", () => {
     const dashboard = readFileSync(
       join(process.cwd(), "src/components/dashboard/interactive-dashboard.tsx"),
       "utf8",
     );
-    expect(dashboard).toContain("href={dashboardRoutes.newAudit}");
+    const shell = readFileSync(
+      join(process.cwd(), "src/components/app-shell/app-shell.tsx"),
+      "utf8",
+    );
+    expect(shell).toContain('href="/audits/new"');
+    expect(shell).toContain("onSubmit={search}");
     expect(dashboard).toContain("href={companyRoute(company.id)}");
     expect(dashboard).toContain("href={dashboardRoutes.audits}");
-    expect(dashboard).toContain("onSubmit={search}");
   });
 
-  it("marks unsupported dashboard controls as disabled", () => {
-    const dashboard = readFileSync(
-      join(process.cwd(), "src/components/dashboard/interactive-dashboard.tsx"),
+  it("marks unsupported subscription controls as unavailable", () => {
+    const shell = readFileSync(
+      join(process.cwd(), "src/components/app-shell/app-shell.tsx"),
       "utf8",
     );
-    expect(dashboard).toContain("Journal d’activité bientôt disponible");
-    expect(dashboard).toContain("Filtrage temporel bientôt disponible");
-    expect(dashboard).toContain("L’offre Pro n’est pas encore disponible");
+    expect(shell).toContain("Bientôt disponible");
+    expect(shell).toContain("disabled");
   });
 });

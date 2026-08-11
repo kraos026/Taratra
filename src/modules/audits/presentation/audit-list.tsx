@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 import { FileSearch, Plus } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { readApiResponse } from "@/shared/presentation/api-client";
 
 type AuditListItem = {
   id: string;
@@ -24,12 +25,11 @@ export function AuditList() {
       cache: "no-store",
     })
       .then(async (response) => {
-        const payload = (await response.json()) as {
-          data?: { items: AuditListItem[] };
-          error?: { message?: string };
-        };
-        if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Erreur");
-        setItems(payload.data.items);
+        const payload = await readApiResponse<{ items: AuditListItem[] }>(
+          response,
+          "Impossible de charger vos audits.",
+        );
+        setItems(payload.items);
       })
       .catch((reason: unknown) =>
         setError(reason instanceof Error ? reason.message : "Impossible de charger les audits."),
@@ -37,7 +37,7 @@ export function AuditList() {
   }, []);
 
   return (
-    <div className="mx-auto max-w-6xl space-y-6 p-6">
+    <div className="mx-auto max-w-6xl space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
           <p className="text-sm font-semibold text-violet-600">AutomateX</p>

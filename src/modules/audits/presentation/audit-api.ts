@@ -1,6 +1,6 @@
-import { createClient } from "@/infrastructure/supabase/server";
-import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
+import { authenticateApiRequest } from "@/shared/presentation/authenticated-api";
 import { apiError } from "@/shared/presentation/api-response";
+import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { logError, logInfo } from "@/shared/infrastructure/logger";
 import { AuditError } from "../domain/audit-errors";
 import { PrismaAuditRepository } from "../infrastructure/prisma-audit-repository";
@@ -10,10 +10,9 @@ export async function withAuditService<Result>(
   action: string,
   operation: (service: AuditService, userId: string) => Promise<Result>,
 ): Promise<Result | Response> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
-  const userId = data?.claims?.sub;
-  if (error || !userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
+  const authentication = await authenticateApiRequest(action);
+  if (authentication.response) return authentication.response;
+  const { userId } = authentication;
   try {
     const result = await withAuthenticatedDatabase(userId, (db) =>
       operation(new AuditService(new PrismaAuditRepository(db), userId), userId),

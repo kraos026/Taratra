@@ -5,6 +5,7 @@ import { ExecutiveSummary } from "./executive-summary";
 import { ReportCharts } from "./report-charts";
 import { RecommendationsTable } from "./recommendations-table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { readApiResponse } from "@/shared/presentation/api-client";
 export function AuditReportDashboard({
   auditId,
   initialReport = null,
@@ -19,9 +20,7 @@ export function AuditReportDashboard({
     const controller = new AbortController();
     fetch(`/api/audits/${auditId}/report`, { signal: controller.signal })
       .then(async (r) => {
-        if (!r.ok) throw new Error("Impossible de charger le rapport");
-        const body = (await r.json()) as { data: AuditReport };
-        setReport(body.data);
+        setReport(await readApiResponse<AuditReport>(r, "Impossible de charger le rapport"));
       })
       .catch((e) => {
         if (e instanceof Error && e.name !== "AbortError") setError(e.message);

@@ -43,6 +43,34 @@ body {
   display: flex;
   min-height: 100vh;
 }
+.app-page {
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 34px 38px 48px;
+}
+.app-page > .page {
+  padding: 0;
+}
+.product-state {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 48px 24px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: white;
+  color: var(--muted);
+  text-align: center;
+}
+.product-state h2,
+.product-state p {
+  margin: 0;
+}
+.product-state.error svg {
+  color: #dc2626;
+}
 .sidebar {
   position: fixed;
   inset: 0 auto 0 0;
@@ -764,6 +792,9 @@ footer {
   .topbar {
     padding-left: 18px;
     padding-right: 18px;
+  }
+  .app-page {
+    padding: 24px 18px 36px;
   }
   .heading {
     align-items: flex-start;

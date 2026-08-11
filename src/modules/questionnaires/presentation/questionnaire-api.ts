@@ -1,4 +1,4 @@
-import { createClient } from "@/infrastructure/supabase/server";
+import { authenticateApiRequest } from "@/shared/presentation/authenticated-api";
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { apiError } from "@/shared/presentation/api-response";
 import { logError, logInfo } from "@/shared/infrastructure/logger";
@@ -9,10 +9,9 @@ export async function withQuestionnaireService<Result>(
   action: string,
   operation: (service: QuestionnaireService, userId: string) => Promise<Result>,
 ): Promise<Result | Response> {
-  const supabase = await createClient();
-  const { data, error } = await supabase.auth.getClaims();
-  const userId = data?.claims?.sub;
-  if (error || !userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
+  const authentication = await authenticateApiRequest(action);
+  if (authentication.response) return authentication.response;
+  const { userId } = authentication;
   try {
     const result = await withAuthenticatedDatabase(userId, (db) =>
       operation(new QuestionnaireService(new PrismaQuestionnaireRepository(db), userId), userId),

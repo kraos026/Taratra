@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Building2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { readApiResponse } from "@/shared/presentation/api-client";
 
 type Company = { id: string; name: string; sectorId: string | null };
 
@@ -15,17 +16,16 @@ export function NewAuditCompanyPicker() {
       cache: "no-store",
     })
       .then(async (response) => {
-        const payload = (await response.json()) as {
-          data?: { items: Company[] };
-          error?: { message?: string };
-        };
-        if (!response.ok || !payload.data) throw new Error(payload.error?.message ?? "Erreur");
-        setCompanies(payload.data.items);
+        const payload = await readApiResponse<{ items: Company[] }>(
+          response,
+          "Impossible de charger vos entreprises.",
+        );
+        setCompanies(payload.items);
       })
       .catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "Erreur"));
   }, []);
   return (
-    <div className="mx-auto max-w-3xl space-y-6 p-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <div>
         <p className="text-sm font-semibold text-violet-600">Nouvel audit</p>
         <h1 className="text-3xl font-bold">Choisissez une entreprise</h1>

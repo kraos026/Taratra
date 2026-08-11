@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import type { CompanyPage, CompanyPermissions, CompanyStatus } from "../domain/company";
 import { CompanyStatusBadge } from "./company-status-badge";
 import type { CompanyView } from "./company-view";
+import { readApiResponse } from "@/shared/presentation/api-client";
 
 type ViewPage = Omit<CompanyPage, "items"> & {
   items: readonly CompanyView[];
@@ -18,9 +19,7 @@ type ViewPage = Omit<CompanyPage, "items"> & {
 
 async function fetchCompanies(queryString: string): Promise<ViewPage> {
   const response = await fetch(`/api/companies?${queryString}`, { cache: "no-store" });
-  if (!response.ok) throw new Error("Impossible de charger les entreprises.");
-  const payload = (await response.json()) as { data: ViewPage };
-  return payload.data;
+  return readApiResponse<ViewPage>(response, "Impossible de charger vos entreprises.");
 }
 
 export function CompaniesList() {
