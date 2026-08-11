@@ -1,0 +1,112 @@
+{
+  "version": "1.0.0-proposed",
+  "status": "architecture-review",
+  "scenarios": [
+    {
+      "id": "retail-small-001",
+      "sector": "retail",
+      "difficulty": "excel-dependent"
+    },
+    {
+      "id": "ecommerce-small-001",
+      "sector": "e-commerce",
+      "difficulty": "high-digital-maturity",
+      "employeeCount": 15
+    },
+    {
+      "id": "logistics-medium-001",
+      "sector": "logistics",
+      "difficulty": "complex",
+      "employeeCount": 70
+    },
+    {
+      "id": "transport-medium-001",
+      "sector": "transport",
+      "difficulty": "multi-site"
+    },
+    {
+      "id": "hotel-medium-001",
+      "sector": "hospitality",
+      "difficulty": "normal",
+      "employeeCount": 90
+    },
+    {
+      "id": "restaurant-small-001",
+      "sector": "restaurant",
+      "difficulty": "whatsapp-dependent"
+    },
+    {
+      "id": "healthcare-medium-001",
+      "sector": "healthcare",
+      "difficulty": "regulated"
+    },
+    {
+      "id": "clinic-medium-001",
+      "sector": "clinic",
+      "difficulty": "regulated",
+      "employeeCount": 45
+    },
+    {
+      "id": "pharmacy-small-001",
+      "sector": "pharmacy",
+      "difficulty": "normal"
+    },
+    {
+      "id": "private-school-medium-001",
+      "sector": "education",
+      "difficulty": "incomplete-data"
+    },
+    {
+      "id": "accounting-firm-small-001",
+      "sector": "accounting-firm",
+      "difficulty": "excel-dependent",
+      "employeeCount": 20
+    },
+    {
+      "id": "insurance-medium-001",
+      "sector": "insurance",
+      "difficulty": "regulated"
+    },
+    {
+      "id": "banking-enterprise-001",
+      "sector": "banking",
+      "difficulty": "complex"
+    },
+    {
+      "id": "factory-midmarket-001",
+      "sector": "manufacturing",
+      "difficulty": "erp-environment",
+      "employeeCount": 180
+    },
+    {
+      "id": "construction-medium-001",
+      "sector": "construction",
+      "difficulty": "contradictory"
+    },
+    {
+      "id": "agriculture-small-001",
+      "sector": "agriculture",
+      "difficulty": "low-digital-maturity"
+    },
+    {
+      "id": "ngo-medium-001",
+      "sector": "ngo",
+      "difficulty": "incomplete-data"
+    },
+    {
+      "id": "professional-services-small-001",
+      "sector": "professional-services",
+      "difficulty": "simple"
+    },
+    {
+      "id": "saas-b2b-small-001",
+      "sector": "saas",
+      "difficulty": "high-digital-maturity"
+    },
+    {
+      "id": "telecommunications-enterprise-001",
+      "sector": "telecommunications",
+      "difficulty": "multi-site"
+    }
+  ]
+}

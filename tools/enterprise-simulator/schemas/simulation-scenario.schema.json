@@ -1,0 +1,242 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatex.example.invalid/schemas/enterprise-simulator/simulation-scenario.v1.json",
+  "title": "SimulationScenario",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "id",
+    "version",
+    "seed",
+    "catalogVersion",
+    "name",
+    "sector",
+    "country",
+    "companySize",
+    "employeeCount",
+    "annualRevenueRange",
+    "operatingModel",
+    "digitalMaturity",
+    "automationMaturity",
+    "aiMaturity",
+    "departments",
+    "actors",
+    "systems",
+    "processes",
+    "documents",
+    "painPoints",
+    "constraints",
+    "risks",
+    "objectives",
+    "groundTruth",
+    "expectedOutcomes",
+    "createdAt"
+  ],
+  "properties": {
+    "id": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]+$" },
+    "version": { "type": "integer", "minimum": 1 },
+    "seed": { "type": "integer", "minimum": 0 },
+    "catalogVersion": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "sector": { "type": "string", "minLength": 1 },
+    "country": { "type": "string", "pattern": "^[A-Z]{2}$" },
+    "companySize": {
+      "enum": ["micro", "small", "medium", "mid-market", "enterprise"]
+    },
+    "employeeCount": { "type": "integer", "minimum": 1 },
+    "annualRevenueRange": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["currency", "minimum", "maximum"],
+      "properties": {
+        "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+        "minimum": { "type": "number", "minimum": 0 },
+        "maximum": { "type": "number", "minimum": 0 }
+      }
+    },
+    "operatingModel": { "type": "string", "minLength": 1 },
+    "digitalMaturity": { "$ref": "#/$defs/maturity" },
+    "automationMaturity": { "$ref": "#/$defs/maturity" },
+    "aiMaturity": { "$ref": "#/$defs/maturity" },
+    "departments": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/department" }
+    },
+    "actors": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/actor" }
+    },
+    "systems": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/system" }
+    },
+    "processes": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/process" }
+    },
+    "documents": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/document" }
+    },
+    "painPoints": { "$ref": "#/$defs/idList" },
+    "constraints": { "$ref": "#/$defs/idList" },
+    "risks": { "$ref": "#/$defs/idList" },
+    "objectives": { "$ref": "#/$defs/idList" },
+    "groundTruth": {
+      "$ref": "./ground-truth.schema.json"
+    },
+    "expectedOutcomes": {
+      "type": "object",
+      "additionalProperties": true
+    },
+    "createdAt": { "type": "string", "format": "date-time" }
+  },
+  "$defs": {
+    "maturity": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 100
+    },
+    "idList": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "department": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "headcount", "responsibilities"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "headcount": { "type": "integer", "minimum": 1 },
+        "responsibilities": { "$ref": "#/$defs/idList" }
+      }
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "role",
+        "department",
+        "authorityLevel",
+        "knowledgeScope",
+        "communicationStyle",
+        "digitalLiteracy",
+        "objectives",
+        "frustrations",
+        "knownFacts",
+        "unknownFacts",
+        "biases",
+        "contradictions",
+        "responseConsistency"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "role": { "type": "string", "minLength": 1 },
+        "department": { "type": "string", "minLength": 1 },
+        "authorityLevel": { "type": "integer", "minimum": 0, "maximum": 5 },
+        "knowledgeScope": { "$ref": "#/$defs/idList" },
+        "communicationStyle": { "type": "string", "minLength": 1 },
+        "digitalLiteracy": { "$ref": "#/$defs/maturity" },
+        "objectives": { "$ref": "#/$defs/idList" },
+        "frustrations": { "$ref": "#/$defs/idList" },
+        "knownFacts": { "$ref": "#/$defs/idList" },
+        "unknownFacts": { "$ref": "#/$defs/idList" },
+        "biases": { "$ref": "#/$defs/idList" },
+        "contradictions": { "$ref": "#/$defs/idList" },
+        "responseConsistency": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "system": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "category", "departments"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "category": { "type": "string", "minLength": 1 },
+        "departments": { "$ref": "#/$defs/idList" }
+      }
+    },
+    "process": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "owner",
+        "department",
+        "trigger",
+        "inputs",
+        "steps",
+        "outputs",
+        "systems",
+        "frequency",
+        "volume",
+        "duration",
+        "manualEffort",
+        "errorRate",
+        "reworkRate",
+        "waitingTime",
+        "cost",
+        "businessCriticality",
+        "complianceSensitivity",
+        "automationPotential",
+        "aiPotential",
+        "dependencies",
+        "bottlenecks"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "owner": { "type": "string", "minLength": 1 },
+        "department": { "type": "string", "minLength": 1 },
+        "trigger": { "type": "string", "minLength": 1 },
+        "inputs": { "$ref": "#/$defs/idList" },
+        "steps": { "$ref": "#/$defs/idList" },
+        "outputs": { "$ref": "#/$defs/idList" },
+        "systems": { "$ref": "#/$defs/idList" },
+        "frequency": { "type": "string", "minLength": 1 },
+        "volume": { "$ref": "#/$defs/nonNegativeMeasure" },
+        "duration": { "$ref": "#/$defs/nonNegativeMeasure" },
+        "manualEffort": { "$ref": "#/$defs/nonNegativeMeasure" },
+        "errorRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "reworkRate": { "type": "number", "minimum": 0, "maximum": 1 },
+        "waitingTime": { "$ref": "#/$defs/nonNegativeMeasure" },
+        "cost": { "$ref": "#/$defs/nonNegativeMeasure" },
+        "businessCriticality": { "$ref": "#/$defs/maturity" },
+        "complianceSensitivity": { "$ref": "#/$defs/maturity" },
+        "automationPotential": { "$ref": "#/$defs/maturity" },
+        "aiPotential": { "$ref": "#/$defs/maturity" },
+        "dependencies": { "$ref": "#/$defs/idList" },
+        "bottlenecks": { "$ref": "#/$defs/idList" }
+      }
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "type", "format", "owner", "fictional"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 },
+        "format": { "enum": ["json", "csv", "markdown", "text"] },
+        "owner": { "type": "string", "minLength": 1 },
+        "fictional": { "const": true }
+      }
+    },
+    "nonNegativeMeasure": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "unit"],
+      "properties": {
+        "value": { "type": "number", "minimum": 0 },
+        "unit": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}

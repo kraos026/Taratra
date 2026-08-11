@@ -1,0 +1,9 @@
+{
+  "name": "@automatex/enterprise-simulator",
+  "version": "0.0.0-architecture",
+  "private": true,
+  "description": "External deterministic enterprise simulator contracts for AutomateX",
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  }
+}

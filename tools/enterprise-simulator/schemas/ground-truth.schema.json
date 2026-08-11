@@ -1,0 +1,147 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://automatex.example.invalid/schemas/enterprise-simulator/ground-truth.v1.json",
+  "title": "GroundTruth",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "canonicalProcesses",
+    "canonicalPainPoints",
+    "canonicalBusinessFindings",
+    "canonicalAiOpportunities",
+    "canonicalAutomationOpportunities",
+    "expectedRoiRanges",
+    "expectedRecommendationPriorities",
+    "expectedDependencies",
+    "expectedRoadmapOrder",
+    "expectedRisks",
+    "expectedEvidenceLinks"
+  ],
+  "properties": {
+    "version": { "type": "integer", "minimum": 1 },
+    "canonicalProcesses": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/canonicalEntity" }
+    },
+    "canonicalPainPoints": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/canonicalEntity" }
+    },
+    "canonicalBusinessFindings": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/canonicalEntity" }
+    },
+    "canonicalAiOpportunities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/opportunity" }
+    },
+    "canonicalAutomationOpportunities": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/opportunity" }
+    },
+    "expectedRoiRanges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["opportunityId", "currency", "minimum", "maximum", "tolerance"],
+        "properties": {
+          "opportunityId": { "type": "string", "minLength": 1 },
+          "currency": { "type": "string", "pattern": "^[A-Z]{3}$" },
+          "minimum": { "type": "number" },
+          "maximum": { "type": "number" },
+          "tolerance": { "type": "number", "minimum": 0 }
+        }
+      }
+    },
+    "expectedRecommendationPriorities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["recommendationId", "priority"],
+        "properties": {
+          "recommendationId": { "type": "string", "minLength": 1 },
+          "priority": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "expectedDependencies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    },
+    "expectedRoadmapOrder": {
+      "type": "array",
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "expectedRisks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/canonicalEntity" }
+    },
+    "expectedEvidenceLinks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/edge" }
+    }
+  },
+  "$defs": {
+    "canonicalEntity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "name", "importance", "sourceFactIds", "attributes"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "importance": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sourceFactIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true
+        }
+      }
+    },
+    "opportunity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "name",
+        "importance",
+        "sourceFactIds",
+        "attributes",
+        "targetProcessId",
+        "opportunityType"
+      ],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "name": { "type": "string", "minLength": 1 },
+        "importance": { "type": "number", "minimum": 0, "maximum": 1 },
+        "sourceFactIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "attributes": {
+          "type": "object",
+          "additionalProperties": true
+        },
+        "targetProcessId": { "type": "string", "minLength": 1 },
+        "opportunityType": { "type": "string", "minLength": 1 }
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["from", "to", "type"],
+      "properties": {
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "type": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
