@@ -32,7 +32,9 @@ export async function withCompanyService<Result>(
       return apiError(caught.code, caught.message, caught.status);
     }
 
-    logError({ action, userId, error: "UNEXPECTED_ERROR" });
+    const diagnostic =
+      caught instanceof Error ? `${caught.name}: ${caught.message}` : "UNEXPECTED_ERROR";
+    logError({ action, userId, error: diagnostic });
     return apiError("INTERNAL_ERROR", "An unexpected error occurred", 500);
   }
 }
