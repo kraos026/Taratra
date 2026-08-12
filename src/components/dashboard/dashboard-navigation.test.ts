@@ -48,13 +48,13 @@ describe("dashboard interactions", () => {
     expect(offenders).toEqual([]);
   });
 
-  it("exposes the new-audit and company-analysis navigation controls", () => {
+  it("exposes the advanced-audit and company-analysis navigation controls", () => {
     const dashboard = readFileSync(
       join(process.cwd(), "src/components/dashboard/interactive-dashboard.tsx"),
       "utf8",
     );
-    expect(dashboard).toContain("href={dashboardRoutes.newAudit}");
-    expect(dashboard).toContain("href={companyRoute(company.id)}");
+    expect(dashboard).toContain("href={dashboardRoutes.companies}");
+    expect(dashboard).toContain("/automation-audit");
     expect(dashboard).toContain("href={dashboardRoutes.audits}");
     expect(dashboard).toContain("onSubmit={search}");
   });
