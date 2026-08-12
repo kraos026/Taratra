@@ -165,6 +165,9 @@ export function InteractiveDashboard() {
             <strong>Compte connecté</strong>
             <small>Espace sécurisé</small>
           </div>
+          <form action="/auth/logout" method="post">
+            <button type="submit">Se deconnecter</button>
+          </form>
         </div>
       </aside>
 
