@@ -16,3 +16,5 @@ export * from "./knowledge-library-v2";
 export * from "./knowledge-retrieval-engine";
 export * from "./ai-interpretation-gateway";
 export * from "./customer-simulation-core";
+export * from "./synthetic-enterprise-lab";
+export * from "./brain-evaluator";
