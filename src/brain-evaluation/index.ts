@@ -10,3 +10,4 @@ export * from "./economic-intelligence";
 export * from "./brain-integration";
 export * from "./convergence-adapters";
 export * from "./opportunity-qualification-bridge";
+export * from "./economic-qualification-bridge";
