@@ -8,3 +8,4 @@ export * from "./knowledge-foundation";
 export * from "./opportunity-intelligence";
 export * from "./economic-intelligence";
 export * from "./brain-integration";
+export * from "./convergence-adapters";
