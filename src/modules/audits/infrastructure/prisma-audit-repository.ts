@@ -1,13 +1,25 @@
 import type { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import { calculateProgress, evaluateCompletion } from "../domain/progress";
+import { logInfo } from "@/shared/infrastructure/logger";
 export class PrismaAuditRepository {
   constructor(private readonly db: TransactionClient) {}
   context(userId: string) {
-    return this.db.organizationMember.findFirst({
+    logInfo({ action: "audits.membership.lookup.start", userId });
+    return this.db.organizationMember
+      .findFirst({
       where: { userId },
       select: { organizationId: true, role: true },
-    });
+      })
+      .then((context) => {
+        logInfo({
+          action: "audits.membership.lookup.completed",
+          userId,
+          membershipResolved: Boolean(context),
+          organizationId: context?.organizationId,
+        });
+        return context;
+      });
   }
   list(
     organizationId: string,

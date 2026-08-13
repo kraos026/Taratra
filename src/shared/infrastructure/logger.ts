@@ -3,6 +3,7 @@ interface LogContext {
   readonly userId?: string;
   readonly organizationId?: string;
   readonly error?: string;
+  readonly [key: string]: unknown;
 }
 
 export function logInfo(context: LogContext): void {

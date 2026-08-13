@@ -8,6 +8,7 @@ import type {
   CompanyUpdate,
   OrganizationContext,
 } from "../domain/company";
+import { logInfo } from "@/shared/infrastructure/logger";
 
 function mapCompany(company: PrismaCompany): Company {
   return company;
@@ -23,11 +24,19 @@ export class PrismaCompanyRepository implements CompanyRepository {
   constructor(private readonly database: TransactionClient) {}
 
   async getOrganizationContext(userId: string): Promise<OrganizationContext | null> {
-    return this.database.organizationMember.findFirst({
+    logInfo({ action: "companies.membership.lookup.start", userId });
+    const context = await this.database.organizationMember.findFirst({
       where: { userId },
       select: { organizationId: true, role: true },
       orderBy: { createdAt: "asc" },
     });
+    logInfo({
+      action: "companies.membership.lookup.completed",
+      userId,
+      membershipResolved: Boolean(context),
+      organizationId: context?.organizationId,
+    });
+    return context;
   }
 
   async list(organizationId: string, query: CompanyListQuery) {
