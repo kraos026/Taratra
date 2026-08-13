@@ -15,3 +15,4 @@ export * from "./portfolio-qualification-bridge";
 export * from "./knowledge-library-v2";
 export * from "./knowledge-retrieval-engine";
 export * from "./ai-interpretation-gateway";
+export * from "./customer-simulation-core";
