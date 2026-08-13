@@ -13,3 +13,4 @@ export * from "./opportunity-qualification-bridge";
 export * from "./economic-qualification-bridge";
 export * from "./portfolio-qualification-bridge";
 export * from "./knowledge-library-v2";
+export * from "./knowledge-retrieval-engine";
