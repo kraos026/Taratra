@@ -8,8 +8,8 @@ export class PrismaAuditRepository {
     logInfo({ action: "audits.membership.lookup.start", userId });
     return this.db.organizationMember
       .findFirst({
-      where: { userId },
-      select: { organizationId: true, role: true },
+        where: { userId },
+        select: { organizationId: true, role: true },
       })
       .then((context) => {
         logInfo({

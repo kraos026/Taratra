@@ -14,7 +14,11 @@ export async function withCompanyService<Result>(
   operation: (service: CompanyService, userId: string) => Promise<Result>,
 ): Promise<Result | Response> {
   const supabase = await createClient();
-  logInfo({ action, diagnosticMarker: DATA_LAYER_DIAGNOSTIC_MARKER, stage: "companies.auth.start" });
+  logInfo({
+    action,
+    diagnosticMarker: DATA_LAYER_DIAGNOSTIC_MARKER,
+    stage: "companies.auth.start",
+  });
   const { data, error } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
 
