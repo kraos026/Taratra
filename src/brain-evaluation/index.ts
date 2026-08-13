@@ -6,3 +6,4 @@ export * from "./uncertainty-engine";
 export * from "./process-causal";
 export * from "./knowledge-foundation";
 export * from "./opportunity-intelligence";
+export * from "./economic-intelligence";
