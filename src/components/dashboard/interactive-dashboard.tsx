@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import {
   ArrowRight,
   BarChart3,
@@ -19,7 +19,7 @@ import {
   Target,
   Users,
 } from "lucide-react";
-import { companyRoute, dashboardRoutes, dashboardSearchRoute } from "./dashboard-navigation";
+import { dashboardRoutes, dashboardSearchRoute } from "./dashboard-navigation";
 
 type Company = {
   id: string;
@@ -37,6 +37,12 @@ type Audit = {
 };
 
 type PagePayload<T> = { items: T[]; total: number };
+
+type AdvancedAudit = {
+  currentStage: string;
+  overallStatus: string;
+  nextAction: string | null;
+};
 
 const navigation = [
   [LayoutDashboard, "Vue d’ensemble", dashboardRoutes.overview],
@@ -72,6 +78,7 @@ export function InteractiveDashboard() {
   const router = useRouter();
   const [companies, setCompanies] = useState<PagePayload<Company>>();
   const [audits, setAudits] = useState<PagePayload<Audit>>();
+  const [advancedAudits, setAdvancedAudits] = useState<Map<string, AdvancedAudit>>(new Map());
   const [error, setError] = useState<string>();
 
   useEffect(() => {
@@ -82,19 +89,25 @@ export function InteractiveDashboard() {
       .then(([companyPage, auditPage]) => {
         setCompanies(companyPage);
         setAudits(auditPage);
+        return Promise.all(
+          companyPage.items.map(async (company) => {
+            const response = await fetch(`/api/companies/${company.id}/automation-audit`, {
+              cache: "no-store",
+            });
+            const payload = (await response.json()) as { data?: AdvancedAudit };
+            return [company.id, response.ok ? payload.data : undefined] as const;
+          }),
+        );
+      })
+      .then((rows) => {
+        setAdvancedAudits(
+          new Map(rows.filter((row): row is readonly [string, AdvancedAudit] => Boolean(row[1]))),
+        );
       })
       .catch((reason: unknown) =>
         setError(reason instanceof Error ? reason.message : "Impossible de charger les données."),
       );
   }, []);
-
-  const latestAuditByCompany = useMemo(() => {
-    const result = new Map<string, Audit>();
-    audits?.items.forEach((audit) => {
-      if (!result.has(audit.company.id)) result.set(audit.company.id, audit);
-    });
-    return result;
-  }, [audits]);
 
   const activeAudits = audits?.items.filter((audit) =>
     ["draft", "in_progress", "completed"].includes(audit.status),
@@ -152,6 +165,9 @@ export function InteractiveDashboard() {
             <strong>Compte connecté</strong>
             <small>Espace sécurisé</small>
           </div>
+          <form action="/auth/logout" method="post">
+            <button type="submit">Se deconnecter</button>
+          </form>
         </div>
       </aside>
 
@@ -167,9 +183,9 @@ export function InteractiveDashboard() {
           <Link className="help" href={dashboardRoutes.settings} aria-label="Aide et paramètres">
             ?
           </Link>
-          <Link className="primary" href={dashboardRoutes.newAudit}>
+          <Link className="primary" href={dashboardRoutes.companies}>
             <Sparkles size={17} />
-            Nouvel audit
+            Nouvel audit d&apos;automatisation
           </Link>
         </header>
 
@@ -256,8 +272,7 @@ export function InteractiveDashboard() {
                 )}
                 {!companies && !error && <p className="empty-state">Chargement…</p>}
                 {companies?.items.map((company) => {
-                  const audit = latestAuditByCompany.get(company.id);
-                  const progress = audit?.progressPercentage ?? 0;
+                  const advancedAudit = advancedAudits.get(company.id);
                   return (
                     <div className="company" key={company.id}>
                       <div className="company-logo violet">{initials(company.name)}</div>
@@ -265,25 +280,25 @@ export function InteractiveDashboard() {
                         <strong>{company.name}</strong>
                         <small>{company.sectorId ?? "Secteur non renseigné"}</small>
                       </div>
-                      <div className={`badge ${audit ? "running" : "todo"}`}>
+                      <div className={`badge ${advancedAudit ? "running" : "todo"}`}>
                         <i />
-                        {audit
-                          ? audit.status.replaceAll("_", " ")
-                          : company.status.replaceAll("_", " ")}
+                        {advancedAudit
+                          ? advancedAudit.overallStatus.replaceAll("_", " ")
+                          : "Audit avancé à démarrer"}
                       </div>
                       <div className="progress-wrap">
                         <div>
-                          <span>Dernier audit</span>
-                          <b>{audit ? `${progress}%` : "Aucun"}</b>
+                          <span>Parcours avancé</span>
+                          <b>{advancedAudit?.currentStage.replaceAll("_", " ") ?? "Discovery"}</b>
                         </div>
                         <div className="progress">
-                          <i style={{ width: `${progress}%` }} />
+                          <i style={{ width: advancedAudit ? "100%" : "0%" }} />
                         </div>
                       </div>
                       <Link
                         className="company-open"
-                        href={companyRoute(company.id)}
-                        aria-label={`Ouvrir ${company.name}`}
+                        href={`/companies/${company.id}/automation-audit`}
+                        aria-label={`Ouvrir l'audit avancé de ${company.name}`}
                       >
                         <ChevronRight />
                       </Link>
@@ -347,11 +362,11 @@ export function InteractiveDashboard() {
               </div>
               <div>
                 <span>PRÊT À COMMENCER ?</span>
-                <h2>Lancez votre prochain audit</h2>
-                <p>Sélectionnez une entreprise puis un questionnaire publié.</p>
+                <h2>Lancez votre prochain audit d&apos;automatisation</h2>
+                <p>Sélectionnez une entreprise pour ouvrir son parcours d&apos;analyse avancé.</p>
               </div>
-              <Link className="cta-link" href={dashboardRoutes.newAudit}>
-                Démarrer un audit <ArrowRight size={17} />
+              <Link className="cta-link" href={dashboardRoutes.companies}>
+                Choisir une entreprise <ArrowRight size={17} />
               </Link>
             </section>
           </div>

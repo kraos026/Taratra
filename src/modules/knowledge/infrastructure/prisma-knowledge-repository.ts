@@ -16,6 +16,22 @@ export class PrismaKnowledgeRepository {
     });
   }
 
+  contextForOrganization(userId: string, organizationId: string) {
+    return this.db.organizationMember.findUnique({
+      where: { organizationId_userId: { organizationId, userId } },
+      select: { organizationId: true, role: true },
+    });
+  }
+
+  async companyExists(organizationId: string, companyId: string): Promise<boolean> {
+    return Boolean(
+      await this.db.company.findFirst({
+        where: { id: companyId, organizationId },
+        select: { id: true },
+      }),
+    );
+  }
+
   async inputs(
     organizationId: string,
     companyId: string,
@@ -115,6 +131,18 @@ export class PrismaKnowledgeRepository {
   ) {
     await this.db
       .$executeRaw`select pg_advisory_xact_lock(hashtextextended(${`${organizationId}:${companyId}:knowledge`}, 0))`;
+    const latestReady = await this.db.knowledgeSnapshot.findFirst({
+      where: { organizationId, companyId, status: "ready" },
+      orderBy: { version: "desc" },
+    });
+    if (latestReady) {
+      const existingSources = await this.db.knowledgeSource.findMany({
+        where: { organizationId, snapshotId: latestReady.id },
+        select: { sourceType: true, sourceId: true, sourceVersion: true },
+      });
+      if (sameSources(existingSources, projection.sources))
+        return { snapshot: latestReady, created: false as const };
+    }
     const latest = await this.db.knowledgeSnapshot.findFirst({
       where: { organizationId, companyId },
       orderBy: { version: "desc" },
@@ -196,9 +224,23 @@ export class PrismaKnowledgeRepository {
           confidencePercentage: relationship.confidence,
         })),
       });
-    return this.db.knowledgeSnapshot.update({
+    const ready = await this.db.knowledgeSnapshot.update({
       where: { id: snapshot.id, organizationId },
       data: { status: "ready", generatedAt: new Date() },
     });
+    return { snapshot: ready, created: true as const };
   }
+}
+
+function sameSources(
+  existing: { sourceType: string; sourceId: string; sourceVersion: number }[],
+  projected: KnowledgeProjection["sources"],
+): boolean {
+  if (existing.length !== projected.length) return false;
+  const identities = new Set(
+    existing.map((source) => `${source.sourceType}:${source.sourceId}:${source.sourceVersion}`),
+  );
+  return projected.every((source) =>
+    identities.has(`${source.type}:${source.sourceId}:${source.version}`),
+  );
 }

@@ -14,5 +14,6 @@ describe("Recommendation boundary", () => {
       /companyProfile|discovery|interviewAnswer|RoiEvaluationEngine|RoiEngine/i,
     );
     expect(source).toContain("roiEvaluationSnapshot");
+    expect(source).toContain('status: "published"');
   });
 });

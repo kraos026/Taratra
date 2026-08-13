@@ -13,6 +13,11 @@ export class EnterpriseKnowledgeService {
     const context = await this.repository.context(this.userId);
     if (!context || context.role === "viewer")
       throw new KnowledgeProjectionError("FORBIDDEN", "Knowledge projection is not permitted");
+    if (!(await this.repository.companyExists(context.organizationId, companyId)))
+      throw new KnowledgeProjectionError(
+        "COMPANY_NOT_FOUND",
+        "Company was not found in the authenticated tenant",
+      );
     const input = await this.repository.inputs(context.organizationId, companyId);
     if (!input.discovery)
       throw new KnowledgeProjectionError(
