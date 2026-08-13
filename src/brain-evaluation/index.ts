@@ -18,3 +18,4 @@ export * from "./ai-interpretation-gateway";
 export * from "./customer-simulation-core";
 export * from "./synthetic-enterprise-lab";
 export * from "./brain-evaluator";
+export * from "./baselines/e6.1-baseline";
