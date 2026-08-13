@@ -12,3 +12,4 @@ export * from "./convergence-adapters";
 export * from "./opportunity-qualification-bridge";
 export * from "./economic-qualification-bridge";
 export * from "./portfolio-qualification-bridge";
+export * from "./knowledge-library-v2";
