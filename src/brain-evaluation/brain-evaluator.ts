@@ -4,7 +4,7 @@ import {
   type BrainIntegrationInput,
   type IntegratedBrainResult,
 } from "./brain-integration";
-import { Process, ProcessModel, ProcessStep } from "./process-causal";
+import { Handoff, Process, ProcessModel, ProcessStep } from "./process-causal";
 import { EconomicInputFactory } from "./economic-intelligence";
 import type { KnowledgeContext } from "./knowledge-foundation";
 import type {
@@ -209,10 +209,7 @@ export class BrainEvaluator {
         ),
       );
     const rootCause = result.causes.find((c) => c.kind === "ROOT");
-    const rootMatch = Boolean(
-      rootCause?.statement.toLowerCase().includes(truth.trueRootCause.replaceAll("-", " ")) ||
-      rootCause?.statement.includes(truth.trueRootCause),
-    );
+    const rootMatch = Boolean(rootCause?.semanticKey === `cause:${truth.trueRootCause}`);
     if (!rootMatch)
       failures.push(
         failure(
@@ -227,8 +224,8 @@ export class BrainEvaluator {
       );
     const bottleneckMatch = result.bottlenecks.some(
       (b) =>
-        b.stepId === truth.actualBottleneck ||
-        b.reason.toLowerCase().includes(truth.actualBottleneck),
+        b.semanticKey === `bottleneck:${truth.actualBottleneck}` ||
+        b.stepId === truth.actualBottleneck,
     );
     const decisions = result.opportunityDecisions.map((d) => d.decision.decision);
     const automation = result.opportunities.filter((o) => o.candidateType === "AUTOMATION");
@@ -502,9 +499,29 @@ export class SyntheticBrainEvaluationRunner {
           actor: s.actorId,
           system: s.systemId,
           kind: s.id === "approve" ? "DECISION" : "MANUAL",
-          volume: 62,
+          processingMinutes: s.id === "write" ? 10 : 5,
+          waitingMinutes: s.id === "approve" ? 20 : 0,
+          reworkRate: view.metrics.find((m) => m.name === "rework-rate")?.value ?? 0,
+          exceptionFrequency: view.metrics.find((m) => m.name === "error-rate")?.value ?? 0,
+          volume: view.metrics.find((m) => m.name === "orders/day")?.value ?? 0,
         }),
       ),
+    });
+    const handoffs = view.processes[0]!.steps.slice(0, -1).flatMap((step, index) => {
+      const next = view.processes[0]!.steps[index + 1];
+      return next && step.handoff
+        ? [
+            Handoff.create({
+              handoffId: `handoff:${step.id}:${next.id}`,
+              fromStepId: step.id,
+              toStepId: next.id,
+              fromSystem: step.systemId,
+              toSystem: next.systemId,
+              contextLoss: step.systemId !== next.systemId,
+              delayedApproval: next.id === "approve",
+            }),
+          ]
+        : [];
     });
     const input: BrainIntegrationInput = {
       companyId: view.enterpriseId,
@@ -513,7 +530,7 @@ export class SyntheticBrainEvaluationRunner {
       evidence,
       claims,
       unknowns: [],
-      process: ProcessModel.create({ process }),
+      process: ProcessModel.create({ process, handoffs }),
       knowledge: {
         relevantPatterns: [],
         relevantBenchmarks: [],

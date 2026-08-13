@@ -4,7 +4,18 @@ import { InformationGapDetector, type BrainDiscoveryState } from "./adaptive-dis
 export type ProcessStepKind = "MANUAL" | "AUTOMATED" | "DECISION";
 export type DependencyKind = "STEP" | "SYSTEM" | "DATA" | "ROLE" | "APPROVAL" | "PREREQUISITE";
 export type CausalRelationshipKind = "DIRECT" | "INDIRECT" | "CORRELATION";
-export type CauseKind = "ROOT" | "CONTRIBUTING" | "CANDIDATE";
+export type CauseKind = "ROOT" | "CONTRIBUTING" | "SYMPTOM" | "CANDIDATE" | "UNRESOLVED";
+export class CausalSubjectId {
+  readonly value: string;
+  private constructor(value: string) {
+    this.value = value;
+    Object.freeze(this);
+  }
+  static create(value: string) {
+    if (!/^[a-z][a-z0-9:_-]{1,127}$/.test(value)) throw new Error("Invalid causal subject id");
+    return new CausalSubjectId(value);
+  }
+}
 export type ProcessConclusionKind =
   "OBSERVATION" | "SYMPTOM" | "CAUSE" | "BOTTLENECK" | "HANDOFF" | "REWORK" | "FAILURE_MODE";
 
@@ -226,6 +237,7 @@ export interface Symptom {
 }
 export interface CauseCandidate {
   causeId: string;
+  semanticKey?: string;
   kind: CauseKind;
   statement: string;
   affectedStepIds: readonly string[];
@@ -249,6 +261,7 @@ export interface CausalLink {
 }
 export interface Bottleneck {
   bottleneckId: string;
+  semanticKey?: string;
   stepId: string;
   reason: string;
   evidenceIds: readonly string[];
@@ -340,7 +353,71 @@ export class CausalReasoner {
         ),
       });
     }
+    const hasCrossSystemHandoff = model.handoffs.some(
+      (h) => h.fromSystem && h.toSystem && h.fromSystem !== h.toSystem,
+    );
+    const weakData = model.process.steps.some((s) => s.errorRate >= 0.1);
+    if (hasCrossSystemHandoff || weakData) {
+      const semanticKey = weakData ? "cause:poor-master-data" : "cause:system-fragmentation";
+      const supportingEvidenceIds = evidence.map((e) => e.evidenceId);
+      results.push({
+        causeId: semanticKey,
+        semanticKey,
+        kind: "CANDIDATE",
+        statement: weakData
+          ? "Poor master data may explain downstream errors"
+          : "System fragmentation may explain manual handoff delays",
+        affectedStepIds: model.process.steps.map((s) => s.stepId),
+        supportingClaimIds: claims.map((c) => c.claimId),
+        supportingEvidenceIds,
+        confidence: supportingEvidenceIds.length ? 0.8 : 0,
+        relationship: "DIRECT",
+        competingCauseIds: [],
+        unresolvedUnknownIds: [],
+        trace: ReasoningTrace.create({ [semanticKey]: "Canonical causal candidate" }, []),
+      });
+    }
     return Object.freeze(results);
+  }
+}
+
+export interface RootCauseSelection {
+  selectedRootCauses: readonly CauseCandidate[];
+  contributingCauses: readonly CauseCandidate[];
+  symptomCandidates: readonly CauseCandidate[];
+  unresolvedCandidates: readonly CauseCandidate[];
+  scoreBreakdown: Readonly<Record<string, number>>;
+}
+export class RootCauseSelector {
+  select(
+    candidates: readonly CauseCandidate[],
+    contradictions = 0,
+    unknowns = 0,
+  ): RootCauseSelection {
+    const ranked = [...candidates].sort(
+      (a, b) => b.confidence - a.confidence || a.causeId.localeCompare(b.causeId),
+    );
+    const selected =
+      contradictions > 0 || unknowns > 0
+        ? []
+        : ranked
+            .filter((c) => c.semanticKey?.startsWith("cause:") && c.confidence >= 0.6)
+            .slice(0, 1);
+    const selectedIds = new Set(selected.map((c) => c.causeId));
+    return Object.freeze({
+      selectedRootCauses: Object.freeze(selected.map((c) => ({ ...c, kind: "ROOT" as const }))),
+      contributingCauses: Object.freeze(
+        ranked
+          .filter((c) => !selectedIds.has(c.causeId))
+          .slice(0, 3)
+          .map((c) => ({ ...c, kind: "CONTRIBUTING" as const })),
+      ),
+      symptomCandidates: Object.freeze([]),
+      unresolvedCandidates: Object.freeze(contradictions || unknowns ? ranked : []),
+      scoreBreakdown: Object.freeze(
+        Object.fromEntries(ranked.map((c) => [c.causeId, c.confidence])),
+      ),
+    });
   }
 }
 export class BottleneckDetector {
@@ -356,6 +433,7 @@ export class BottleneckDetector {
         )
         .map((s): Bottleneck => ({
           bottleneckId: `bottleneck:${s.stepId}`,
+          semanticKey: `bottleneck:${s.stepId}`,
           stepId: s.stepId,
           reason:
             s.waitingMinutes > s.processingMinutes * 2

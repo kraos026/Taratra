@@ -15,6 +15,8 @@ import {
   FailureModeAnalyzer,
   ControlPoint,
   Dependency,
+  RootCauseSelector,
+  CausalSubjectId,
 } from "./process-causal";
 
 const evidence = (id: string, tags: string[], content = "Observed process fact") =>
@@ -125,5 +127,18 @@ describe("B2.4 process and causal intelligence", () => {
   });
   it("rejects invalid process metrics", () => {
     expect(() => ProcessStep.create({ stepId: "x", name: "x", errorRate: 2 })).toThrow();
+  });
+  it("uses canonical causal and bottleneck identities", () => {
+    expect(CausalSubjectId.create("cause:system-fragmentation").value).toBe(
+      "cause:system-fragmentation",
+    );
+    const bottleneck = new BottleneckDetector().detect(model()).find((x) => x.stepId === "copy");
+    expect(bottleneck?.semanticKey).toBe("bottleneck:copy");
+  });
+  it("does not force a root cause when evidence is unresolved", () => {
+    const candidates = new CausalReasoner().reason(model(), [], [evidence("e1", ["copy"])]);
+    const selection = new RootCauseSelector().select(candidates, 1, 0);
+    expect(selection.selectedRootCauses).toHaveLength(0);
+    expect(selection.unresolvedCandidates.length).toBeGreaterThan(0);
   });
 });

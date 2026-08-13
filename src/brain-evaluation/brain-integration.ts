@@ -16,6 +16,7 @@ import {
   ProcessObservationService,
   CausalReasoner,
   BottleneckDetector,
+  RootCauseSelector,
   HandoffAnalyzer,
   ReworkAnalyzer,
   ProcessDependencyGraph,
@@ -154,12 +155,22 @@ export class BrainIntegrationPipeline {
       declaredUncertaintyGapIds: gaps.filter((g) => g.urgency !== "CRITICAL").map((g) => g.gapId),
     };
     const observations = new ProcessObservationService().observe(input.process, input.evidence);
-    const causes = new CausalReasoner().reason(
+    const rawCauses = new CausalReasoner().reason(
       input.process,
       input.claims,
       input.evidence,
       input.unknowns,
     );
+    const selection = new RootCauseSelector().select(
+      rawCauses,
+      contradictions.length,
+      input.unknowns.length,
+    );
+    const causes = Object.freeze([
+      ...selection.selectedRootCauses,
+      ...selection.contributingCauses,
+      ...selection.unresolvedCandidates,
+    ]);
     const bottlenecks = new BottleneckDetector().detect(input.process);
     const conclusions = [
       ...new HandoffAnalyzer().analyze(input.process),
