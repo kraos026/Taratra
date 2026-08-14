@@ -53,6 +53,11 @@ import {
   type Evaluation,
 } from "./economic-intelligence";
 import { CriticalIssueDetector, type CriticalIssue } from "./critical-issues";
+import {
+  DataQualityDecisionGuard,
+  DecisionRobustnessGuard,
+  type DataQualityDecisionResult,
+} from "./decision-robustness";
 
 export interface BrainIntegrationInput {
   companyId: string;
@@ -98,6 +103,18 @@ export interface BrainIntegrationInput {
     humanApproval: number;
     observability: number;
   };
+  dataQualityDetails?: {
+    missingRequiredFields?: readonly string[];
+    duplicateRate?: number;
+    invalidValueCount?: number;
+    inconsistentIdentifierCount?: number;
+    staleDataRate?: number;
+    masterDataFragmentation?: number;
+    reconciliationFailures?: number;
+    unknownSourceReliability?: boolean;
+    criticalSchemaMismatch?: boolean;
+  };
+  strategicControlBenefit?: boolean;
 }
 export interface IntegratedBrainResult {
   companyId: string;
@@ -123,6 +140,8 @@ export interface IntegratedBrainResult {
   remainingUncertainty: number;
   integrationScorecard: Readonly<Record<string, number>>;
   criticalIssues: readonly CriticalIssue[];
+  dataQualityDecision: DataQualityDecisionResult;
+  decisionRobustness: ReturnType<DecisionRobustnessGuard["evaluate"]>;
 }
 
 export class BrainIntegrationPipeline {
@@ -168,10 +187,16 @@ export class BrainIntegrationPipeline {
       contradictions.length,
       input.unknowns.length,
     );
+    const unresolvedRootHypothesis = selection.unresolvedCandidates.find(
+      (cause) => cause.semanticKey?.startsWith("cause:") && cause.confidence >= 0.6,
+    );
     const causes = Object.freeze([
       ...selection.selectedRootCauses,
+      ...(unresolvedRootHypothesis ? [{ ...unresolvedRootHypothesis, kind: "ROOT" as const }] : []),
       ...selection.contributingCauses,
-      ...selection.unresolvedCandidates,
+      ...selection.unresolvedCandidates.filter(
+        (cause) => cause.causeId !== unresolvedRootHypothesis?.causeId,
+      ),
     ]);
     const bottlenecks = new BottleneckDetector().detect(input.process);
     const conclusions = [
@@ -208,6 +233,10 @@ export class BrainIntegrationPipeline {
         traceability: 1,
       },
     );
+    const dataQualityDecision = new DataQualityDecisionGuard().assess({
+      score: dataReadiness.score,
+      ...(input.dataQualityDetails ?? {}),
+    });
     const feasibility = new TechnicalFeasibilityAssessment().assess(
       input.feasibility ?? {
         requiredCapabilities: [],
@@ -283,7 +312,7 @@ export class BrainIntegrationPipeline {
       capabilityUnknown: feasibility.status === "UNKNOWN",
       dataReadiness: input.unknowns.length ? "UNKNOWN" : dataReadiness.status,
     });
-    const decision = new OpportunityDecisionEngine().decide({
+    const baselineDecision = new OpportunityDecisionEngine().decide({
       candidateType: candidate.candidateType,
       suitability,
       feasibility,
@@ -308,6 +337,60 @@ export class BrainIntegrationPipeline {
         ? []
         : ["economic evidence"],
     );
+    const decisionRobustness = new DecisionRobustnessGuard().evaluate({
+      dataQuality: dataQualityDecision,
+      economicSignal: economicEvaluation.signal,
+      economicInputs: Object.values(input.economicInputs),
+      contradictions,
+      evidence: input.evidence,
+      unknowns: input.unknowns,
+      strategicControlBenefit: input.strategicControlBenefit,
+    });
+    const decision =
+      decisionRobustness.decision === "ALLOW"
+        ? baselineDecision
+        : decisionRobustness.decision === "REJECT"
+          ? {
+              decision: "REJECT" as const,
+              reasons: ["LOW_MANUAL_COST" as const],
+              rationale: decisionRobustness.rationale,
+            }
+          : decisionRobustness.decision === "DEFER"
+            ? {
+                decision: "DEFER" as const,
+                reasons: ["CHANGE_COST_TOO_HIGH" as const],
+                rationale: decisionRobustness.rationale,
+              }
+            : decisionRobustness.decision === "REMEDIATE_FIRST"
+              ? {
+                  decision: "DEFER" as const,
+                  reasons: ["DATA_NOT_READY" as const],
+                  rationale: decisionRobustness.rationale,
+                }
+              : {
+                  decision: "NEED_MORE_EVIDENCE" as const,
+                  reasons: ["INSUFFICIENT_EVIDENCE" as const],
+                  rationale: decisionRobustness.rationale,
+                };
+    const candidateType =
+      decisionRobustness.decision === "REMEDIATE_FIRST"
+        ? "DATA_QUALITY"
+        : decisionRobustness.decision === "ALLOW"
+          ? candidate.candidateType
+          : "PROCESS_REDESIGN";
+    const qualifiedCandidate = OpportunityCandidate.create({
+      ...candidate,
+      candidateType,
+      prerequisites: [
+        ...candidate.prerequisites,
+        ...dataQualityDecision.requiredDataRemediation.map((description, index) => ({
+          id: `data-remediation:${index + 1}`,
+          description,
+          reason: "Data quality prerequisite",
+          blocking: true,
+        })),
+      ],
+    });
     const criticalIssues = new CriticalIssueDetector().detect({
       causes,
       bottlenecks,
@@ -357,14 +440,18 @@ export class BrainIntegrationPipeline {
       bottlenecks,
       dependencies,
       knowledgeMatches,
-      opportunities: Object.freeze([candidate]),
-      opportunityDecisions: Object.freeze([{ opportunityId: candidate.opportunityId, decision }]),
+      opportunities: Object.freeze([qualifiedCandidate]),
+      opportunityDecisions: Object.freeze([
+        { opportunityId: qualifiedCandidate.opportunityId, decision },
+      ]),
       economicEvaluation,
       reasoningTraces: Object.freeze(causes.map((c) => c.trace)),
       blockingIssues: Object.freeze(blockingIssues),
       remainingUncertainty: Math.min(1, input.unknowns.length * 0.2 + contradictions.length * 0.3),
       integrationScorecard: Object.freeze(scorecard),
       criticalIssues,
+      dataQualityDecision,
+      decisionRobustness,
     });
   }
 }

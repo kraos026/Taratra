@@ -446,7 +446,7 @@ export class BrainVersionComparator {
 
 export class SyntheticBrainEvaluationRunner {
   run(view: SyntheticEnterpriseView): IntegratedBrainResult {
-    const evidence = view.metrics.map((m) =>
+    const metricEvidence = view.metrics.map((m) =>
       Evidence.create({
         evidenceId: m.id,
         sourceType: "SYSTEM_RECORD",
@@ -461,6 +461,25 @@ export class SyntheticBrainEvaluationRunner {
         tenantId: `synthetic:${view.enterpriseId}`,
       }),
     );
+    const contradictoryInterviews = view.interviews.filter(
+      (interview) => interview.status === "CONTRADICTORY",
+    );
+    const interviewEvidence = contradictoryInterviews.map((interview) =>
+      Evidence.create({
+        evidenceId: `evidence:${interview.id}`,
+        sourceType: "INTERVIEW",
+        sourceReference: interview.sourceReference,
+        sourceModule: "work_intelligence",
+        capturedAt: new Date("2026-01-01"),
+        freshness: "CURRENT",
+        reliability: interview.actorId.includes("owner") ? 0.7 : 0.85,
+        content: `${interview.question}: ${interview.answer ?? "unknown"}`,
+        structuredValue: { [interview.question]: interview.answer },
+        provenance: { synthetic: true },
+        tenantId: `synthetic:${view.enterpriseId}`,
+      }),
+    );
+    const evidence = [...metricEvidence, ...interviewEvidence];
     const confidence = Confidence.create(
       0.7,
       {
@@ -481,7 +500,9 @@ export class SyntheticBrainEvaluationRunner {
           claimId: `claim:${i.id}`,
           kind: (i.status === "ACCURATE" ? "FACT" : "HYPOTHESIS") as ClaimKind,
           statement: `${i.question}: ${i.answer}`,
-          supportingEvidenceIds: evidence.map((e) => e.evidenceId),
+          supportingEvidenceIds: contradictoryInterviews.some((item) => item.id === i.id)
+            ? [`evidence:${i.id}`]
+            : metricEvidence.map((e) => e.evidenceId),
           confidence,
           rationale: `Interview ${i.status}`,
           createdByModule: "work_intelligence",
@@ -506,6 +527,7 @@ export class SyntheticBrainEvaluationRunner {
           serviceCapacity: s.serviceCapacity ?? 0,
           reworkRate: s.reworkRate ?? 0,
           exceptionFrequency: s.exceptionFrequency ?? 0,
+          errorRate: s.exceptionFrequency ?? 0,
           singlePersonConstraint: s.singlePersonConstraint,
           volume: view.metrics.find((m) => m.name === "orders/day")?.value ?? 0,
         }),
@@ -576,6 +598,14 @@ export class SyntheticBrainEvaluationRunner {
         batch: 0.8,
         humanApproval: 1,
         observability: 0.6,
+      },
+      dataQualityDetails: {
+        masterDataFragmentation: Math.max(
+          0,
+          1 - Math.min(...view.systems.map((system) => system.dataQuality)),
+        ),
+        invalidValueCount: view.systems.some((system) => system.dataQuality < 0.5) ? 1 : 0,
+        reconciliationFailures: view.systems.some((system) => system.dataQuality < 0.5) ? 1 : 0,
       },
     };
     return new BrainIntegrationPipeline().run(input);

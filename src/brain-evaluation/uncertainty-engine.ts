@@ -155,7 +155,7 @@ export class ContradictionDetector {
         if (!kind) continue;
         contradictions.push(
           Contradiction.create({
-            contradictionId: `contradiction:${input.subject}:${contradictions.length + 1}`,
+            contradictionId: `contradiction:${input.subject.replace(/[^a-zA-Z0-9_-]+/g, "-")}:${contradictions.length + 1}`,
             kind,
             leftClaimId: left.claimId,
             rightClaimId: right.claimId,
@@ -181,7 +181,7 @@ export class ContradictionDetector {
           if (!firstClaim || !secondClaim) continue;
           contradictions.push(
             Contradiction.create({
-              contradictionId: `contradiction:${input.subject}:assumption:${contradictions.length + 1}`,
+              contradictionId: `contradiction:${input.subject.replace(/[^a-zA-Z0-9_-]+/g, "-")}:assumption:${contradictions.length + 1}`,
               kind: "EVIDENCE_VS_ASSUMPTION",
               leftClaimId: firstClaim.claimId,
               rightClaimId: secondClaim.claimId,
