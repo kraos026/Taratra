@@ -11,7 +11,18 @@ export type OpportunityType =
   | "CONTROL_IMPROVEMENT"
   | "OBSERVABILITY"
   | "DO_NOT_AUTOMATE";
-export type OpportunityStatus = "CANDIDATE" | "DEFERRED" | "REJECTED" | "READY";
+export type OpportunityStatus =
+  | "DETECTED"
+  | "UNDER_INVESTIGATION"
+  | "QUALIFIED"
+  | "CONDITIONALLY_QUALIFIED"
+  | "DEFERRED"
+  | "REJECTED"
+  | "RECOMMENDED"
+  | "ECONOMICALLY_UNQUALIFIED"
+  | "REMEDIATION_REQUIRED"
+  | "CANDIDATE"
+  | "READY";
 export type OpportunityDecision =
   "RECOMMEND_CANDIDATE" | "DEFER" | "REJECT" | "HUMAN_ASSISTED" | "NEED_MORE_EVIDENCE";
 export type Readiness = "READY" | "READY_WITH_CONDITIONS" | "NOT_READY" | "NEED_MORE_EVIDENCE";
@@ -127,6 +138,26 @@ export interface OpportunityPrerequisite {
   description: string;
   reason: string;
   blocking: boolean;
+}
+
+export type OpportunityPriorityAction =
+  "RECOMMEND_NOW" | "INVESTIGATE" | "REMEDIATE_FIRST" | "DEFER" | "DO_NOT_AUTOMATE";
+
+export interface OpportunityActionCard {
+  opportunityId: string;
+  title: string;
+  problem: string;
+  rootCause: string;
+  potentialImpact: Readonly<Record<string, number | string | null>>;
+  status: OpportunityStatus;
+  action: OpportunityPriorityAction;
+  whyDetected: string;
+  whyNotRecommended: string | null;
+  requiredEvidence: readonly string[];
+  prerequisites: readonly OpportunityPrerequisite[];
+  nextBestAction: string;
+  confidence: number;
+  trace: ReasoningTrace;
 }
 export interface Assessment<T extends string> {
   status: T;

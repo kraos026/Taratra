@@ -42,6 +42,9 @@ import {
   OpportunityRiskAssessment,
   OpportunityEvidenceGuard,
   OpportunityDecisionEngine,
+  type OpportunityActionCard,
+  type OpportunityPriorityAction,
+  type OpportunityStatus,
 } from "./opportunity-intelligence";
 import {
   BaselineEconomicModel,
@@ -142,6 +145,7 @@ export interface IntegratedBrainResult {
   criticalIssues: readonly CriticalIssue[];
   dataQualityDecision: DataQualityDecisionResult;
   decisionRobustness: ReturnType<DecisionRobustnessGuard["evaluate"]>;
+  opportunityActions: readonly OpportunityActionCard[];
 }
 
 export class BrainIntegrationPipeline {
@@ -372,15 +376,37 @@ export class BrainIntegrationPipeline {
                   reasons: ["INSUFFICIENT_EVIDENCE" as const],
                   rationale: decisionRobustness.rationale,
                 };
-    const candidateType =
-      decisionRobustness.decision === "REMEDIATE_FIRST"
-        ? "DATA_QUALITY"
-        : decisionRobustness.decision === "ALLOW"
-          ? candidate.candidateType
-          : "PROCESS_REDESIGN";
+    const status: OpportunityStatus =
+      decisionRobustness.decision === "ALLOW"
+        ? decision.decision === "RECOMMEND_CANDIDATE"
+          ? "RECOMMENDED"
+          : "QUALIFIED"
+        : decisionRobustness.decision === "REJECT"
+          ? "REJECTED"
+          : decisionRobustness.decision === "DEFER"
+            ? "DEFERRED"
+            : decisionRobustness.decision === "REMEDIATE_FIRST"
+              ? "REMEDIATION_REQUIRED"
+              : decisionRobustness.contradictionResolution.some(
+                    (resolution) => resolution.state === "UNRESOLVED_MATERIAL",
+                  )
+                ? "UNDER_INVESTIGATION"
+                : decisionRobustness.economicallyUncertain
+                  ? "ECONOMICALLY_UNQUALIFIED"
+                  : "UNDER_INVESTIGATION";
+    const action: OpportunityPriorityAction =
+      decisionRobustness.decision === "ALLOW" && decision.decision === "RECOMMEND_CANDIDATE"
+        ? "RECOMMEND_NOW"
+        : decisionRobustness.decision === "REMEDIATE_FIRST"
+          ? "REMEDIATE_FIRST"
+          : decisionRobustness.decision === "REJECT"
+            ? "DO_NOT_AUTOMATE"
+            : decisionRobustness.decision === "DEFER"
+              ? "DEFER"
+              : "INVESTIGATE";
     const qualifiedCandidate = OpportunityCandidate.create({
       ...candidate,
-      candidateType,
+      status,
       prerequisites: [
         ...candidate.prerequisites,
         ...dataQualityDecision.requiredDataRemediation.map((description, index) => ({
@@ -391,6 +417,43 @@ export class BrainIntegrationPipeline {
         })),
       ],
     });
+    const requiredEvidence = Object.freeze([
+      ...decisionRobustness.reasons.filter((reason) => reason.includes("economic")),
+      ...decisionRobustness.contradictionResolution.flatMap(
+        (resolution) => resolution.evidenceNeeded,
+      ),
+      ...dataQualityDecision.evidenceNeeded,
+    ]);
+    const opportunityActions: readonly OpportunityActionCard[] = Object.freeze([
+      Object.freeze({
+        opportunityId: qualifiedCandidate.opportunityId,
+        title: qualifiedCandidate.subject,
+        problem: qualifiedCandidate.problemStatement,
+        rootCause:
+          causes.find((cause) => cause.kind === "ROOT")?.statement ??
+          "Root cause under investigation",
+        potentialImpact: Object.freeze({
+          volume: qualifiedCandidate.valueSignals.volume ?? null,
+          timeConsumed: qualifiedCandidate.valueSignals.timeConsumed ?? null,
+        }),
+        status,
+        action,
+        whyDetected: "Observed process evidence supports a candidate",
+        whyNotRecommended: action === "RECOMMEND_NOW" ? null : decisionRobustness.rationale,
+        requiredEvidence,
+        prerequisites: qualifiedCandidate.prerequisites,
+        nextBestAction:
+          action === "REMEDIATE_FIRST"
+            ? "Complete data remediation and re-evaluate"
+            : action === "DO_NOT_AUTOMATE"
+              ? "Retain the current process or redesign it without automation"
+              : action === "RECOMMEND_NOW"
+                ? "Proceed to controlled qualification"
+                : "Collect the required evidence and re-evaluate",
+        confidence: qualifiedCandidate.confidence,
+        trace: qualifiedCandidate.trace,
+      }),
+    ]);
     const criticalIssues = new CriticalIssueDetector().detect({
       causes,
       bottlenecks,
@@ -452,6 +515,7 @@ export class BrainIntegrationPipeline {
       criticalIssues,
       dataQualityDecision,
       decisionRobustness,
+      opportunityActions,
     });
   }
 }

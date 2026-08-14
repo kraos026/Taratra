@@ -80,6 +80,13 @@ export interface ScenarioEvaluationResult {
   status: EvaluationStatus;
   overallScore: number;
 }
+export interface OpportunityEvaluationMetrics {
+  detectionRecall: number;
+  qualificationRecall: number;
+  recommendationPrecision: number;
+  recommendationRecall: number;
+  unsafeRecommendationRate: number;
+}
 export interface BrainEvaluationRun {
   evaluationId: string;
   scenarioId: string;
@@ -96,6 +103,7 @@ export interface BrainEvaluationRun {
   failures: readonly BrainEvaluationFailure[];
   warnings: readonly BrainEvaluationFailure[];
   status: EvaluationStatus;
+  opportunityMetrics: OpportunityEvaluationMetrics;
 }
 export interface BrainEvaluationSuiteResult {
   runs: readonly BrainEvaluationRun[];
@@ -228,7 +236,17 @@ export class BrainEvaluator {
         b.stepId === truth.actualBottleneck,
     );
     const decisions = result.opportunityDecisions.map((d) => d.decision.decision);
-    const automation = result.opportunities.filter((o) => o.candidateType === "AUTOMATION");
+    const recommended = result.opportunityDecisions
+      .filter((item) => item.decision.decision === "RECOMMEND_CANDIDATE")
+      .map((item) =>
+        result.opportunities.find(
+          (opportunity) => opportunity.opportunityId === item.opportunityId,
+        ),
+      )
+      .filter((opportunity): opportunity is NonNullable<typeof opportunity> =>
+        Boolean(opportunity),
+      );
+    const automation = recommended.filter((o) => o.candidateType === "AUTOMATION");
     const forbidden = automation.filter((o) =>
       truth.forbiddenRecommendations.some((f) =>
         o.problemStatement.toLowerCase().includes(f.replaceAll("_", " ").toLowerCase()),
@@ -317,7 +335,7 @@ export class BrainEvaluator {
         falseAutomationRate: unnecessary ? 1 : 0,
       }),
       OPPORTUNITY_RECALL: score(
-        truth.economicallyJustified.length ? (automation.length ? 100 : 0) : 100,
+        truth.economicallyJustified.length ? (result.opportunities.length ? 100 : 0) : 100,
       ),
       AUTOMATION_REJECTION_QUALITY: score(lowValue ? (automation.length ? 0 : 100) : 100),
       HUMAN_CONTROL_PRESERVATION: score(controlViolation ? 0 : 100, {
@@ -363,6 +381,27 @@ export class BrainEvaluator {
       failures: Object.freeze(failures),
       warnings: Object.freeze(warnings),
       status,
+      opportunityMetrics: Object.freeze({
+        detectionRecall: truth.economicallyJustified.length
+          ? result.opportunities.length
+            ? 100
+            : 0
+          : 100,
+        qualificationRecall: truth.economicallyJustified.length
+          ? result.opportunities.some((opportunity) =>
+              ["QUALIFIED", "RECOMMENDED"].includes(opportunity.status),
+            )
+            ? 100
+            : 0
+          : 100,
+        recommendationPrecision: recommended.length && lowValue ? 0 : 100,
+        recommendationRecall: truth.economicallyJustified.length
+          ? automation.length
+            ? 100
+            : 0
+          : 100,
+        unsafeRecommendationRate: controlViolation || unnecessary ? 100 : 0,
+      }),
     });
   }
   evaluateSuite(runs: readonly BrainEvaluationRun[]): BrainEvaluationSuiteResult {
