@@ -225,6 +225,8 @@ export class SyntheticRealismLayer {
       task: "PROCESS_OBSERVATION",
       schemaVersion: "synthetic-realism-v1",
       language: perspectiveInput.language,
+      knownClaims: perspectiveInput.allowedFacts,
+      knownUnknowns: perspectiveInput.unknownFacts,
     });
     const rejectionReasons = this.validator.validate(text, perspectiveInput);
     return this.material(sourceId, "DOCUMENT", text, interpretation, rejectionReasons);

@@ -7,6 +7,8 @@ export * from "./process-causal";
 export * from "./knowledge-foundation";
 export * from "./opportunity-intelligence";
 export * from "./synthetic-realism";
+export * from "./live-synthetic-ai";
+export * from "./live-synthetic-pilot";
 export * from "./generalization-benchmark";
 export * from "./economic-intelligence";
 export * from "./brain-integration";
