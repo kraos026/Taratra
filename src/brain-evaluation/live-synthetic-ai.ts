@@ -64,6 +64,34 @@ export interface LiveAICompletionRequest {
   readonly request: AIInterpretationRequest;
   readonly prompt: SyntheticPromptContract;
   readonly config: LiveSyntheticAIConfig;
+  readonly capabilities: ProviderRequestCapabilities;
+}
+
+export interface ProviderRequestCapabilities {
+  readonly supportsTemperature: boolean;
+  readonly requiredTemperature?: number;
+  readonly maxTokenField: "max_tokens" | "max_completion_tokens";
+  readonly supportsStructuredOutput: boolean;
+  readonly supportsReasoningEffort: boolean;
+}
+
+export function resolveProviderRequestCapabilities(
+  provider: string,
+  model: string,
+): ProviderRequestCapabilities {
+  if (provider.toLowerCase() === "kimi" && model === "kimi-k3")
+    return Object.freeze({
+      supportsTemperature: false,
+      maxTokenField: "max_completion_tokens",
+      supportsStructuredOutput: true,
+      supportsReasoningEffort: false,
+    });
+  return Object.freeze({
+    supportsTemperature: true,
+    maxTokenField: "max_tokens",
+    supportsStructuredOutput: true,
+    supportsReasoningEffort: false,
+  });
 }
 
 export interface LiveAICompletionResponse {
@@ -96,9 +124,15 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
         headers: { "content-type": "application/json", authorization: `Bearer ${this.apiKey}` },
         body: JSON.stringify({
           model: input.config.model,
-          temperature: input.config.temperature,
-          max_tokens: input.config.maxOutputTokens,
-          response_format: input.config.structuredOutput ? { type: "json_object" } : undefined,
+          ...(input.capabilities.supportsTemperature
+            ? { temperature: input.config.temperature }
+            : input.capabilities.requiredTemperature !== undefined
+              ? { temperature: input.capabilities.requiredTemperature }
+              : {}),
+          [input.capabilities.maxTokenField]: input.config.maxOutputTokens,
+          ...(input.config.structuredOutput && input.capabilities.supportsStructuredOutput
+            ? { response_format: { type: "json_object" } }
+            : {}),
           messages: [
             { role: "system", content: input.prompt.system },
             { role: "user", content: input.request.sourceText },
@@ -238,6 +272,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
     inputTokens: 0,
     outputTokens: 0,
   });
+  private readonly capabilities: ProviderRequestCapabilities;
 
   constructor(
     private readonly transport: LiveAITransport,
@@ -245,6 +280,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
     private readonly promptKind: SyntheticPromptKind = "INTERVIEW",
   ) {
     this.providerId = `live-synthetic:${config.provider}`;
+    this.capabilities = resolveProviderRequestCapabilities(config.provider, config.model);
   }
 
   get usage(): LiveAIUsage {
@@ -273,6 +309,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
           request: providerRequest,
           prompt: SYNTHETIC_PROMPT_CONTRACTS[this.promptKind],
           config: this.config,
+          capabilities: this.capabilities,
         });
         const result = this.validatePerspective(response.result, request);
         this.usageValue = Object.freeze({
@@ -286,6 +323,12 @@ export class LiveSyntheticAIProvider implements AIProvider {
         return result;
       } catch (error) {
         lastError = error;
+        if (
+          error instanceof SyntheticLiveAIError &&
+          error.code === "PROVIDER_ERROR" &&
+          /HTTP 4\d\d/.test(error.message)
+        )
+          break;
         if (attempt === this.config.maxRetries) break;
       }
     }

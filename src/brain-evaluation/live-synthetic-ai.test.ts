@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   InMemoryLiveAITransport,
+  OpenAICompatibleSyntheticTransport,
   LiveSyntheticAIProvider,
   readLiveSyntheticAIConfig,
+  resolveProviderRequestCapabilities,
   serializeActorPerspective,
   SyntheticLiveAIError,
 } from "./live-synthetic-ai";
@@ -109,5 +111,49 @@ describe("LiveSyntheticAIProvider", () => {
     );
     const output = await provider.interpret(request);
     expect(output.candidates[0]?.sourceReference).toBe("source-1:1");
+  });
+
+  it("normalizes Kimi K3 without temperature and with max_completion_tokens", () => {
+    const capabilities = resolveProviderRequestCapabilities("kimi", "kimi-k3");
+    expect(capabilities.supportsTemperature).toBe(false);
+    expect(capabilities.maxTokenField).toBe("max_completion_tokens");
+    expect(resolveProviderRequestCapabilities("openai", "gpt-test").maxTokenField).toBe(
+      "max_tokens",
+    );
+  });
+
+  it("does not retry an invalid HTTP 400", async () => {
+    let calls = 0;
+    const transport = new InMemoryLiveAITransport(() => {
+      calls += 1;
+      throw new SyntheticLiveAIError("PROVIDER_ERROR", "Live provider HTTP 400");
+    });
+    const provider = new LiveSyntheticAIProvider(transport, config({ maxRetries: 2 }));
+    await expect(provider.interpret(request)).rejects.toMatchObject({ code: "PROVIDER_ERROR" });
+    expect(calls).toBe(1);
+  });
+
+  it("emits the normalized Kimi request fields", async () => {
+    let body: Record<string, unknown> | undefined;
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }] }), {
+        status: 200,
+      });
+    };
+    const transport = new OpenAICompatibleSyntheticTransport(
+      "https://example.invalid",
+      "secret",
+      fetcher,
+    );
+    await transport.complete({
+      request,
+      prompt: { kind: "INTERVIEW", version: "1", system: "bounded" },
+      config: config({ provider: "kimi", model: "kimi-k3" }),
+      capabilities: resolveProviderRequestCapabilities("kimi", "kimi-k3"),
+    });
+    expect(body).not.toHaveProperty("temperature");
+    expect(body).toHaveProperty("max_completion_tokens");
+    expect(body).not.toHaveProperty("max_tokens");
   });
 });
