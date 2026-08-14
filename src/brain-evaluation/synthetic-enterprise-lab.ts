@@ -61,6 +61,14 @@ export interface SyntheticProcess {
     actorId: string;
     systemId: string;
     action: string;
+    processingMinutes?: number;
+    waitingMinutes?: number;
+    queueDepth?: number;
+    arrivalRate?: number;
+    serviceCapacity?: number;
+    reworkRate?: number;
+    exceptionFrequency?: number;
+    singlePersonConstraint?: boolean;
     handoff?: string;
     control?: string;
   }[];
@@ -237,6 +245,11 @@ export class SyntheticEnterpriseGenerator {
             systemId: "crm",
             action: "capture order",
             handoff: "erp",
+            processingMinutes: 5,
+            waitingMinutes: 0,
+            queueDepth: 0,
+            arrivalRate: 6,
+            serviceCapacity: 10,
           },
           {
             id: "write",
@@ -244,8 +257,26 @@ export class SyntheticEnterpriseGenerator {
             systemId: "erp",
             action: "copy order",
             control: profile.controlIntensity > 0.7 ? "financial approval" : undefined,
+            processingMinutes: 10,
+            waitingMinutes: profile.controlIntensity > 0.7 ? 0 : 30,
+            queueDepth: profile.controlIntensity > 0.7 ? 0 : 12,
+            arrivalRate: 12,
+            serviceCapacity: profile.controlIntensity > 0.7 ? 12 : 8,
+            reworkRate: profile.exceptionRate + 0.08,
+            exceptionFrequency: profile.dataQuality < 0.5 ? 0.2 : 0.03,
           },
-          { id: "approve", actorId: "actor-finance", systemId: "erp", action: "approve" },
+          {
+            id: "approve",
+            actorId: "actor-finance",
+            systemId: "erp",
+            action: "approve",
+            processingMinutes: 5,
+            waitingMinutes: profile.controlIntensity > 0.7 ? 40 : 0,
+            queueDepth: profile.controlIntensity > 0.7 ? 14 : 0,
+            arrivalRate: 8,
+            serviceCapacity: 4,
+            singlePersonConstraint: profile.controlIntensity > 0.7,
+          },
         ]),
         dependencies: freeze(["master-data"]),
         bottleneck: profile.controlIntensity > 0.7 ? "approve" : "write",

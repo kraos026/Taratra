@@ -41,6 +41,11 @@ export interface ProcessStepInput {
   volume?: number;
   decisionPoint?: boolean;
   exceptionFrequency?: number;
+  queueDepth?: number;
+  arrivalRate?: number;
+  serviceCapacity?: number;
+  utilization?: number;
+  singlePersonConstraint?: boolean;
 }
 export class ProcessStep {
   readonly stepId: string;
@@ -57,6 +62,11 @@ export class ProcessStep {
   readonly volume: number;
   readonly decisionPoint: boolean;
   readonly exceptionFrequency: number;
+  readonly queueDepth: number;
+  readonly arrivalRate: number;
+  readonly serviceCapacity: number;
+  readonly utilization: number;
+  readonly singlePersonConstraint: boolean;
   private constructor(input: ProcessStepInput) {
     this.stepId = required(input.stepId, "stepId");
     this.name = required(input.name, "step name");
@@ -72,6 +82,15 @@ export class ProcessStep {
     this.volume = nonNegative(input.volume ?? 0, "volume");
     this.decisionPoint = input.decisionPoint ?? false;
     this.exceptionFrequency = ratio(input.exceptionFrequency ?? 0, "exceptionFrequency");
+    this.queueDepth = nonNegative(input.queueDepth ?? 0, "queueDepth");
+    this.arrivalRate = nonNegative(input.arrivalRate ?? 0, "arrivalRate");
+    this.serviceCapacity = nonNegative(input.serviceCapacity ?? 0, "serviceCapacity");
+    this.utilization = ratio(
+      input.utilization ??
+        Math.min(1, this.serviceCapacity ? this.arrivalRate / this.serviceCapacity : 0),
+      "utilization",
+    );
+    this.singlePersonConstraint = input.singlePersonConstraint ?? false;
     freeze(this);
   }
   static create(input: ProcessStepInput) {
@@ -268,6 +287,82 @@ export interface Bottleneck {
   confidence: number;
   impact: number;
   observed: boolean;
+  type?:
+    | "CAPACITY"
+    | "QUEUE"
+    | "APPROVAL"
+    | "HANDOFF"
+    | "REWORK"
+    | "EXCEPTION"
+    | "ROLE"
+    | "SYSTEM"
+    | "CONTROL"
+    | "DATA"
+    | "UNKNOWN";
+  signals?: readonly BottleneckSignal[];
+  severity?: "LOW" | "MEDIUM" | "HIGH" | "CRITICAL";
+  materiality?: number;
+  warnings?: readonly string[];
+}
+export type BottleneckSignalFamily =
+  | "WAITING_TIME"
+  | "QUEUE_ACCUMULATION"
+  | "CAPACITY_MISMATCH"
+  | "HIGH_UTILIZATION"
+  | "APPROVAL_LATENCY"
+  | "REWORK_AMPLIFICATION"
+  | "EXCEPTION_OVERLOAD"
+  | "HANDOFF_DELAY"
+  | "SINGLE_PERSON_CONSTRAINT"
+  | "DOWNSTREAM_STARVATION"
+  | "UPSTREAM_CONGESTION"
+  | "THROUGHPUT_LIMIT"
+  | "CONTROL_CONSTRAINT";
+export interface BottleneckSignal {
+  family: BottleneckSignalFamily;
+  source: string;
+  metric: string;
+  strength: number;
+  confidence: number;
+  supportingEvidence: readonly string[];
+  affectedStep: string;
+}
+export class BottleneckSignalModel {
+  signals(step: ProcessStep): readonly BottleneckSignal[] {
+    const signals: BottleneckSignal[] = [];
+    const add = (family: BottleneckSignalFamily, metric: string, strength: number) => {
+      if (strength > 0)
+        signals.push({
+          family,
+          source: `process-step:${step.stepId}`,
+          metric,
+          strength: Math.min(1, strength),
+          confidence: 0.8,
+          supportingEvidence: [],
+          affectedStep: step.stepId,
+        });
+    };
+    add(
+      "WAITING_TIME",
+      "waiting/process ratio",
+      step.processingMinutes
+        ? Math.max(0, (step.waitingMinutes / step.processingMinutes - 2) / 2)
+        : 0,
+    );
+    add("QUEUE_ACCUMULATION", "queue depth", Math.min(1, step.queueDepth / 10));
+    add(
+      "CAPACITY_MISMATCH",
+      "arrival vs service capacity",
+      step.serviceCapacity && step.arrivalRate > step.serviceCapacity
+        ? (step.arrivalRate - step.serviceCapacity) / step.serviceCapacity
+        : 0,
+    );
+    add("HIGH_UTILIZATION", "utilization", Math.max(0, step.utilization - 0.8) / 0.2);
+    add("REWORK_AMPLIFICATION", "rework rate", step.reworkRate);
+    add("EXCEPTION_OVERLOAD", "exception frequency", step.exceptionFrequency);
+    if (step.singlePersonConstraint) add("SINGLE_PERSON_CONSTRAINT", "single-person constraint", 1);
+    return Object.freeze(signals.map((signal) => Object.freeze(signal)));
+  }
 }
 export interface FailureMode {
   failureModeId: string;
@@ -424,37 +519,43 @@ export class BottleneckDetector {
   detect(model: ProcessModel): readonly Bottleneck[] {
     return Object.freeze(
       model.process.steps
-        .filter(
-          (s) =>
-            s.waitingMinutes > s.processingMinutes * 2 ||
-            s.reworkRate >= 0.3 ||
-            s.exceptionFrequency >= 0.3 ||
-            s.volume >= 100,
-        )
-        .map((s): Bottleneck => ({
-          bottleneckId: `bottleneck:${s.stepId}`,
-          semanticKey: `bottleneck:${s.stepId}`,
-          stepId: s.stepId,
-          reason:
-            s.waitingMinutes > s.processingMinutes * 2
-              ? "Waiting time materially exceeds processing time"
-              : s.reworkRate >= 0.3
-                ? "High rework rate"
-                : s.exceptionFrequency >= 0.3
-                  ? "High exception frequency"
-                  : "Capacity pressure",
-          evidenceIds: [],
-          confidence: 0.7,
-          impact: round(
-            Math.min(
-              1,
-              (s.waitingMinutes / (s.processingMinutes + 1)) * 0.2 +
-                s.reworkRate * 0.4 +
-                s.exceptionFrequency * 0.4,
-            ),
-          ),
-          observed: true,
-        })),
+        .map((s): Bottleneck | null => {
+          const signals = new BottleneckSignalModel().signals(s);
+          const strong = signals.filter((signal) => signal.strength >= 0.3);
+          if (!strong.length && s.volume < 100) return null;
+          const primary = strong.sort(
+            (a, b) => b.strength - a.strength || a.family.localeCompare(b.family),
+          )[0];
+          const materiality = Math.min(1, (s.volume / 100) * 0.3 + (primary?.strength ?? 0) * 0.7);
+          const type =
+            primary?.family === "APPROVAL_LATENCY" || s.decisionPoint
+              ? "APPROVAL"
+              : primary?.family === "QUEUE_ACCUMULATION"
+                ? "QUEUE"
+                : primary?.family === "REWORK_AMPLIFICATION"
+                  ? "REWORK"
+                  : primary?.family === "EXCEPTION_OVERLOAD"
+                    ? "EXCEPTION"
+                    : primary?.family === "SINGLE_PERSON_CONSTRAINT"
+                      ? "ROLE"
+                      : "CAPACITY";
+          return {
+            bottleneckId: `bottleneck:${s.stepId}`,
+            semanticKey: `bottleneck:${s.stepId}`,
+            stepId: s.stepId,
+            reason: primary?.metric ?? "Capacity pressure",
+            evidenceIds: [],
+            confidence: 0.7,
+            impact: materiality,
+            observed: true,
+            type,
+            signals: Object.freeze(strong),
+            severity: materiality >= 0.8 ? "HIGH" : materiality >= 0.5 ? "MEDIUM" : "LOW",
+            materiality,
+            warnings: Object.freeze([]),
+          };
+        })
+        .filter((b): b is Bottleneck => b !== null),
     );
   }
 }

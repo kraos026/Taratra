@@ -52,6 +52,7 @@ import {
   type EconomicInput,
   type Evaluation,
 } from "./economic-intelligence";
+import { CriticalIssueDetector, type CriticalIssue } from "./critical-issues";
 
 export interface BrainIntegrationInput {
   companyId: string;
@@ -121,6 +122,7 @@ export interface IntegratedBrainResult {
   blockingIssues: readonly string[];
   remainingUncertainty: number;
   integrationScorecard: Readonly<Record<string, number>>;
+  criticalIssues: readonly CriticalIssue[];
 }
 
 export class BrainIntegrationPipeline {
@@ -306,6 +308,16 @@ export class BrainIntegrationPipeline {
         ? []
         : ["economic evidence"],
     );
+    const criticalIssues = new CriticalIssueDetector().detect({
+      causes,
+      bottlenecks,
+      unknowns: input.unknowns,
+      contradictions,
+      mandatoryControlSubjects: input.process.controls
+        .filter((control) => control.requiredHuman)
+        .map((control) => control.stepId),
+      negativeEconomics: economicEvaluation.signal === "NEGATIVE_VALUE",
+    });
     const blockingIssues = [
       ...gaps.filter((g) => g.urgency === "CRITICAL").map((g) => g.gapId),
       ...decision.reasons,
@@ -352,6 +364,7 @@ export class BrainIntegrationPipeline {
       blockingIssues: Object.freeze(blockingIssues),
       remainingUncertainty: Math.min(1, input.unknowns.length * 0.2 + contradictions.length * 0.3),
       integrationScorecard: Object.freeze(scorecard),
+      criticalIssues,
     });
   }
 }
