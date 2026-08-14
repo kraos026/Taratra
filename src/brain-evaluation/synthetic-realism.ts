@@ -250,6 +250,7 @@ export class SyntheticRealismLayer {
       knownClaims: perspective.knownFacts,
       knownUnknowns: perspective.unknownFacts,
       language: perspective.language,
+      speakerRole: perspective.role,
     });
     const renderedText = [
       text,

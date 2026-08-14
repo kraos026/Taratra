@@ -4,6 +4,11 @@ import type {
   AIProvider,
 } from "./ai-interpretation-gateway";
 import type { ActorPerspective, DocumentPerspective } from "./synthetic-realism";
+import {
+  parseSyntheticExpressionEnvelope,
+  SyntheticExpressionParseError,
+  type SyntheticExpressionEnvelope,
+} from "./synthetic-expression-contract";
 
 export type SyntheticPromptKind =
   "INTERVIEW" | "FOLLOW_UP" | "EMAIL" | "SOP" | "MEETING_NOTES" | "PROCESS_DESCRIPTION";
@@ -19,33 +24,39 @@ export const SYNTHETIC_PROMPT_CONTRACTS: Readonly<
 > = Object.freeze({
   INTERVIEW: Object.freeze({
     kind: "INTERVIEW",
-    version: "1",
-    system: "Express only the supplied actor perspective as data.",
+    version: "2",
+    system:
+      "Return exactly one JSON object matching the synthetic expression envelope. Put natural-language business expression only in content. Do not output commentary. Do not invent metrics, systems, or policies. Stay within the supplied perspective, express beliefs as beliefs, and preserve uncertainty.",
   }),
   FOLLOW_UP: Object.freeze({
     kind: "FOLLOW_UP",
-    version: "1",
-    system: "Answer the follow-up using only the supplied actor perspective as data.",
+    version: "2",
+    system:
+      "Return exactly one JSON object matching the synthetic expression envelope. Put the follow-up answer only in content. Do not output commentary or invent facts, metrics, systems, or policies. Preserve uncertainty and beliefs.",
   }),
   EMAIL: Object.freeze({
     kind: "EMAIL",
-    version: "1",
-    system: "Write an email using only the supplied document perspective as data.",
+    version: "2",
+    system:
+      "Return exactly one JSON object matching the synthetic expression envelope. Put email prose only in content. Do not output commentary or invent facts, metrics, systems, or policies.",
   }),
   SOP: Object.freeze({
     kind: "SOP",
-    version: "1",
-    system: "Write SOP prose using only the supplied document perspective as data.",
+    version: "2",
+    system:
+      "Return exactly one JSON object matching the synthetic expression envelope. Put SOP prose only in content. Do not output commentary or invent facts, metrics, or policies.",
   }),
   MEETING_NOTES: Object.freeze({
     kind: "MEETING_NOTES",
-    version: "1",
-    system: "Write meeting notes using only the supplied perspective as data.",
+    version: "2",
+    system:
+      "Return exactly one JSON object matching the synthetic expression envelope. Put meeting notes only in content. Preserve uncertainty and do not invent facts, metrics, systems, or policies.",
   }),
   PROCESS_DESCRIPTION: Object.freeze({
     kind: "PROCESS_DESCRIPTION",
-    version: "1",
-    system: "Describe the process using only the supplied perspective as data.",
+    version: "2",
+    system:
+      "Return exactly one JSON object matching the synthetic expression envelope. Put process prose only in content. Do not output commentary or invent facts, metrics, systems, or policies.",
   }),
 });
 
@@ -95,7 +106,8 @@ export function resolveProviderRequestCapabilities(
 }
 
 export interface LiveAICompletionResponse {
-  readonly result: AIInterpretationResult;
+  readonly result?: AIInterpretationResult;
+  readonly expression?: SyntheticExpressionEnvelope;
   readonly inputTokens?: number;
   readonly outputTokens?: number;
   readonly latencyMs?: number;
@@ -149,9 +161,16 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
       const content = payload.choices?.[0]?.message?.content;
       if (!content)
         throw new SyntheticLiveAIError("INVALID_OUTPUT", "Live provider returned no content");
-      const parsed = JSON.parse(content) as AIInterpretationResult;
+      let expression: SyntheticExpressionEnvelope;
+      try {
+        expression = parseSyntheticExpressionEnvelope(content, input.request.speakerRole);
+      } catch (error) {
+        if (error instanceof SyntheticExpressionParseError)
+          throw new SyntheticLiveAIError("INVALID_OUTPUT", error.code);
+        throw error;
+      }
       return {
-        result: parsed,
+        expression,
         inputTokens: payload.usage?.prompt_tokens,
         outputTokens: payload.usage?.completion_tokens,
         latencyMs: Date.now() - started,
@@ -262,6 +281,38 @@ export function readLiveSyntheticAIConfig(
   });
 }
 
+function expressionToInterpretation(
+  expression: SyntheticExpressionEnvelope,
+  request: AIInterpretationRequest,
+  provider: string,
+  model: string,
+): AIInterpretationResult {
+  return Object.freeze({
+    requestId: request.requestId,
+    provider,
+    model,
+    task: request.task,
+    schemaVersion: request.schemaVersion,
+    candidates: Object.freeze([
+      Object.freeze({
+        candidateId: expression.expressionId,
+        candidateType: "PROCESS_OBSERVATION_CANDIDATE" as const,
+        statement: expression.content,
+        sourceReference: `${request.sourceId}:1`,
+        sourceExcerpt: expression.content.slice(0, 160),
+        rationale: "Synthetic expression envelope",
+        knowledgeReferences: Object.freeze([]),
+        status: "AI_DERIVED" as const,
+        review: "REQUIRED" as const,
+      }),
+    ]),
+    sourceReferences: Object.freeze([request.sourceId]),
+    warnings: Object.freeze([...expression.warnings]),
+    validationIssues: Object.freeze([]),
+    createdAt: new Date(),
+  });
+}
+
 /** Adapter only: secrets stay in the injected transport and are never logged or returned. */
 export class LiveSyntheticAIProvider implements AIProvider {
   readonly providerId: string;
@@ -311,7 +362,16 @@ export class LiveSyntheticAIProvider implements AIProvider {
           config: this.config,
           capabilities: this.capabilities,
         });
-        const result = this.validatePerspective(response.result, request);
+        const result = this.validatePerspective(
+          response.result ??
+            expressionToInterpretation(
+              response.expression!,
+              request,
+              this.providerId,
+              this.config.model,
+            ),
+          request,
+        );
         this.usageValue = Object.freeze({
           requests: this.usageValue.requests + 1,
           retries: this.usageValue.retries + attempt,

@@ -8,6 +8,7 @@ export * from "./knowledge-foundation";
 export * from "./opportunity-intelligence";
 export * from "./synthetic-realism";
 export * from "./live-synthetic-ai";
+export * from "./synthetic-expression-contract";
 export * from "./live-synthetic-pilot";
 export * from "./generalization-benchmark";
 export * from "./economic-intelligence";

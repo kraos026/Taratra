@@ -137,9 +137,30 @@ describe("LiveSyntheticAIProvider", () => {
     let body: Record<string, unknown> | undefined;
     const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
       body = JSON.parse(String(init?.body)) as Record<string, unknown>;
-      return new Response(JSON.stringify({ choices: [{ message: { content: "{}" } }] }), {
-        status: 200,
-      });
+      return new Response(
+        JSON.stringify({
+          choices: [
+            {
+              message: {
+                content: JSON.stringify({
+                  expressionId: "e-1",
+                  task: "INTERVIEW",
+                  content: "A bounded expression.",
+                  language: "en",
+                  speakerRole: "OPERATOR",
+                  claims: [],
+                  unknowns: [],
+                  terminology: {},
+                  warnings: [],
+                }),
+              },
+            },
+          ],
+        }),
+        {
+          status: 200,
+        },
+      );
     };
     const transport = new OpenAICompatibleSyntheticTransport(
       "https://example.invalid",

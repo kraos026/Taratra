@@ -38,6 +38,7 @@ export interface AIInterpretationRequest {
   knownUnknowns?: readonly string[];
   constraints?: readonly string[];
   language?: string;
+  speakerRole?: string;
   traceContext?: Readonly<Record<string, string>>;
 }
 export interface AICandidate {
