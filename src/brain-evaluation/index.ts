@@ -27,3 +27,4 @@ export * from "./baselines/e6.1-baseline";
 export * from "./critical-issues";
 export * from "./decision-robustness";
 export * from "./phase-b-benchmark";
+export * from "./dual-mode-evaluator";
