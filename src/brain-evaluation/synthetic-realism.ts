@@ -90,6 +90,15 @@ const clamp = (value: number) => Math.max(0, Math.min(1, Number.isFinite(value) 
 const stableHash = (value: string) =>
   [...value].reduce((hash, char) => (hash * 31 + char.charCodeAt(0)) >>> 0, 17);
 
+const expressesUncertainty = (text: string, phrase: string): boolean => {
+  const index = text.toLowerCase().indexOf(phrase.toLowerCase());
+  if (index < 0) return false;
+  const context = text.slice(Math.max(0, index - 48), index + phrase.length + 48).toLowerCase();
+  return /\b(?:don't|do not|not|never|no idea|uncertain|unclear|unknown|unsure|unspecified|whether)\b/.test(
+    context,
+  );
+};
+
 /** Builds the only information an actor is allowed to see. GroundTruth is not accepted by this API. */
 export class ActorKnowledgeFirewall {
   buildPerspective(input: ActorPerspective): ActorPerspective {
@@ -113,7 +122,8 @@ export class ActorKnowledgeFirewall {
   validateGeneratedContent(text: string, perspective: ActorPerspective): readonly string[] {
     const errors: string[] = [];
     for (const fact of perspective.unknownFacts)
-      if (text.toLowerCase().includes(fact.toLowerCase())) errors.push("OUT_OF_SCOPE_ASSERTION");
+      if (text.toLowerCase().includes(fact.toLowerCase()) && !expressesUncertainty(text, fact))
+        errors.push("OUT_OF_SCOPE_ASSERTION");
     if (
       perspective.knownFacts.length &&
       !perspective.knownFacts.some((fact) => text.toLowerCase().includes(fact.toLowerCase()))
@@ -129,7 +139,8 @@ export class SyntheticContentValidator {
     const allowedFacts =
       "allowedFacts" in perspective ? perspective.allowedFacts : perspective.knownFacts;
     for (const fact of perspective.unknownFacts)
-      if (text.toLowerCase().includes(fact.toLowerCase())) errors.push("UNAUTHORIZED_FACT");
+      if (text.toLowerCase().includes(fact.toLowerCase()) && !expressesUncertainty(text, fact))
+        errors.push("UNAUTHORIZED_FACT");
     const numericFacts = [...text.matchAll(/\b\d+(?:\.\d+)?\b/g)].map((match) => match[0]);
     if (
       numericFacts.length &&

@@ -8,6 +8,11 @@ import {
   splitGeneralizationProfiles,
   type ActorPerspective,
 } from "./synthetic-realism";
+import {
+  InMemoryLiveAITransport,
+  LiveSyntheticAIProvider,
+  readLiveSyntheticAIConfig,
+} from "./live-synthetic-ai";
 
 const perspective: ActorPerspective = {
   actorId: "actor-operator",
@@ -60,6 +65,67 @@ describe("E5.1 synthetic realism layer", () => {
     const material = await layer.renderInterview(perspective, "What is known?", "request-2");
     expect(material.rejected).toBe(true);
     expect(material.rejectionReasons).toContain("OUT_OF_SCOPE_ASSERTION");
+  });
+
+  it("preserves authorized uncertainty without treating it as a new fact", () => {
+    const firewall = new ActorKnowledgeFirewall();
+    const bounded = firewall.buildPerspective({
+      ...perspective,
+      unknownFacts: ["monthly volume"],
+    });
+    expect(
+      firewall.validateGeneratedContent(
+        "Orders are copied, but I don't know the monthly volume.",
+        bounded,
+      ),
+    ).toEqual([]);
+  });
+
+  it("does not pass a rejected live expression into E3", async () => {
+    const provider = new LiveSyntheticAIProvider(
+      new InMemoryLiveAITransport(() => ({
+        result: {
+          requestId: "request-rejected",
+          provider: "fixture",
+          model: "kimi-k2.6",
+          task: "PROCESS_OBSERVATION",
+          schemaVersion: "synthetic-realism-v1",
+          candidates: [
+            {
+              candidateId: "c-rejected",
+              candidateType: "PROCESS_OBSERVATION_CANDIDATE",
+              statement: "The monthly volume is 900.",
+              sourceReference: "source-1:1",
+              rationale: "fixture",
+              knowledgeReferences: [],
+              status: "AI_DERIVED",
+              review: "REQUIRED",
+            },
+          ],
+          sourceReferences: ["source-1"],
+          warnings: [],
+          validationIssues: [],
+          createdAt: new Date("2026-01-01T00:00:00.000Z"),
+        },
+      })),
+      readLiveSyntheticAIConfig({
+        AUTOMATEX_LIVE_SYNTHETIC_AI: "true",
+        AUTOMATEX_AI_MODEL: "kimi-k2.6",
+        AUTOMATEX_AI_PROVIDER: "kimi",
+      }),
+    );
+    const layer = new SyntheticRealismLayer({
+      level: "REALISTIC",
+      promptVersion: "e5.2k",
+      provider,
+    });
+    await expect(
+      layer.renderInterview(
+        { ...perspective, unknownFacts: ["monthly volume"] },
+        "What is known?",
+        "request-rejected",
+      ),
+    ).rejects.toMatchObject({ code: "PERSPECTIVE_VIOLATION" });
   });
 
   it("bounds adaptive follow-up interviews", async () => {

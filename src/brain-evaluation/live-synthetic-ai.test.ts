@@ -7,6 +7,7 @@ import {
   resolveProviderRequestCapabilities,
   serializeActorPerspective,
   SyntheticLiveAIError,
+  validatePerspectiveOutput,
 } from "./live-synthetic-ai";
 import type { AIInterpretationResult } from "./ai-interpretation-gateway";
 
@@ -145,6 +146,51 @@ describe("LiveSyntheticAIProvider", () => {
     const provider = new LiveSyntheticAIProvider(transport, config({ maxRetries: 2 }));
     await expect(provider.interpret(request)).rejects.toMatchObject({ code: "PROVIDER_ERROR" });
     expect(calls).toBe(1);
+  });
+
+  it("distinguishes an authorized unknown from an asserted unknown fact", () => {
+    const unknown = { knownClaims: ["orders are copied"], knownUnknowns: ["monthly volume"] };
+    expect(validatePerspectiveOutput("I don't know the monthly volume.", unknown)).toEqual([]);
+    expect(validatePerspectiveOutput("The monthly volume is 900.", unknown)).toContain(
+      "UNAUTHORIZED_FACT",
+    );
+  });
+
+  it("rejects invented timeframe, frequency, causal and organizational details", () => {
+    const allowed = { knownClaims: ["orders are copied"], knownUnknowns: [] };
+    expect(validatePerspectiveOutput("Orders are copied every Monday.", allowed)).toContain(
+      "OUT_OF_SCOPE_ASSERTION",
+    );
+    expect(
+      validatePerspectiveOutput("Orders are copied because the ERP fails.", allowed),
+    ).toContain("OUT_OF_SCOPE_ASSERTION");
+    expect(validatePerspectiveOutput("The finance team approves each order.", allowed)).toContain(
+      "OUT_OF_SCOPE_ASSERTION",
+    );
+    expect(validatePerspectiveOutput("The monthly volume is 900.", allowed)).toContain(
+      "INVENTED_METRIC",
+    );
+  });
+
+  it("regenerates semantically with a sanitized correction and never forwards GroundTruth", async () => {
+    let calls = 0;
+    const transport = new InMemoryLiveAITransport((input) => {
+      calls += 1;
+      expect(input.request).not.toHaveProperty("knownUnknowns");
+      expect(input.request.sourceText).not.toContain("GroundTruth");
+      return {
+        result: result(
+          calls === 1 ? "The monthly volume is 900." : "I don't know the monthly volume.",
+        ),
+      };
+    });
+    const provider = new LiveSyntheticAIProvider(transport, config({ maxRetries: 1 }));
+    await expect(
+      provider.interpret({ ...request, knownUnknowns: ["monthly volume"] }),
+    ).resolves.toBeDefined();
+    expect(calls).toBe(2);
+    expect(provider.usage.semanticRegenerations).toBe(1);
+    expect(transport.requests[1]?.request.sourceText).toContain("Regeneration correction");
   });
 
   it("emits the normalized Kimi request fields", async () => {

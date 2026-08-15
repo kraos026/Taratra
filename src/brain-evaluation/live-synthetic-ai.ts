@@ -77,6 +77,13 @@ export interface LiveAICompletionRequest {
   readonly prompt: SyntheticPromptContract;
   readonly config: LiveSyntheticAIConfig;
   readonly capabilities: ProviderRequestCapabilities;
+  readonly perspectiveManifest?: LivePerspectiveManifest;
+}
+
+export interface LivePerspectiveManifest {
+  readonly role?: string;
+  readonly facts: readonly string[];
+  readonly unknowns: readonly string[];
 }
 
 export interface ProviderRequestCapabilities {
@@ -152,8 +159,13 @@ export interface LiveAICompletionResponse {
   readonly estimatedCost?: number;
 }
 
-function plainExpressionPrompt(prompt: SyntheticPromptContract): string {
-  return `Respond with one concise natural-language ${prompt.kind.toLowerCase().replaceAll("_", " ")} expression only. Do not return JSON, commentary, metrics, systems, policies, or facts outside the supplied perspective. Preserve uncertainty and beliefs.`;
+function plainExpressionPrompt(
+  prompt: SyntheticPromptContract,
+  manifest?: LivePerspectiveManifest,
+): string {
+  const facts = manifest?.facts.length ? manifest.facts.join("; ") : "none supplied";
+  const unknowns = manifest?.unknowns.length ? manifest.unknowns.join("; ") : "none declared";
+  return `Respond with one concise natural-language ${prompt.kind.toLowerCase().replaceAll("_", " ")} expression only. Use only the supplied facts and beliefs. Do not add names, numbers, dates, timeframes, frequencies, systems, causes, organizational details, or business context. If information is absent, remain vague or say you do not know. Natural phrasing, hesitation, and uncertainty are allowed; new business information is forbidden. Perspective manifest: FACTS YOU MAY STATE: ${facts}. THINGS YOU DO NOT KNOW: ${unknowns}.`;
 }
 
 export interface LiveAITransport {
@@ -212,7 +224,7 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
               role: "system",
               content:
                 input.capabilities.expressionFormat === "PLAIN"
-                  ? plainExpressionPrompt(input.prompt)
+                  ? plainExpressionPrompt(input.prompt, input.perspectiveManifest)
                   : input.prompt.system,
             },
             { role: "user", content: input.request.sourceText },
@@ -295,6 +307,7 @@ export interface LiveAIUsage {
   readonly inputTokens: number;
   readonly outputTokens: number;
   readonly estimatedCost?: number;
+  readonly semanticRegenerations: number;
 }
 
 export type PerspectiveViolation =
@@ -305,6 +318,15 @@ export type PerspectiveViolation =
   | "INVENTED_POLICY"
   | "OUT_OF_SCOPE_ASSERTION"
   | "PERSPECTIVE_CONTRADICTION";
+
+const expressesUncertainty = (text: string, phrase: string): boolean => {
+  const index = text.toLowerCase().indexOf(phrase.toLowerCase());
+  if (index < 0) return false;
+  const context = text.slice(Math.max(0, index - 48), index + phrase.length + 48).toLowerCase();
+  return /\b(?:don't|do not|not|never|no idea|uncertain|unclear|unknown|unsure|unspecified|whether)\b/.test(
+    context,
+  );
+};
 
 export function validatePerspectiveOutput(
   text: string,
@@ -318,7 +340,11 @@ export function validatePerspectiveOutput(
     )
   )
     violations.add("GROUND_TRUTH_LEAK");
-  if ((request.knownUnknowns ?? []).some((fact) => lower.includes(fact.toLowerCase()))) {
+  if (
+    (request.knownUnknowns ?? []).some(
+      (fact) => lower.includes(fact.toLowerCase()) && !expressesUncertainty(lower, fact),
+    )
+  ) {
     violations.add("UNAUTHORIZED_FACT");
     violations.add("OUT_OF_SCOPE_ASSERTION");
   }
@@ -328,6 +354,21 @@ export function validatePerspectiveOutput(
     !(request.knownClaims ?? []).some((claim) => numbers.some((value) => claim.includes(value)))
   )
     violations.add("INVENTED_METRIC");
+  const knownText = (request.knownClaims ?? []).join(" ").toLowerCase();
+  const unsupportedPatterns = [
+    /\b(?:because|due to|caused by|root cause|the reason is)\b/i,
+    /\b(?:daily|weekly|monthly|every (?:day|week|month|monday|tuesday|wednesday|thursday|friday)|on (?:monday|tuesday|wednesday|thursday|friday))\b/i,
+    /\b(?:sales|finance|hr|operations|marketing|support|engineering) team\b/i,
+    /\b(?:head office|board of directors|chief executive|ceo)\b/i,
+  ];
+  const uncertaintyLanguage =
+    /\b(?:don't know|do not know|not sure|uncertain|unclear|unknown|unsure)\b/i.test(lower);
+  if (
+    unsupportedPatterns.some((pattern) => pattern.test(lower)) &&
+    !uncertaintyLanguage &&
+    !knownText.includes(lower)
+  )
+    violations.add("OUT_OF_SCOPE_ASSERTION");
   if (/\b(?:the system|our platform) knows the hidden|approved by policy\b/i.test(text)) {
     violations.add("INVENTED_SYSTEM");
     violations.add("INVENTED_POLICY");
@@ -447,6 +488,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
     latencyMs: 0,
     inputTokens: 0,
     outputTokens: 0,
+    semanticRegenerations: 0,
   });
   private readonly capabilities: ProviderRequestCapabilities;
 
@@ -469,6 +511,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
     if (!this.config.model)
       throw new SyntheticLiveAIError("DISABLED", "Live synthetic AI model is not configured");
     let lastError: unknown;
+    let attemptRequest = request;
     for (let attempt = 0; attempt <= this.config.maxRetries; attempt += 1) {
       const started = Date.now();
       try {
@@ -476,7 +519,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
           knownClaims: _knownClaims,
           knownUnknowns: _knownUnknowns,
           ...safeRequest
-        } = request;
+        } = attemptRequest;
         void _knownClaims;
         void _knownUnknowns;
         // Validator-only fields are intentionally omitted from the live request.
@@ -486,6 +529,11 @@ export class LiveSyntheticAIProvider implements AIProvider {
           prompt: SYNTHETIC_PROMPT_CONTRACTS[this.promptKind],
           config: this.config,
           capabilities: this.capabilities,
+          perspectiveManifest: {
+            role: request.speakerRole,
+            facts: Object.freeze([...(request.knownClaims ?? [])]),
+            unknowns: Object.freeze([...(request.knownUnknowns ?? [])]),
+          },
         });
         const result = this.validatePerspective(
           response.result ??
@@ -504,10 +552,22 @@ export class LiveSyntheticAIProvider implements AIProvider {
           inputTokens: this.usageValue.inputTokens + (response.inputTokens ?? 0),
           outputTokens: this.usageValue.outputTokens + (response.outputTokens ?? 0),
           estimatedCost: response.estimatedCost,
+          semanticRegenerations: this.usageValue.semanticRegenerations,
         });
         return result;
       } catch (error) {
         lastError = error;
+        if (error instanceof SyntheticLiveAIError && error.code === "PERSPECTIVE_VIOLATION") {
+          this.usageValue = Object.freeze({
+            ...this.usageValue,
+            semanticRegenerations: this.usageValue.semanticRegenerations + 1,
+          });
+          attemptRequest = {
+            ...request,
+            sourceText: `${request.sourceText}\n\nRegeneration correction: your previous response introduced an unauthorized detail (${error.message}). Regenerate using only the supplied perspective manifest.`,
+          };
+          if (attempt < this.config.maxRetries) continue;
+        }
         if (
           error instanceof SyntheticLiveAIError &&
           error.code === "PROVIDER_ERROR" &&
