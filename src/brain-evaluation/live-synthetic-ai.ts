@@ -86,6 +86,9 @@ export interface ProviderRequestCapabilities {
   readonly supportsStructuredOutput: boolean;
   readonly structuredOutputMode: "JSON_OBJECT" | "JSON_SCHEMA" | "NONE";
   readonly supportsReasoningEffort: boolean;
+  readonly reasoningEffort?: "low" | "medium" | "high";
+  readonly defaultCompletionBudget: number;
+  readonly completionBudgetByTask: Readonly<Partial<Record<SyntheticPromptKind, number>>>;
 }
 
 export function resolveProviderRequestCapabilities(
@@ -98,7 +101,10 @@ export function resolveProviderRequestCapabilities(
       maxTokenField: "max_completion_tokens",
       supportsStructuredOutput: true,
       structuredOutputMode: "JSON_SCHEMA",
-      supportsReasoningEffort: false,
+      supportsReasoningEffort: true,
+      reasoningEffort: "low",
+      defaultCompletionBudget: 8192,
+      completionBudgetByTask: Object.freeze({ INTERVIEW: 8192, FOLLOW_UP: 8192 }),
     });
   return Object.freeze({
     supportsTemperature: true,
@@ -106,6 +112,8 @@ export function resolveProviderRequestCapabilities(
     supportsStructuredOutput: true,
     structuredOutputMode: "JSON_OBJECT",
     supportsReasoningEffort: false,
+    defaultCompletionBudget: 800,
+    completionBudgetByTask: Object.freeze({}),
   });
 }
 
@@ -145,7 +153,13 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
             : input.capabilities.requiredTemperature !== undefined
               ? { temperature: input.capabilities.requiredTemperature }
               : {}),
-          [input.capabilities.maxTokenField]: input.config.maxOutputTokens,
+          [input.capabilities.maxTokenField]: Math.max(
+            input.config.maxOutputTokens,
+            input.capabilities.defaultCompletionBudget,
+          ),
+          ...(input.capabilities.supportsReasoningEffort && input.capabilities.reasoningEffort
+            ? { reasoning_effort: input.capabilities.reasoningEffort }
+            : {}),
           ...(input.config.structuredOutput && input.capabilities.supportsStructuredOutput
             ? input.capabilities.structuredOutputMode === "JSON_SCHEMA"
               ? {
@@ -293,7 +307,13 @@ export function readLiveSyntheticAIConfig(
     model: env.AUTOMATEX_AI_MODEL ?? "",
     temperature: Math.min(2, number("AUTOMATEX_AI_TEMPERATURE", 0.4, 0)),
     timeoutMs: number("AUTOMATEX_AI_TIMEOUT_MS", 20_000, 100),
-    maxOutputTokens: number("AUTOMATEX_AI_MAX_OUTPUT_TOKENS", 800, 1),
+    maxOutputTokens: number(
+      "AUTOMATEX_AI_MAX_OUTPUT_TOKENS",
+      env.AUTOMATEX_AI_PROVIDER?.toLowerCase() === "kimi" && env.AUTOMATEX_AI_MODEL === "kimi-k3"
+        ? 8192
+        : 800,
+      1,
+    ),
     maxRetries: Math.min(2, Math.floor(number("AUTOMATEX_AI_MAX_RETRIES", 2, 0))),
     structuredOutput: env.AUTOMATEX_AI_STRUCTURED_OUTPUT !== "false",
     enabled: env.AUTOMATEX_LIVE_SYNTHETIC_AI === "true",

@@ -117,9 +117,14 @@ describe("LiveSyntheticAIProvider", () => {
     const capabilities = resolveProviderRequestCapabilities("kimi", "kimi-k3");
     expect(capabilities.supportsTemperature).toBe(false);
     expect(capabilities.maxTokenField).toBe("max_completion_tokens");
+    expect(capabilities.reasoningEffort).toBe("low");
+    expect(capabilities.defaultCompletionBudget).toBe(8192);
     expect(resolveProviderRequestCapabilities("openai", "gpt-test").maxTokenField).toBe(
       "max_tokens",
     );
+    expect(
+      resolveProviderRequestCapabilities("openai", "gpt-test").reasoningEffort,
+    ).toBeUndefined();
   });
 
   it("does not retry an invalid HTTP 400", async () => {
@@ -177,5 +182,6 @@ describe("LiveSyntheticAIProvider", () => {
     expect(body).toHaveProperty("max_completion_tokens");
     expect(body).not.toHaveProperty("max_tokens");
     expect(body).toHaveProperty("response_format.type", "json_schema");
+    expect(body).toHaveProperty("reasoning_effort", "low");
   });
 });
