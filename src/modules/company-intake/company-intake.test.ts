@@ -124,6 +124,36 @@ describe("F1.1 corporate intake foundation", () => {
     expect(service.assess(intake(), processed).status).toBe("READY_FOR_BRAIN");
   });
 
+  it("assesses canonical production state without creating a second lifecycle", () => {
+    const service = new IntakeReadinessAssessmentService();
+    const incomplete = service.assessProduction(
+      {
+        company: { id: company, organizationId: tenant },
+        discovery: { exists: true, validated: true },
+        interviews: { exists: true, completed: true },
+        knowledgeSnapshot: { exists: true, validated: true },
+        processMap: { exists: true, published: false },
+      },
+      tenant,
+    );
+    expect(incomplete.status).toBe("PARTIALLY_READY");
+    expect(incomplete.criticalGaps).toContain("published process map");
+
+    const ready = service.assessProduction(
+      {
+        company: { id: company, organizationId: tenant },
+        discovery: { exists: true, validated: true },
+        interviews: { exists: true, completed: true },
+        knowledgeSnapshot: { exists: true, validated: true },
+        processMap: { exists: true, published: true },
+      },
+      tenant,
+    );
+    expect(ready.status).toBe("READY_FOR_BRAIN");
+    expect(ready.companyId).toBe(company);
+    expect(ready.tenantId).toBe(tenant);
+  });
+
   it("enforces tenant isolation in the memory repository", async () => {
     const repository = new InMemoryCompanyIntakeRepository();
     await repository.saveIntake(intake());

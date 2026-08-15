@@ -1,4 +1,4 @@
-import type { CompanyIntakeRepository } from "../application/company-intake-repository";
+import type { TestCompanyIntakeRepository } from "../application/company-intake-repository";
 import type {
   CompanyActor,
   CompanyIntake,
@@ -6,7 +6,11 @@ import type {
   IntakeSource,
 } from "../domain/company-intake";
 
-export class InMemoryCompanyIntakeRepository implements CompanyIntakeRepository {
+/**
+ * Test fixture only. This repository is deliberately not a production
+ * persistence adapter and must not be registered in the Composition Root.
+ */
+export class InMemoryCompanyIntakeRepository implements TestCompanyIntakeRepository {
   private readonly intakes = new Map<string, CompanyIntake>();
   private readonly sources = new Map<string, IntakeSource>();
   private readonly actors = new Map<string, CompanyActor>();

@@ -5,7 +5,12 @@ import type {
   IntakeSource,
 } from "../domain/company-intake";
 
-export interface CompanyIntakeRepository {
+/**
+ * Test-fixture port only. Production persistence is owned by the Companies,
+ * Discovery, Interview and Knowledge repositories; this port must not be
+ * wired into the application composition root.
+ */
+export interface TestCompanyIntakeRepository {
   saveIntake(intake: CompanyIntake): Promise<void>;
   getIntake(tenantId: string, companyId: string): Promise<CompanyIntake | null>;
   saveSource(source: IntakeSource): Promise<void>;
@@ -15,3 +20,6 @@ export interface CompanyIntakeRepository {
   saveSession(session: IntakeSession): Promise<void>;
   getSession(tenantId: string, companyId: string, sessionId: string): Promise<IntakeSession | null>;
 }
+
+/** @deprecated Use production repositories or TestCompanyIntakeRepository in fixtures. */
+export type CompanyIntakeRepository = TestCompanyIntakeRepository;

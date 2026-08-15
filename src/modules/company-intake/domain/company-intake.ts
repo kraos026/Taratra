@@ -63,6 +63,12 @@ const required = (value: string | undefined, label: string): string => {
 const immutableDate = (value: Date): Date => new Date(value.getTime());
 const list = (value?: readonly string[]): readonly string[] => Object.freeze([...(value ?? [])]);
 
+/**
+ * Application read model for intake orchestration.
+ *
+ * @deprecated Company is the canonical persisted aggregate. This type is
+ * intentionally non-persistent and must never compete with Company.
+ */
 export class CompanyIntake {
   readonly companyId: string;
   readonly tenantId: string;
@@ -125,6 +131,10 @@ export interface IntakeSourceInput {
   metadata?: Readonly<Record<string, string>>;
 }
 
+/**
+ * Ingestion envelope for adapting raw input to KnowledgeSource/
+ * KnowledgeEvidence. It is not a second canonical source aggregate.
+ */
 export class IntakeSource {
   readonly sourceId: string;
   readonly companyId: string;
@@ -176,6 +186,7 @@ export interface CompanyActorInput {
   authorityContext?: string;
 }
 
+/** Lightweight E3/Brain actor-context DTO; not a durable participant identity. */
 export class CompanyActor {
   readonly actorId: string;
   readonly companyId: string;
@@ -216,6 +227,10 @@ export interface IntakeSessionInput {
   actorIds?: readonly string[];
 }
 
+/**
+ * Cross-stage orchestration DTO. DiscoverySession and InterviewSession remain
+ * the canonical persisted lifecycles.
+ */
 export class IntakeSession {
   readonly sessionId: string;
   readonly companyId: string;
