@@ -165,6 +165,10 @@ describe("LiveSyntheticAIProvider", () => {
     expect(provider.usage.initialProviderCalls).toBe(1);
     expect(provider.usage.httpRetryCalls).toBe(1);
     expect(provider.usage.totalTransportCalls).toBe(2);
+    expect(provider.usage.providerAttempts).toBe(2);
+    expect(provider.usage.successfulProviderAttempts).toBe(1);
+    expect(provider.usage.failedProviderAttempts).toBe(1);
+    expect(provider.usage.rateLimitAttempts).toBe(1);
     expect(provider.usage.rateLimitRecovered).toBe(1);
     expect(provider.usage.rateLimitExhausted).toBe(0);
   });

@@ -157,6 +157,7 @@ export interface LiveAICompletionResponse {
   readonly expression?: SyntheticExpressionEnvelope;
   readonly inputTokens?: number;
   readonly outputTokens?: number;
+  readonly reasoningTokens?: number;
   readonly latencyMs?: number;
   readonly estimatedCost?: number;
 }
@@ -276,7 +277,11 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
       }
       const payload = (await response.json()) as {
         choices?: readonly { message?: { content?: string } }[];
-        usage?: { prompt_tokens?: number; completion_tokens?: number };
+        usage?: {
+          prompt_tokens?: number;
+          completion_tokens?: number;
+          reasoning_tokens?: number;
+        };
       };
       const content = payload.choices?.[0]?.message?.content;
       if (!content)
@@ -291,6 +296,7 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
           ),
           inputTokens: payload.usage?.prompt_tokens,
           outputTokens: payload.usage?.completion_tokens,
+          reasoningTokens: payload.usage?.reasoning_tokens,
           latencyMs: Date.now() - started,
         };
       let expression: SyntheticExpressionEnvelope;
@@ -344,8 +350,9 @@ export interface LiveAIUsage {
   readonly requests: number;
   readonly retries: number;
   readonly latencyMs: number;
-  readonly inputTokens: number;
-  readonly outputTokens: number;
+  readonly inputTokens?: number;
+  readonly outputTokens?: number;
+  readonly reasoningTokens?: number;
   readonly estimatedCost?: number;
   readonly semanticRegenerations: number;
   readonly logicalRuns: number;
@@ -353,6 +360,11 @@ export interface LiveAIUsage {
   readonly semanticRegenerationCalls: number;
   readonly httpRetryCalls: number;
   readonly totalTransportCalls: number;
+  readonly providerAttempts: number;
+  readonly successfulProviderAttempts: number;
+  readonly failedProviderAttempts: number;
+  readonly rateLimitAttempts: number;
+  readonly timeoutAttempts: number;
   readonly rateLimitEvents: number;
   readonly rateLimitRecovered: number;
   readonly rateLimitExhausted: number;
@@ -550,13 +562,19 @@ export class LiveSyntheticAIProvider implements AIProvider {
     requests: 0,
     retries: 0,
     latencyMs: 0,
-    inputTokens: 0,
-    outputTokens: 0,
+    inputTokens: undefined,
+    outputTokens: undefined,
+    reasoningTokens: undefined,
     logicalRuns: 0,
     initialProviderCalls: 0,
     semanticRegenerationCalls: 0,
     httpRetryCalls: 0,
     totalTransportCalls: 0,
+    providerAttempts: 0,
+    successfulProviderAttempts: 0,
+    failedProviderAttempts: 0,
+    rateLimitAttempts: 0,
+    timeoutAttempts: 0,
     rateLimitEvents: 0,
     rateLimitRecovered: 0,
     rateLimitExhausted: 0,
@@ -599,6 +617,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
       attempt += 1
     ) {
       const started = Date.now();
+      let transportSucceeded = false;
       try {
         const {
           knownClaims: _knownClaims,
@@ -612,6 +631,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
         this.usageValue = Object.freeze({
           ...this.usageValue,
           totalTransportCalls: this.usageValue.totalTransportCalls + 1,
+          providerAttempts: this.usageValue.providerAttempts + 1,
         });
         const response = await this.scheduler.schedule(() =>
           this.transport.complete({
@@ -626,6 +646,11 @@ export class LiveSyntheticAIProvider implements AIProvider {
             },
           }),
         );
+        transportSucceeded = true;
+        this.usageValue = Object.freeze({
+          ...this.usageValue,
+          successfulProviderAttempts: this.usageValue.successfulProviderAttempts + 1,
+        });
         const result = this.validatePerspective(
           response.result ??
             expressionToInterpretation(
@@ -641,8 +666,18 @@ export class LiveSyntheticAIProvider implements AIProvider {
           requests: this.usageValue.requests + 1,
           retries: this.usageValue.retries + attempt,
           latencyMs: this.usageValue.latencyMs + (response.latencyMs ?? Date.now() - started),
-          inputTokens: this.usageValue.inputTokens + (response.inputTokens ?? 0),
-          outputTokens: this.usageValue.outputTokens + (response.outputTokens ?? 0),
+          inputTokens:
+            response.inputTokens === undefined
+              ? this.usageValue.inputTokens
+              : (this.usageValue.inputTokens ?? 0) + response.inputTokens,
+          outputTokens:
+            response.outputTokens === undefined
+              ? this.usageValue.outputTokens
+              : (this.usageValue.outputTokens ?? 0) + response.outputTokens,
+          reasoningTokens:
+            response.reasoningTokens === undefined
+              ? this.usageValue.reasoningTokens
+              : (this.usageValue.reasoningTokens ?? 0) + response.reasoningTokens,
           estimatedCost: response.estimatedCost,
           semanticRegenerations: this.usageValue.semanticRegenerations,
           rateLimitRecovered: this.usageValue.rateLimitRecovered + (httpRetries > 0 ? 1 : 0),
@@ -650,6 +685,17 @@ export class LiveSyntheticAIProvider implements AIProvider {
         return result;
       } catch (error) {
         lastError = error;
+        if (!transportSucceeded)
+          this.usageValue = Object.freeze({
+            ...this.usageValue,
+            failedProviderAttempts: this.usageValue.failedProviderAttempts + 1,
+            rateLimitAttempts:
+              this.usageValue.rateLimitAttempts +
+              (error instanceof SyntheticLiveAIError && error.code === "RATE_LIMITED" ? 1 : 0),
+            timeoutAttempts:
+              this.usageValue.timeoutAttempts +
+              (error instanceof SyntheticLiveAIError && error.code === "TIMEOUT" ? 1 : 0),
+          });
         if (error instanceof SyntheticLiveAIError && error.code === "RATE_LIMITED") {
           this.usageValue = Object.freeze({
             ...this.usageValue,

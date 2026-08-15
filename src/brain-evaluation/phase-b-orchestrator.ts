@@ -19,6 +19,8 @@ import { createLivePilotDataset } from "./live-synthetic-pilot";
 import {
   createConfiguredLiveSyntheticProvider,
   readLiveSyntheticAIConfig,
+  type LiveAIUsage,
+  LiveSyntheticAIProvider,
 } from "./live-synthetic-ai";
 import { DeterministicSyntheticTextProvider, SyntheticRealismLayer } from "./synthetic-realism";
 import {
@@ -127,6 +129,7 @@ export class PhaseBLiveOrchestrator {
   private readonly provider: string;
   private readonly model: string;
   private readonly brainVersion: BrainVersion;
+  private liveProvider?: LiveSyntheticAIProvider;
 
   constructor(private readonly options: PhaseBOrchestratorOptions) {
     this.manifest = options.manifest ?? createPhaseBManifest();
@@ -161,11 +164,28 @@ export class PhaseBLiveOrchestrator {
         );
         await context.markStage("RUN_START");
         const started = Date.now();
-        const material = await layer.renderInterview(
-          scenario.actor,
-          "Describe the current process and any uncertainty.",
-          `${entry.scenarioId}:${entry.variantId}`,
-        );
+        const usageBefore = this.liveProvider?.usage;
+        let material;
+        try {
+          material = await layer.renderInterview(
+            scenario.actor,
+            "Describe the current process and any uncertainty.",
+            `${entry.scenarioId}:${entry.variantId}`,
+          );
+        } catch (error) {
+          const usage = this.providerDelta(usageBefore, this.liveProvider?.usage);
+          return {
+            status: "FAILED_RETRYABLE" as const,
+            failureClass: "PROVIDER_FAILURE" as const,
+            latencyMs: Date.now() - started,
+            initialProviderCalls: 1,
+            ...usage,
+            resultSummary: Object.freeze({
+              failure: error instanceof Error ? error.name : "PROVIDER_FAILURE",
+            }),
+          };
+        }
+        const usage = this.providerDelta(usageBefore, this.liveProvider?.usage);
         await context.completeStage("PROVIDER_RESPONSE_RECEIVED");
         const candidate = material.interpretation.candidates[0];
         if (!candidate) throw new Error("E3 produced no candidate");
@@ -255,9 +275,7 @@ export class PhaseBLiveOrchestrator {
           status: "COMPLETED" as const,
           latencyMs: Date.now() - started,
           initialProviderCalls: 1,
-          semanticRegenerationCalls: 0,
-          httpRetryCalls: 0,
-          transportCalls: 1,
+          ...usage,
           groundTruthLeaks: material.fidelity.groundTruthLeakRate,
           unauthorizedFacts: material.fidelity.unauthorizedFactRate,
           e3Entered: true,
@@ -363,10 +381,42 @@ export class PhaseBLiveOrchestrator {
     const config = readLiveSyntheticAIConfig(process.env);
     if (!config.enabled || config.provider.toLowerCase() !== "kimi" || config.model !== "kimi-k2.6")
       throw new Error("E6.4A requires Kimi K2.6 live configuration");
+    this.liveProvider = createConfiguredLiveSyntheticProvider(process.env);
     return new SyntheticRealismLayer({
       level: "REALISTIC",
       promptVersion: "1",
-      provider: createConfiguredLiveSyntheticProvider(process.env),
+      provider: this.liveProvider,
+    });
+  }
+
+  private providerDelta(
+    before?: LiveAIUsage,
+    after?: LiveAIUsage,
+  ): Readonly<Record<string, unknown>> {
+    const delta = (key: keyof LiveAIUsage): number =>
+      Number((after?.[key] as number | undefined) ?? 0) -
+      Number((before?.[key] as number | undefined) ?? 0);
+    return Object.freeze({
+      providerAttempts: delta("providerAttempts"),
+      successfulProviderAttempts: delta("successfulProviderAttempts"),
+      failedProviderAttempts: delta("failedProviderAttempts"),
+      rateLimitAttempts: delta("rateLimitAttempts"),
+      timeoutAttempts: delta("timeoutAttempts"),
+      semanticRegenerationCalls: delta("semanticRegenerationCalls"),
+      httpRetryCalls: delta("httpRetryCalls"),
+      transportCalls: delta("totalTransportCalls"),
+      inputTokens:
+        after?.inputTokens === undefined
+          ? undefined
+          : Number(after.inputTokens) - Number(before?.inputTokens ?? 0),
+      outputTokens:
+        after?.outputTokens === undefined
+          ? undefined
+          : Number(after.outputTokens) - Number(before?.outputTokens ?? 0),
+      reasoningTokens:
+        after?.reasoningTokens === undefined
+          ? undefined
+          : Number(after.reasoningTokens) - Number(before?.reasoningTokens ?? 0),
     });
   }
 }

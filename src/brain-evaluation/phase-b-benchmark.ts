@@ -79,6 +79,14 @@ export interface BenchmarkRunRecord {
   readonly status: BenchmarkRunStatus;
   readonly failureClass?: BenchmarkFailureClass;
   readonly initialProviderCalls: number;
+  readonly logicalRuns?: number;
+  readonly initialLogicalCalls?: number;
+  /** Number of actual provider HTTP attempts for this logical run. */
+  readonly providerAttempts?: number;
+  readonly successfulProviderAttempts?: number;
+  readonly failedProviderAttempts?: number;
+  readonly rateLimitAttempts?: number;
+  readonly timeoutAttempts?: number;
   readonly semanticRegenerationCalls: number;
   readonly httpRetryCalls: number;
   readonly transportCalls: number;
@@ -141,6 +149,13 @@ export interface PhaseBExecutionResult {
   readonly failureClass?: BenchmarkFailureClass;
   readonly latencyMs: number;
   readonly initialProviderCalls?: number;
+  readonly logicalRuns?: number;
+  readonly initialLogicalCalls?: number;
+  readonly providerAttempts?: number;
+  readonly successfulProviderAttempts?: number;
+  readonly failedProviderAttempts?: number;
+  readonly rateLimitAttempts?: number;
+  readonly timeoutAttempts?: number;
   readonly semanticRegenerationCalls?: number;
   readonly httpRetryCalls?: number;
   readonly transportCalls?: number;
@@ -196,6 +211,8 @@ export interface PhaseBBatchReport {
 
 export interface PhaseBTelemetry {
   readonly logicalRunsCompleted: number;
+  readonly logicalRuns: number;
+  readonly initialLogicalCalls: number;
   readonly initialProviderCalls: number;
   readonly semanticRegenerationCalls: number;
   readonly httpRetryCalls: number;
@@ -210,9 +227,15 @@ export interface PhaseBTelemetry {
   readonly meanLatencyMs: number;
   readonly medianLatencyMs: number;
   readonly p95LatencyMs: number;
-  readonly inputTokens: number;
-  readonly outputTokens: number;
-  readonly reasoningTokens: number;
+  readonly inputTokens: number | undefined;
+  readonly outputTokens: number | undefined;
+  readonly reasoningTokens: number | undefined;
+  readonly providerAttempts: number;
+  readonly successfulProviderAttempts: number;
+  readonly failedProviderAttempts: number;
+  readonly rateLimitAttempts: number;
+  readonly timeoutAttempts: number;
+  readonly telemetryVersion: "CURRENT" | "LEGACY_INCOMPLETE";
 }
 
 const isoNow = (): string => new Date().toISOString();
@@ -260,6 +283,11 @@ export function summarizePhaseBTelemetry(records: readonly BenchmarkRunRecord[])
   );
   return Object.freeze({
     logicalRunsCompleted: completed.length,
+    logicalRuns: completed.reduce((sum, r) => sum + (r.logicalRuns ?? 1), 0),
+    initialLogicalCalls: completed.reduce(
+      (sum, r) => sum + (r.initialLogicalCalls ?? r.initialProviderCalls),
+      0,
+    ),
     initialProviderCalls: completed.reduce((sum, r) => sum + r.initialProviderCalls, 0),
     semanticRegenerationCalls: completed.reduce((sum, r) => sum + r.semanticRegenerationCalls, 0),
     httpRetryCalls: completed.reduce((sum, r) => sum + r.httpRetryCalls, 0),
@@ -282,9 +310,26 @@ export function summarizePhaseBTelemetry(records: readonly BenchmarkRunRecord[])
     meanLatencyMs: latencies.length ? latencies.reduce((a, b) => a + b, 0) / latencies.length : 0,
     medianLatencyMs: percentile(latencies, 0.5),
     p95LatencyMs: percentile(latencies, 0.95),
-    inputTokens: completed.reduce((sum, r) => sum + (r.inputTokens ?? 0), 0),
-    outputTokens: completed.reduce((sum, r) => sum + (r.outputTokens ?? 0), 0),
-    reasoningTokens: completed.reduce((sum, r) => sum + (r.reasoningTokens ?? 0), 0),
+    inputTokens: completed.every((r) => r.inputTokens === undefined)
+      ? undefined
+      : completed.reduce((sum, r) => sum + (r.inputTokens ?? 0), 0),
+    outputTokens: completed.every((r) => r.outputTokens === undefined)
+      ? undefined
+      : completed.reduce((sum, r) => sum + (r.outputTokens ?? 0), 0),
+    reasoningTokens: completed.every((r) => r.reasoningTokens === undefined)
+      ? undefined
+      : completed.reduce((sum, r) => sum + (r.reasoningTokens ?? 0), 0),
+    providerAttempts: completed.reduce((sum, r) => sum + (r.providerAttempts ?? 0), 0),
+    successfulProviderAttempts: completed.reduce(
+      (sum, r) => sum + (r.successfulProviderAttempts ?? 0),
+      0,
+    ),
+    failedProviderAttempts: completed.reduce((sum, r) => sum + (r.failedProviderAttempts ?? 0), 0),
+    rateLimitAttempts: completed.reduce((sum, r) => sum + (r.rateLimitAttempts ?? 0), 0),
+    timeoutAttempts: completed.reduce((sum, r) => sum + (r.timeoutAttempts ?? 0), 0),
+    telemetryVersion: completed.some((r) => r.providerAttempts === undefined)
+      ? "LEGACY_INCOMPLETE"
+      : "CURRENT",
   });
 }
 
@@ -441,6 +486,13 @@ export class ResumablePhaseBBenchmark {
         completedAt: isoNow(),
         ...result,
         initialProviderCalls: result.initialProviderCalls ?? 1,
+        logicalRuns: result.logicalRuns ?? 1,
+        initialLogicalCalls: result.initialLogicalCalls ?? result.initialProviderCalls ?? 1,
+        providerAttempts: result.providerAttempts,
+        successfulProviderAttempts: result.successfulProviderAttempts,
+        failedProviderAttempts: result.failedProviderAttempts,
+        rateLimitAttempts: result.rateLimitAttempts,
+        timeoutAttempts: result.timeoutAttempts,
         semanticRegenerationCalls: result.semanticRegenerationCalls ?? 0,
         httpRetryCalls: result.httpRetryCalls ?? 0,
         transportCalls:

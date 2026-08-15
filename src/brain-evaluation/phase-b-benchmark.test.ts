@@ -216,6 +216,33 @@ describe("E5.2M resumable Phase B harness", () => {
     ]);
   });
 
+  it("persists provider attempt accounting and preserves unknown token usage", async () => {
+    const store = new InMemoryPhaseBCheckpointStore();
+    const report = await new ResumablePhaseBBenchmark({
+      benchmarkRunId: "accounting",
+      manifest: manifest(1),
+      store,
+      provider: "fake",
+      model: "fake",
+      execute: async () => ({
+        ...success(),
+        providerAttempts: 3,
+        successfulProviderAttempts: 1,
+        failedProviderAttempts: 2,
+        rateLimitAttempts: 1,
+        timeoutAttempts: 1,
+      }),
+    }).runBatch();
+    expect(report.records[0]?.providerAttempts).toBe(3);
+    expect(report.telemetry.providerAttempts).toBe(3);
+    expect(report.telemetry.successfulProviderAttempts).toBe(1);
+    expect(report.telemetry.failedProviderAttempts).toBe(2);
+    expect(report.telemetry.rateLimitAttempts).toBe(1);
+    expect(report.telemetry.timeoutAttempts).toBe(1);
+    expect(report.telemetry.inputTokens).toBeUndefined();
+    expect(report.telemetry.telemetryVersion).toBe("CURRENT");
+  });
+
   it("rejects resume when the frozen manifest changes", async () => {
     const store = new InMemoryPhaseBCheckpointStore();
     const first = manifest(1);
