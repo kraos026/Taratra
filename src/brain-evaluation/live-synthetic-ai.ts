@@ -68,6 +68,8 @@ export interface LiveSyntheticAIConfig {
   readonly timeoutMs: number;
   readonly maxOutputTokens: number;
   readonly maxRetries: number;
+  readonly rateLimitMaxRetries: number;
+  readonly requestDelayMs: number;
   readonly structuredOutput: boolean;
   readonly enabled: boolean;
 }
@@ -159,6 +161,32 @@ export interface LiveAICompletionResponse {
   readonly estimatedCost?: number;
 }
 
+/** Serializes provider calls and prevents semantic regenerations from bypassing cooldowns. */
+export class LiveProviderScheduler {
+  private tail: Promise<unknown> = Promise.resolve();
+  private nextAvailableAt = 0;
+
+  constructor(private readonly requestDelayMs = 0) {}
+
+  schedule<T>(task: () => Promise<T>): Promise<T> {
+    const run = this.tail.then(async () => {
+      const waitMs = Math.max(0, this.nextAvailableAt - Date.now());
+      if (waitMs) await new Promise((resolve) => setTimeout(resolve, waitMs));
+      try {
+        return await task();
+      } finally {
+        this.nextAvailableAt = Date.now() + this.requestDelayMs;
+      }
+    });
+    this.tail = run.catch(() => undefined);
+    return run;
+  }
+
+  cooldown(durationMs: number): void {
+    this.nextAvailableAt = Math.max(this.nextAvailableAt, Date.now() + Math.max(0, durationMs));
+  }
+}
+
 function plainExpressionPrompt(
   prompt: SyntheticPromptContract,
   manifest?: LivePerspectiveManifest,
@@ -232,8 +260,20 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
         }),
         signal: controller.signal,
       });
-      if (!response.ok)
-        throw new SyntheticLiveAIError("PROVIDER_ERROR", `Live provider HTTP ${response.status}`);
+      if (!response.ok) {
+        const retryAfter = response.headers.get("retry-after");
+        const retryAfterMs = retryAfter
+          ? /^\d+(?:\.\d+)?$/.test(retryAfter)
+            ? Number(retryAfter) * 1000
+            : Math.max(0, Date.parse(retryAfter) - Date.now())
+          : undefined;
+        throw new SyntheticLiveAIError(
+          response.status === 429 ? "RATE_LIMITED" : "PROVIDER_ERROR",
+          `Live provider HTTP ${response.status}`,
+          response.status,
+          retryAfterMs,
+        );
+      }
       const payload = (await response.json()) as {
         choices?: readonly { message?: { content?: string } }[];
         usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -308,6 +348,14 @@ export interface LiveAIUsage {
   readonly outputTokens: number;
   readonly estimatedCost?: number;
   readonly semanticRegenerations: number;
+  readonly logicalRuns: number;
+  readonly initialProviderCalls: number;
+  readonly semanticRegenerationCalls: number;
+  readonly httpRetryCalls: number;
+  readonly totalTransportCalls: number;
+  readonly rateLimitEvents: number;
+  readonly rateLimitRecovered: number;
+  readonly rateLimitExhausted: number;
 }
 
 export type PerspectiveViolation =
@@ -379,8 +427,15 @@ export function validatePerspectiveOutput(
 export class SyntheticLiveAIError extends Error {
   constructor(
     readonly code:
-      "DISABLED" | "TIMEOUT" | "INVALID_OUTPUT" | "PERSPECTIVE_VIOLATION" | "PROVIDER_ERROR",
+      | "DISABLED"
+      | "TIMEOUT"
+      | "INVALID_OUTPUT"
+      | "PERSPECTIVE_VIOLATION"
+      | "PROVIDER_ERROR"
+      | "RATE_LIMITED",
     message: string,
+    readonly status?: number,
+    readonly retryAfterMs?: number,
   ) {
     super(message);
     this.name = "SyntheticLiveAIError";
@@ -410,6 +465,15 @@ export function readLiveSyntheticAIConfig(
       1,
     ),
     maxRetries: Math.min(2, Math.floor(number("AUTOMATEX_AI_MAX_RETRIES", 2, 0))),
+    rateLimitMaxRetries: Math.min(
+      3,
+      Math.floor(number("AUTOMATEX_AI_RATE_LIMIT_MAX_RETRIES", 2, 0)),
+    ),
+    requestDelayMs: number(
+      "AUTOMATEX_AI_REQUEST_DELAY_MS",
+      env.AUTOMATEX_AI_PROVIDER?.toLowerCase() === "kimi" ? 21_000 : 0,
+      0,
+    ),
     structuredOutput: env.AUTOMATEX_AI_STRUCTURED_OUTPUT !== "false",
     enabled: env.AUTOMATEX_LIVE_SYNTHETIC_AI === "true",
   });
@@ -488,9 +552,18 @@ export class LiveSyntheticAIProvider implements AIProvider {
     latencyMs: 0,
     inputTokens: 0,
     outputTokens: 0,
+    logicalRuns: 0,
+    initialProviderCalls: 0,
+    semanticRegenerationCalls: 0,
+    httpRetryCalls: 0,
+    totalTransportCalls: 0,
+    rateLimitEvents: 0,
+    rateLimitRecovered: 0,
+    rateLimitExhausted: 0,
     semanticRegenerations: 0,
   });
   private readonly capabilities: ProviderRequestCapabilities;
+  private readonly scheduler: LiveProviderScheduler;
 
   constructor(
     private readonly transport: LiveAITransport,
@@ -499,6 +572,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
   ) {
     this.providerId = `live-synthetic:${config.provider}`;
     this.capabilities = resolveProviderRequestCapabilities(config.provider, config.model);
+    this.scheduler = new LiveProviderScheduler(config.requestDelayMs);
   }
 
   get usage(): LiveAIUsage {
@@ -512,7 +586,18 @@ export class LiveSyntheticAIProvider implements AIProvider {
       throw new SyntheticLiveAIError("DISABLED", "Live synthetic AI model is not configured");
     let lastError: unknown;
     let attemptRequest = request;
-    for (let attempt = 0; attempt <= this.config.maxRetries; attempt += 1) {
+    let semanticRegenerations = 0;
+    let httpRetries = 0;
+    this.usageValue = Object.freeze({
+      ...this.usageValue,
+      logicalRuns: this.usageValue.logicalRuns + 1,
+      initialProviderCalls: this.usageValue.initialProviderCalls + 1,
+    });
+    for (
+      let attempt = 0;
+      attempt <= this.config.maxRetries + this.config.rateLimitMaxRetries;
+      attempt += 1
+    ) {
       const started = Date.now();
       try {
         const {
@@ -524,17 +609,23 @@ export class LiveSyntheticAIProvider implements AIProvider {
         void _knownUnknowns;
         // Validator-only fields are intentionally omitted from the live request.
         const providerRequest: AIInterpretationRequest = safeRequest;
-        const response = await this.transport.complete({
-          request: providerRequest,
-          prompt: SYNTHETIC_PROMPT_CONTRACTS[this.promptKind],
-          config: this.config,
-          capabilities: this.capabilities,
-          perspectiveManifest: {
-            role: request.speakerRole,
-            facts: Object.freeze([...(request.knownClaims ?? [])]),
-            unknowns: Object.freeze([...(request.knownUnknowns ?? [])]),
-          },
+        this.usageValue = Object.freeze({
+          ...this.usageValue,
+          totalTransportCalls: this.usageValue.totalTransportCalls + 1,
         });
+        const response = await this.scheduler.schedule(() =>
+          this.transport.complete({
+            request: providerRequest,
+            prompt: SYNTHETIC_PROMPT_CONTRACTS[this.promptKind],
+            config: this.config,
+            capabilities: this.capabilities,
+            perspectiveManifest: {
+              role: request.speakerRole,
+              facts: Object.freeze([...(request.knownClaims ?? [])]),
+              unknowns: Object.freeze([...(request.knownUnknowns ?? [])]),
+            },
+          }),
+        );
         const result = this.validatePerspective(
           response.result ??
             expressionToInterpretation(
@@ -546,6 +637,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
           request,
         );
         this.usageValue = Object.freeze({
+          ...this.usageValue,
           requests: this.usageValue.requests + 1,
           retries: this.usageValue.retries + attempt,
           latencyMs: this.usageValue.latencyMs + (response.latencyMs ?? Date.now() - started),
@@ -553,20 +645,47 @@ export class LiveSyntheticAIProvider implements AIProvider {
           outputTokens: this.usageValue.outputTokens + (response.outputTokens ?? 0),
           estimatedCost: response.estimatedCost,
           semanticRegenerations: this.usageValue.semanticRegenerations,
+          rateLimitRecovered: this.usageValue.rateLimitRecovered + (httpRetries > 0 ? 1 : 0),
         });
         return result;
       } catch (error) {
         lastError = error;
+        if (error instanceof SyntheticLiveAIError && error.code === "RATE_LIMITED") {
+          this.usageValue = Object.freeze({
+            ...this.usageValue,
+            rateLimitEvents: this.usageValue.rateLimitEvents + 1,
+          });
+          if (httpRetries < this.config.rateLimitMaxRetries) {
+            httpRetries += 1;
+            this.usageValue = Object.freeze({
+              ...this.usageValue,
+              httpRetryCalls: this.usageValue.httpRetryCalls + 1,
+              retries: this.usageValue.retries + 1,
+            });
+            const exponential = 1_000 * 2 ** (httpRetries - 1);
+            const jitter = Math.floor(Math.random() * 250);
+            this.scheduler.cooldown(Math.min(error.retryAfterMs ?? exponential + jitter, 30_000));
+            continue;
+          }
+          this.usageValue = Object.freeze({
+            ...this.usageValue,
+            rateLimitExhausted: this.usageValue.rateLimitExhausted + 1,
+          });
+          break;
+        }
         if (error instanceof SyntheticLiveAIError && error.code === "PERSPECTIVE_VIOLATION") {
+          if (semanticRegenerations >= this.config.maxRetries) break;
+          semanticRegenerations += 1;
           this.usageValue = Object.freeze({
             ...this.usageValue,
             semanticRegenerations: this.usageValue.semanticRegenerations + 1,
+            semanticRegenerationCalls: this.usageValue.semanticRegenerationCalls + 1,
           });
           attemptRequest = {
             ...request,
             sourceText: `${request.sourceText}\n\nRegeneration correction: your previous response introduced an unauthorized detail (${error.message}). Regenerate using only the supplied perspective manifest.`,
           };
-          if (attempt < this.config.maxRetries) continue;
+          continue;
         }
         if (
           error instanceof SyntheticLiveAIError &&
@@ -574,7 +693,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
           /HTTP 4\d\d/.test(error.message)
         )
           break;
-        if (attempt === this.config.maxRetries) break;
+        if (attempt >= this.config.maxRetries + this.config.rateLimitMaxRetries) break;
       }
     }
     throw lastError instanceof SyntheticLiveAIError

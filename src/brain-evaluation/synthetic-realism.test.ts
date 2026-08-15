@@ -112,6 +112,7 @@ describe("E5.1 synthetic realism layer", () => {
         AUTOMATEX_LIVE_SYNTHETIC_AI: "true",
         AUTOMATEX_AI_MODEL: "kimi-k2.6",
         AUTOMATEX_AI_PROVIDER: "kimi",
+        AUTOMATEX_AI_REQUEST_DELAY_MS: "0",
       }),
     );
     const layer = new SyntheticRealismLayer({

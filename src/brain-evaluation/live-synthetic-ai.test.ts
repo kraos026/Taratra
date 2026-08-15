@@ -8,6 +8,7 @@ import {
   serializeActorPerspective,
   SyntheticLiveAIError,
   validatePerspectiveOutput,
+  LiveProviderScheduler,
 } from "./live-synthetic-ai";
 import type { AIInterpretationResult } from "./ai-interpretation-gateway";
 
@@ -146,6 +147,40 @@ describe("LiveSyntheticAIProvider", () => {
     const provider = new LiveSyntheticAIProvider(transport, config({ maxRetries: 2 }));
     await expect(provider.interpret(request)).rejects.toMatchObject({ code: "PROVIDER_ERROR" });
     expect(calls).toBe(1);
+  });
+
+  it("retries 429 through the bounded scheduler and reconciles counters", async () => {
+    let calls = 0;
+    const transport = new InMemoryLiveAITransport(() => {
+      calls += 1;
+      if (calls === 1) throw new SyntheticLiveAIError("RATE_LIMITED", "HTTP 429", 429, 0);
+      return { result: result("Orders are copied manually.") };
+    });
+    const provider = new LiveSyntheticAIProvider(
+      transport,
+      config({ rateLimitMaxRetries: 1, requestDelayMs: 0 }),
+    );
+    await expect(provider.interpret(request)).resolves.toBeDefined();
+    expect(provider.usage.logicalRuns).toBe(1);
+    expect(provider.usage.initialProviderCalls).toBe(1);
+    expect(provider.usage.httpRetryCalls).toBe(1);
+    expect(provider.usage.totalTransportCalls).toBe(2);
+    expect(provider.usage.rateLimitRecovered).toBe(1);
+    expect(provider.usage.rateLimitExhausted).toBe(0);
+  });
+
+  it("serializes queued provider calls", async () => {
+    const scheduler = new LiveProviderScheduler(0);
+    const order: number[] = [];
+    await Promise.all([
+      scheduler.schedule(async () => {
+        order.push(1);
+      }),
+      scheduler.schedule(async () => {
+        order.push(2);
+      }),
+    ]);
+    expect(order).toEqual([1, 2]);
   });
 
   it("distinguishes an authorized unknown from an asserted unknown fact", () => {
