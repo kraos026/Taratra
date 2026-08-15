@@ -107,6 +107,7 @@ export interface BenchmarkRunRecord {
   readonly stageTimings?: readonly PhaseBStageTiming[];
   readonly failureStage?: PhaseBStage;
   readonly lastSuccessfulStage?: PhaseBStage;
+  readonly resultSummary?: Readonly<Record<string, unknown>>;
 }
 
 export interface PhaseBCheckpoint {
@@ -168,6 +169,7 @@ export interface PhaseBExecutionResult {
   readonly stageTimings?: readonly PhaseBStageTiming[];
   readonly failureStage?: PhaseBStage;
   readonly lastSuccessfulStage?: PhaseBStage;
+  readonly resultSummary?: Readonly<Record<string, unknown>>;
 }
 
 export interface PhaseBRunContext {
@@ -459,6 +461,7 @@ export class ResumablePhaseBBenchmark {
         stageTimings: result.stageTimings ?? context.timings,
         failureStage: result.failureStage,
         lastSuccessfulStage: result.lastSuccessfulStage,
+        resultSummary: result.resultSummary,
       });
       records.set(id, record);
       runsThisBatch += 1;

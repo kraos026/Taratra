@@ -28,3 +28,4 @@ export * from "./critical-issues";
 export * from "./decision-robustness";
 export * from "./phase-b-benchmark";
 export * from "./dual-mode-evaluator";
+export * from "./phase-b-orchestrator";

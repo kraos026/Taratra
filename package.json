@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
+    "benchmark:phase-b-live": "npx tsx scripts/phase-b-live.ts",
     "test:rls": "supabase test db",
     "db:generate": "prisma generate",
     "db:migrate": "supabase db push",
