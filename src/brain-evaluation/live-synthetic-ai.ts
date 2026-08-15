@@ -6,6 +6,7 @@ import type {
 import type { ActorPerspective, DocumentPerspective } from "./synthetic-realism";
 import {
   parseSyntheticExpressionEnvelope,
+  SYNTHETIC_EXPRESSION_JSON_SCHEMA,
   SyntheticExpressionParseError,
   type SyntheticExpressionEnvelope,
 } from "./synthetic-expression-contract";
@@ -83,6 +84,7 @@ export interface ProviderRequestCapabilities {
   readonly requiredTemperature?: number;
   readonly maxTokenField: "max_tokens" | "max_completion_tokens";
   readonly supportsStructuredOutput: boolean;
+  readonly structuredOutputMode: "JSON_OBJECT" | "JSON_SCHEMA" | "NONE";
   readonly supportsReasoningEffort: boolean;
 }
 
@@ -95,12 +97,14 @@ export function resolveProviderRequestCapabilities(
       supportsTemperature: false,
       maxTokenField: "max_completion_tokens",
       supportsStructuredOutput: true,
+      structuredOutputMode: "JSON_SCHEMA",
       supportsReasoningEffort: false,
     });
   return Object.freeze({
     supportsTemperature: true,
     maxTokenField: "max_tokens",
     supportsStructuredOutput: true,
+    structuredOutputMode: "JSON_OBJECT",
     supportsReasoningEffort: false,
   });
 }
@@ -143,7 +147,18 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
               : {}),
           [input.capabilities.maxTokenField]: input.config.maxOutputTokens,
           ...(input.config.structuredOutput && input.capabilities.supportsStructuredOutput
-            ? { response_format: { type: "json_object" } }
+            ? input.capabilities.structuredOutputMode === "JSON_SCHEMA"
+              ? {
+                  response_format: {
+                    type: "json_schema",
+                    json_schema: {
+                      name: "synthetic_expression_envelope",
+                      strict: true,
+                      schema: SYNTHETIC_EXPRESSION_JSON_SCHEMA,
+                    },
+                  },
+                }
+              : { response_format: { type: "json_object" } }
             : {}),
           messages: [
             { role: "system", content: input.prompt.system },
@@ -163,7 +178,11 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
         throw new SyntheticLiveAIError("INVALID_OUTPUT", "Live provider returned no content");
       let expression: SyntheticExpressionEnvelope;
       try {
-        expression = parseSyntheticExpressionEnvelope(content, input.request.speakerRole);
+        expression = parseSyntheticExpressionEnvelope(
+          content,
+          input.request.speakerRole,
+          input.prompt.kind,
+        );
       } catch (error) {
         if (error instanceof SyntheticExpressionParseError)
           throw new SyntheticLiveAIError("INVALID_OUTPUT", error.code);

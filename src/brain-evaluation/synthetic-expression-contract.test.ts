@@ -43,4 +43,15 @@ describe("SyntheticExpressionEnvelope", () => {
     expect(envelope.claims).toEqual(["ERP is slow"]);
     expect(envelope.unknowns).toEqual(["root cause"]);
   });
+
+  it("rejects unexpected properties and enum mismatches", () => {
+    expect(() =>
+      parseSyntheticExpressionEnvelope(JSON.stringify({ ...JSON.parse(valid), extra: true })),
+    ).toThrow(/schema/i);
+    expect(() =>
+      parseSyntheticExpressionEnvelope(
+        JSON.stringify({ ...JSON.parse(valid), task: "process_observation" }),
+      ),
+    ).toThrow(/schema/i);
+  });
 });

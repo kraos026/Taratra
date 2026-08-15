@@ -176,5 +176,6 @@ describe("LiveSyntheticAIProvider", () => {
     expect(body).not.toHaveProperty("temperature");
     expect(body).toHaveProperty("max_completion_tokens");
     expect(body).not.toHaveProperty("max_tokens");
+    expect(body).toHaveProperty("response_format.type", "json_schema");
   });
 });
