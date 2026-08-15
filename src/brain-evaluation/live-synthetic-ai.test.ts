@@ -127,6 +127,15 @@ describe("LiveSyntheticAIProvider", () => {
     ).toBeUndefined();
   });
 
+  it("routes Kimi K2.6 to bounded plain non-thinking expressions", () => {
+    const capabilities = resolveProviderRequestCapabilities("kimi", "kimi-k2.6");
+    expect(capabilities.thinkingMode).toBe("DISABLED");
+    expect(capabilities.expressionFormat).toBe("PLAIN");
+    expect(capabilities.requiredTemperature).toBe(0.6);
+    expect(capabilities.defaultCompletionBudget).toBe(1024);
+    expect(capabilities.supportsStructuredOutput).toBe(false);
+  });
+
   it("does not retry an invalid HTTP 400", async () => {
     let calls = 0;
     const transport = new InMemoryLiveAITransport(() => {
@@ -183,5 +192,36 @@ describe("LiveSyntheticAIProvider", () => {
     expect(body).not.toHaveProperty("max_tokens");
     expect(body).toHaveProperty("response_format.type", "json_schema");
     expect(body).toHaveProperty("reasoning_effort", "low");
+  });
+
+  it("emits Kimi K2.6 thinking disabled and parses plain content without reasoning", async () => {
+    let body: Record<string, unknown> | undefined;
+    const fetcher = async (_input: RequestInfo | URL, init?: RequestInit) => {
+      body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+      return new Response(
+        JSON.stringify({
+          choices: [{ message: { content: "Orders are copied manually." } }],
+          usage: { prompt_tokens: 10, completion_tokens: 8 },
+        }),
+        { status: 200 },
+      );
+    };
+    const transport = new OpenAICompatibleSyntheticTransport(
+      "https://example.invalid",
+      "secret",
+      fetcher,
+    );
+    const response = await transport.complete({
+      request: { ...request, speakerRole: "MANAGER" },
+      prompt: { kind: "INTERVIEW", version: "1", system: "bounded" },
+      config: config({ provider: "kimi", model: "kimi-k2.6", structuredOutput: true }),
+      capabilities: resolveProviderRequestCapabilities("kimi", "kimi-k2.6"),
+    });
+    expect(body).toHaveProperty("thinking.type", "disabled");
+    expect(body).toHaveProperty("max_completion_tokens", 1024);
+    expect(body).not.toHaveProperty("max_tokens");
+    expect(body).not.toHaveProperty("response_format");
+    expect(response.result?.candidates[0]?.statement).toBe("Orders are copied manually.");
+    expect(response.result).not.toHaveProperty("reasoning_content");
   });
 });

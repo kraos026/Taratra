@@ -89,12 +89,34 @@ export interface ProviderRequestCapabilities {
   readonly reasoningEffort?: "low" | "medium" | "high";
   readonly defaultCompletionBudget: number;
   readonly completionBudgetByTask: Readonly<Partial<Record<SyntheticPromptKind, number>>>;
+  readonly thinkingMode: "DISABLED" | "ENABLED";
+  readonly expressionFormat: "PLAIN" | "ENVELOPE";
 }
 
 export function resolveProviderRequestCapabilities(
   provider: string,
   model: string,
 ): ProviderRequestCapabilities {
+  if (provider.toLowerCase() === "kimi" && model === "kimi-k2.6")
+    return Object.freeze({
+      supportsTemperature: false,
+      requiredTemperature: 0.6,
+      maxTokenField: "max_completion_tokens",
+      supportsStructuredOutput: false,
+      structuredOutputMode: "NONE",
+      supportsReasoningEffort: false,
+      defaultCompletionBudget: 1024,
+      completionBudgetByTask: Object.freeze({
+        INTERVIEW: 1024,
+        FOLLOW_UP: 1024,
+        EMAIL: 1024,
+        SOP: 1024,
+        MEETING_NOTES: 1024,
+        PROCESS_DESCRIPTION: 1024,
+      }),
+      thinkingMode: "DISABLED",
+      expressionFormat: "PLAIN",
+    });
   if (provider.toLowerCase() === "kimi" && model === "kimi-k3")
     return Object.freeze({
       supportsTemperature: false,
@@ -105,6 +127,8 @@ export function resolveProviderRequestCapabilities(
       reasoningEffort: "low",
       defaultCompletionBudget: 8192,
       completionBudgetByTask: Object.freeze({ INTERVIEW: 8192, FOLLOW_UP: 8192 }),
+      thinkingMode: "ENABLED",
+      expressionFormat: "ENVELOPE",
     });
   return Object.freeze({
     supportsTemperature: true,
@@ -114,6 +138,8 @@ export function resolveProviderRequestCapabilities(
     supportsReasoningEffort: false,
     defaultCompletionBudget: 800,
     completionBudgetByTask: Object.freeze({}),
+    thinkingMode: "ENABLED",
+    expressionFormat: "ENVELOPE",
   });
 }
 
@@ -124,6 +150,10 @@ export interface LiveAICompletionResponse {
   readonly outputTokens?: number;
   readonly latencyMs?: number;
   readonly estimatedCost?: number;
+}
+
+function plainExpressionPrompt(prompt: SyntheticPromptContract): string {
+  return `Respond with one concise natural-language ${prompt.kind.toLowerCase().replaceAll("_", " ")} expression only. Do not return JSON, commentary, metrics, systems, policies, or facts outside the supplied perspective. Preserve uncertainty and beliefs.`;
 }
 
 export interface LiveAITransport {
@@ -160,6 +190,9 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
           ...(input.capabilities.supportsReasoningEffort && input.capabilities.reasoningEffort
             ? { reasoning_effort: input.capabilities.reasoningEffort }
             : {}),
+          ...(input.capabilities.thinkingMode === "DISABLED"
+            ? { thinking: { type: "disabled" } }
+            : {}),
           ...(input.config.structuredOutput && input.capabilities.supportsStructuredOutput
             ? input.capabilities.structuredOutputMode === "JSON_SCHEMA"
               ? {
@@ -175,7 +208,13 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
               : { response_format: { type: "json_object" } }
             : {}),
           messages: [
-            { role: "system", content: input.prompt.system },
+            {
+              role: "system",
+              content:
+                input.capabilities.expressionFormat === "PLAIN"
+                  ? plainExpressionPrompt(input.prompt)
+                  : input.prompt.system,
+            },
             { role: "user", content: input.request.sourceText },
           ],
         }),
@@ -190,6 +229,18 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
       const content = payload.choices?.[0]?.message?.content;
       if (!content)
         throw new SyntheticLiveAIError("INVALID_OUTPUT", "Live provider returned no content");
+      if (input.capabilities.expressionFormat === "PLAIN")
+        return {
+          result: plainExpressionToInterpretation(
+            content,
+            input.request,
+            `live-synthetic:${input.config.provider}`,
+            input.config.model,
+          ),
+          inputTokens: payload.usage?.prompt_tokens,
+          outputTokens: payload.usage?.completion_tokens,
+          latencyMs: Date.now() - started,
+        };
       let expression: SyntheticExpressionEnvelope;
       try {
         expression = parseSyntheticExpressionEnvelope(
@@ -311,7 +362,10 @@ export function readLiveSyntheticAIConfig(
       "AUTOMATEX_AI_MAX_OUTPUT_TOKENS",
       env.AUTOMATEX_AI_PROVIDER?.toLowerCase() === "kimi" && env.AUTOMATEX_AI_MODEL === "kimi-k3"
         ? 8192
-        : 800,
+        : env.AUTOMATEX_AI_PROVIDER?.toLowerCase() === "kimi" &&
+            env.AUTOMATEX_AI_MODEL === "kimi-k2.6"
+          ? 1024
+          : 800,
       1,
     ),
     maxRetries: Math.min(2, Math.floor(number("AUTOMATEX_AI_MAX_RETRIES", 2, 0))),
@@ -347,6 +401,38 @@ function expressionToInterpretation(
     ]),
     sourceReferences: Object.freeze([request.sourceId]),
     warnings: Object.freeze([...expression.warnings]),
+    validationIssues: Object.freeze([]),
+    createdAt: new Date(),
+  });
+}
+
+function plainExpressionToInterpretation(
+  content: string,
+  request: AIInterpretationRequest,
+  provider: string,
+  model: string,
+): AIInterpretationResult {
+  return Object.freeze({
+    requestId: request.requestId,
+    provider,
+    model,
+    task: request.task,
+    schemaVersion: request.schemaVersion,
+    candidates: Object.freeze([
+      Object.freeze({
+        candidateId: `${request.requestId}:expression`,
+        candidateType: "PROCESS_OBSERVATION_CANDIDATE" as const,
+        statement: content,
+        sourceReference: `${request.sourceId}:1`,
+        sourceExcerpt: content.slice(0, 160),
+        rationale: "Synthetic plain-language expression",
+        knowledgeReferences: Object.freeze([]),
+        status: "AI_DERIVED" as const,
+        review: "REQUIRED" as const,
+      }),
+    ]),
+    sourceReferences: Object.freeze([request.sourceId]),
+    warnings: Object.freeze([]),
     validationIssues: Object.freeze([]),
     createdAt: new Date(),
   });
