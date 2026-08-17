@@ -165,10 +165,13 @@ export class AskAutomateXService {
     const intent = await this.interpretIntent(input, model);
     if (intent.ambiguity === "CLARIFICATION_REQUIRED")
       return responseFromPlan(input, model, clarificationPlan(intent), "CLARIFICATION_REQUIRED");
-    if (intent.intentType === "OTHER_BOUNDED_AUDIT_QUESTION" && outOfScope(input.question))
+    if (
+      crossCompanyScopeAttack(input.question) ||
+      (intent.intentType === "OTHER_BOUNDED_AUDIT_QUESTION" && outOfScope(input.question))
+    )
       return responseFromPlan(input, model, outOfScopePlan(intent), "OUT_OF_SCOPE");
 
-    const plan = buildPlan(intent, model);
+    const plan = buildPlan(input, intent, model);
     if (plan.authoritativeAnswerPoints.length === 0 && plan.unknowns.length > 0)
       return responseFromPlan(input, model, plan, "INSUFFICIENT_EVIDENCE");
 
@@ -387,14 +390,21 @@ function contextTarget(
   return null;
 }
 
-function buildPlan(intent: AskAutomateXIntent, model: AskAutomateXReadModel): GroundedAnswerPlan {
+function buildPlan(
+  input: AskAutomateXInput,
+  intent: AskAutomateXIntent,
+  model: AskAutomateXReadModel,
+): GroundedAnswerPlan {
   const view = model.view;
   const card =
     intent.targetEntityType === "DECISION_CARD" && intent.targetEntityId
       ? (view.priorityCards.find((item) => item.id === intent.targetEntityId) ?? null)
       : (view.priorityCards[0] ?? null);
   const strategies = strategiesFor(intent, model.strategies);
-  const points = answerPoints(intent, view, card, strategies);
+  const terminology = terminologyFor(input, intent, model);
+  const points = terminology.points.length
+    ? terminology.points
+    : answerPoints(intent, view, card, strategies);
   return deepFreeze({
     intent,
     authoritativeAnswerPoints: points,
@@ -403,10 +413,13 @@ function buildPlan(intent: AskAutomateXIntent, model: AskAutomateXReadModel): Gr
     unknowns: unknownsFor(intent, view, card),
     contradictions: contradictionsFor(intent, view),
     economicValues: economicsFor(intent, view),
-    evidenceReferences: evidenceRefs(
-      card?.explanation.supportingSources ?? view.evidenceExplanation.supportingSources,
-      card,
-    ),
+    evidenceReferences: [
+      ...terminology.evidenceReferences,
+      ...evidenceRefs(
+        card?.explanation.supportingSources ?? view.evidenceExplanation.supportingSources,
+        card,
+      ),
+    ],
     conflictingEvidenceReferences: evidenceRefs(
       card?.explanation.conflictingSources ?? view.evidenceExplanation.conflictingSources,
       card,
@@ -829,8 +842,39 @@ function unsupportedCertainty(plan: GroundedAnswerPlan, answer: string): boolean
   );
 }
 
+function terminologyFor(
+  input: AskAutomateXInput,
+  intent: AskAutomateXIntent,
+  model: AskAutomateXReadModel,
+): {
+  readonly points: readonly string[];
+  readonly evidenceReferences: readonly AskAutomateXEvidenceRef[];
+} {
+  if (intent.intentType !== "EXPLAIN_TERM" || !model.terminology)
+    return { points: [], evidenceReferences: [] };
+  const match = Object.entries(model.terminology).find(([term]) =>
+    new RegExp(`\\b${escapeRegExp(term)}\\b`, "i").test(input.question),
+  );
+  return match
+    ? {
+        points: [`${match[0]}: ${match[1].supports}`],
+        evidenceReferences: [match[1]],
+      }
+    : { points: [], evidenceReferences: [] };
+}
+
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function outOfScope(question: string): boolean {
-  return /\b(world cup|weather|poem|recipe|joke)\b/i.test(question);
+  return /\b(world cup|weather|poem|recipe|joke|company b|tenant b|another company|other company)\b/i.test(
+    question,
+  );
+}
+
+function crossCompanyScopeAttack(question: string): boolean {
+  return /\b(company b|tenant b|another company|other company)\b/i.test(question);
 }
 
 function assertCard(view: ExecutiveDecisionView, id: string): void {
