@@ -6,6 +6,7 @@ export * from "./application/real-company-brain-orchestrator";
 export * from "./application/adaptive-discovery-production-bridge";
 export * from "./application/approved-discovery-action-write-bridge";
 export * from "./application/discovery-response-processing";
+export * from "./application/closed-loop-discovery-orchestrator";
 export * from "./infrastructure/in-memory-company-intake-repository";
 
 // This module is an application adaptation boundary only. Canonical

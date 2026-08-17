@@ -86,6 +86,7 @@ export interface DiscoveryResponseProcessingResult {
   readonly tenantId: string;
   readonly originalBrainRunId: string;
   readonly newBrainRunId: string;
+  readonly brainResult: RealCompanyBrainResult;
   readonly actionId: string;
   readonly gapId: string;
   readonly productionQuestionId: string;
@@ -183,6 +184,7 @@ export class DiscoveryResponseProcessor {
       tenantId: input.tenantId,
       originalBrainRunId: lineage.originalBrainRunId,
       newBrainRunId: brain.brain.scenarioId,
+      brainResult: brain,
       actionId: lineage.actionId,
       gapId: lineage.gapId,
       productionQuestionId: response.productionQuestionId,
