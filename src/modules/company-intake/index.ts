@@ -9,6 +9,7 @@ export * from "./application/discovery-response-processing";
 export * from "./application/closed-loop-discovery-orchestrator";
 export * from "./application/production-evidence-ingestion";
 export * from "./application/economic-evidence-bridge";
+export * from "./application/real-company-audit-pilot";
 export * from "./infrastructure/in-memory-company-intake-repository";
 
 // This module is an application adaptation boundary only. Canonical
