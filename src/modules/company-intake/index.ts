@@ -11,6 +11,7 @@ export * from "./application/production-evidence-ingestion";
 export * from "./application/economic-evidence-bridge";
 export * from "./application/real-company-audit-pilot";
 export * from "./application/executive-decision-view";
+export * from "./application/executive-explanation-service";
 export * from "./infrastructure/in-memory-company-intake-repository";
 
 // This module is an application adaptation boundary only. Canonical
