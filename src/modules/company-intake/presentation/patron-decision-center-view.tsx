@@ -5,6 +5,7 @@ import type {
   PatronDecisionCenter,
   PatronDecisionCenterEconomics,
 } from "../application/patron-decision-center";
+import { AskAutomateXPanel } from "./ask-automatex-panel";
 
 export function PatronDecisionCenterView({ center }: { readonly center: PatronDecisionCenter }) {
   return (
@@ -105,7 +106,6 @@ function Overview({ center }: { readonly center: PatronDecisionCenter }) {
 }
 
 function AskAutomateXEntry({ center }: { readonly center: PatronDecisionCenter }) {
-  const suggestions = suggestedAskQuestions(center);
   return (
     <section aria-labelledby="ask-automatex">
       <Card className="border-blue-700/60 bg-gradient-to-br from-blue-950/70 to-slate-900/80 text-slate-50">
@@ -118,20 +118,7 @@ function AskAutomateXEntry({ center }: { readonly center: PatronDecisionCenter }
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {center.status === "UNAVAILABLE" ? (
-            <EmptyState text="Ask AutomateX becomes available after an ExecutiveDecisionView is published." />
-          ) : (
-            <div className="grid gap-3 md:grid-cols-3">
-              {suggestions.map((question) => (
-                <div
-                  key={question}
-                  className="rounded-lg border border-blue-900/60 bg-slate-950/60 p-3 text-sm text-blue-100"
-                >
-                  {question}
-                </div>
-              ))}
-            </div>
-          )}
+          <AskAutomateXPanel center={center} />
         </CardContent>
       </Card>
     </section>
@@ -472,17 +459,4 @@ function formatMonths(value: number | null) {
 
 function slug(value: string): string {
   return value.toLowerCase().replaceAll(" ", "-").replaceAll("/", "").replaceAll("?", "");
-}
-
-function suggestedAskQuestions(center: PatronDecisionCenter): readonly string[] {
-  const questions = [
-    "Why this recommendation?",
-    "What evidence supports this?",
-    "What is still uncertain?",
-    "What should I fix first?",
-    "What would change this decision?",
-    center.doNotAutomate.length ? "Why should we not automate this?" : "What can we automate?",
-    "What other options exist?",
-  ];
-  return Object.freeze(questions.slice(0, 6));
 }

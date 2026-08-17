@@ -19,6 +19,7 @@ export * from "./application/executive-explanation-service";
 export * from "./application/patron-decision-center";
 export * from "./infrastructure/in-memory-company-intake-repository";
 export * from "./infrastructure/prisma-patron-decision-center-read-model";
+export * from "./infrastructure/prisma-ask-automatex-read-model";
 
 // This module is an application adaptation boundary only. Canonical
 // persistence remains in companies, discovery, interviews and knowledge.

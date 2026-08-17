@@ -26,6 +26,9 @@ describe("PatronDecisionCenterView", () => {
     expect(html).toContain("What we don&#x27;t know");
     expect(html).toContain("Why?");
     expect(html).toContain("Ask AutomateX");
+    expect(html).toContain("Your question");
+    expect(html).toContain("What evidence supports this?");
+    expect(html).toContain("What would change this decision?");
     expect(html).toContain("What would change this decision?");
     expect(html).not.toContain("BrainIntegrationPipeline");
     expect(html).not.toContain("InformationGapDetector");

@@ -467,7 +467,9 @@ function answerPoints(
       return view.nextBestActions;
     case "WHAT_ARE_THE_ALTERNATIVES":
     case "COMPARE_STRATEGIES":
-      return strategies.map((strategy) => `${strategy.title}: ${strategy.fitRationale}`);
+      return strategies.length
+        ? strategies.map((strategy) => `${strategy.title}: ${strategy.fitRationale}`)
+        : ["Authoritative strategy alternatives are not yet available for this audit."];
     case "WHAT_WOULD_CHANGE_THE_DECISION":
       return changeConditions(view, card, strategies);
     case "IS_IT_ECONOMICALLY_JUSTIFIED":
