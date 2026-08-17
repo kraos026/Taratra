@@ -4,6 +4,7 @@ export * from "./application/intake-readiness";
 export * from "./application/intake-interpretation-adapter";
 export * from "./application/real-company-brain-orchestrator";
 export * from "./application/adaptive-discovery-production-bridge";
+export * from "./application/approved-discovery-action-write-bridge";
 export * from "./infrastructure/in-memory-company-intake-repository";
 
 // This module is an application adaptation boundary only. Canonical

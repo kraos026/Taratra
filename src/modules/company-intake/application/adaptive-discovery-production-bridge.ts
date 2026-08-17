@@ -54,6 +54,10 @@ export interface AdaptiveDiscoveryPlan {
   readonly companyId: string;
   readonly tenantId: string;
   readonly brainRunReference: string;
+  readonly contextReferences: Readonly<{
+    readonly knowledgeSnapshotId?: string;
+    readonly processMapId?: string;
+  }>;
   readonly materialGaps: readonly InformationGap[];
   readonly recommendedActions: readonly RecommendedDiscoveryAction[];
   readonly stoppingReason: DiscoveryReadiness["rationale"];
@@ -119,6 +123,10 @@ export class AdaptiveDiscoveryProductionBridge {
       companyId: result.companyId,
       tenantId: result.tenantId,
       brainRunReference: `brain:${result.companyId}`,
+      contextReferences: Object.freeze({
+        knowledgeSnapshotId: result.sourceSnapshot.knowledgeSnapshotId,
+        processMapId: result.traceReferences.processMap[0],
+      }),
       materialGaps: Object.freeze([...planned.gaps]),
       recommendedActions: Object.freeze(actions),
       stoppingReason: planned.readiness.rationale,
