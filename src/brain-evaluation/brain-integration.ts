@@ -123,6 +123,7 @@ export interface IntegratedBrainResult {
   companyId: string;
   scenarioId: string;
   evidenceSummary: { count: number; ids: readonly string[] };
+  evidence: readonly Evidence[];
   claims: readonly Claim[];
   unknowns: readonly UnknownInformation[];
   contradictions: readonly Contradiction[];
@@ -494,6 +495,7 @@ export class BrainIntegrationPipeline {
         count: input.evidence.length,
         ids: Object.freeze(input.evidence.map((e) => e.evidenceId)),
       },
+      evidence: Object.freeze([...input.evidence]),
       claims: Object.freeze([...input.claims]),
       unknowns: Object.freeze([...input.unknowns]),
       contradictions,

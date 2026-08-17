@@ -69,6 +69,7 @@ export interface RealCompanyBrainResult {
   readonly evidence: IntegratedBrainResult["claims"] extends never[]
     ? never
     : IntegratedBrainResult["evidenceSummary"];
+  readonly brainEvidence: IntegratedBrainResult["evidence"];
   readonly claims: IntegratedBrainResult["claims"];
   readonly whatWeKnow: readonly string[];
   readonly whatWeBelieve: readonly string[];
@@ -212,6 +213,7 @@ export class RealCompanyBrainOrchestrator {
         knowledgeSnapshotId: input.knowledgeSnapshotId,
       },
       evidence: { count: 0, ids: [] },
+      brainEvidence: [],
       claims: [],
       whatWeKnow: [],
       whatWeBelieve: [],
@@ -269,6 +271,7 @@ export class RealCompanyBrainOrchestrator {
         knowledgeSnapshotId: input.knowledgeSnapshotId,
       },
       evidence: brain.evidenceSummary,
+      brainEvidence: brain.evidence,
       claims: brain.claims,
       whatWeKnow: brain.claims
         .filter((claim) => claim.kind === "FACT")
