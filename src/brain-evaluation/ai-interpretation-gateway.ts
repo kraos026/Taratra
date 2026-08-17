@@ -46,6 +46,7 @@ export interface AICandidate {
   candidateType: AICandidateType;
   statement: string;
   value?: unknown;
+  semantic?: AISemanticCandidate;
   sourceReference: string;
   sourceExcerpt?: string;
   confidenceHint?: number;
@@ -53,6 +54,89 @@ export interface AICandidate {
   knowledgeReferences: readonly string[];
   status: CandidateStatus;
   review: ReviewRequirement;
+}
+
+export type SemanticCandidateType =
+  "TERMINOLOGY" | "BUSINESS_ENTITY" | "PROCESS_CONCEPT" | "RELATIONSHIP" | "STRUCTURED_FIELD";
+
+export type SemanticEntityKind =
+  | "CUSTOMER"
+  | "SUPPLIER"
+  | "ORDER"
+  | "INVOICE"
+  | "CASE"
+  | "TICKET"
+  | "NAMED_PERSON"
+  | "EMPLOYEE_ROLE"
+  | "DEPARTMENT"
+  | "SYSTEM"
+  | "APPROVAL"
+  | "EXCEPTION"
+  | "DOCUMENT"
+  | "ASSET"
+  | "UNKNOWN";
+
+export type SemanticProcessConceptKind =
+  | "ACTIVITY"
+  | "HANDOFF"
+  | "APPROVAL"
+  | "QUEUE"
+  | "REWORK"
+  | "MANUAL_ENTRY"
+  | "VALIDATION"
+  | "EXCEPTION"
+  | "DECISION_POINT"
+  | "CONTROL"
+  | "SYSTEM_INTERACTION"
+  | "WAIT_STATE"
+  | "UNKNOWN";
+
+export type SemanticRelationshipKind =
+  | "ACTIVITY_USES_SYSTEM"
+  | "ACTOR_PERFORMS_TASK"
+  | "DOCUMENT_TRIGGERS_ACTIVITY"
+  | "APPROVAL_BLOCKS_PROCESS"
+  | "SYSTEM_FEEDS_SYSTEM"
+  | "DEPARTMENT_OWNS_PROCESS"
+  | "POSSIBLE_CONTRADICTION"
+  | "POSSIBLE_ALIAS";
+
+export type SemanticAmbiguityLevel = "NONE" | "LOW" | "MEDIUM" | "HIGH" | "AMBIGUOUS";
+
+export interface AISemanticSourceContext {
+  readonly tenantId: string;
+  readonly companyId: string;
+  readonly sourceId: string;
+  readonly sourceVersion: string | number;
+  readonly locator: string;
+}
+
+export interface AISemanticRelationship {
+  readonly relationshipType: SemanticRelationshipKind;
+  readonly from: string;
+  readonly to: string;
+  readonly evidenceReferences: readonly string[];
+}
+
+export interface AISemanticCandidate {
+  readonly rawTerm: string;
+  readonly normalizedCandidate: string;
+  readonly candidateType: SemanticCandidateType;
+  readonly entityKind?: SemanticEntityKind;
+  readonly processConceptKind?: SemanticProcessConceptKind;
+  readonly sourceContext: AISemanticSourceContext;
+  readonly possibleAliases: readonly string[];
+  readonly possibleRelatedConcepts: readonly string[];
+  readonly relationships: readonly AISemanticRelationship[];
+  readonly ambiguity: SemanticAmbiguityLevel;
+  readonly ambiguityReasons: readonly string[];
+  readonly evidenceReferences: readonly string[];
+  readonly providerMetadata: Readonly<{
+    readonly provider: string;
+    readonly model: string;
+  }>;
+  readonly authoritativeMerge: false;
+  readonly factPromotion: false;
 }
 export interface AIInterpretationResult {
   requestId: string;
@@ -96,6 +180,7 @@ export class AIOutputValidator {
         (candidate.confidenceHint < 0 || candidate.confidenceHint > 1)
       )
         errors.push("invalid confidence hint");
+      if (candidate.semantic) errors.push(...semanticErrors(request, candidate));
     }
     return Object.freeze(errors);
   }
@@ -110,6 +195,12 @@ export interface PromotionDecision {
 }
 export class CandidateEvidencePromotionGate {
   evaluate(candidate: AICandidate): PromotionDecision {
+    if (candidate.semantic)
+      return {
+        outcome: "NEED_VALIDATION",
+        reason: "Semantic interpretation candidates require Brain/Knowledge validation",
+        candidate,
+      };
     if (!candidate.sourceReference || !candidate.sourceExcerpt)
       return { outcome: "REJECT", reason: "Source grounding is required", candidate };
     if (
@@ -127,6 +218,34 @@ export class CandidateEvidencePromotionGate {
   }
 }
 
+function semanticErrors(
+  request: AIInterpretationRequest,
+  candidate: AICandidate,
+): readonly string[] {
+  const semantic = candidate.semantic;
+  if (!semantic) return [];
+  const errors: string[] = [];
+  if (semantic.sourceContext.tenantId !== request.tenantId)
+    errors.push(`candidate ${candidate.candidateId} has cross-tenant semantic context`);
+  if (request.companyId && semantic.sourceContext.companyId !== request.companyId)
+    errors.push(`candidate ${candidate.candidateId} has cross-company semantic context`);
+  if (semantic.sourceContext.sourceId !== request.sourceId)
+    errors.push(`candidate ${candidate.candidateId} has non-source semantic context`);
+  if (!semantic.evidenceReferences.length)
+    errors.push(`candidate ${candidate.candidateId} semantic evidence is required`);
+  if (semantic.authoritativeMerge !== false || semantic.factPromotion !== false)
+    errors.push(`candidate ${candidate.candidateId} attempts authoritative semantic mutation`);
+  for (const relationship of semantic.relationships) {
+    if (!relationship.evidenceReferences.length)
+      errors.push(`candidate ${candidate.candidateId} relationship evidence is required`);
+    if (
+      relationship.evidenceReferences.some((reference) => !reference.startsWith(request.sourceId))
+    )
+      errors.push(`candidate ${candidate.candidateId} relationship is not source grounded`);
+  }
+  return Object.freeze(errors);
+}
+
 export class AIInterpretationGateway {
   constructor(
     private readonly provider: AIProvider,
@@ -141,11 +260,37 @@ export class AIInterpretationGateway {
     return Object.freeze({
       ...result,
       candidates: Object.freeze(
-        result.candidates.map((c) => Object.freeze({ ...c, status: "AI_DERIVED" as const })),
+        result.candidates.map((c) =>
+          Object.freeze({
+            ...c,
+            semantic: c.semantic ? freezeSemantic(c.semantic) : undefined,
+            status: "AI_DERIVED" as const,
+          }),
+        ),
       ),
       validationIssues: Object.freeze([]),
     });
   }
+}
+
+function freezeSemantic(semantic: AISemanticCandidate): AISemanticCandidate {
+  return Object.freeze({
+    ...semantic,
+    sourceContext: Object.freeze({ ...semantic.sourceContext }),
+    possibleAliases: Object.freeze([...semantic.possibleAliases]),
+    possibleRelatedConcepts: Object.freeze([...semantic.possibleRelatedConcepts]),
+    relationships: Object.freeze(
+      semantic.relationships.map((relationship) =>
+        Object.freeze({
+          ...relationship,
+          evidenceReferences: Object.freeze([...relationship.evidenceReferences]),
+        }),
+      ),
+    ),
+    ambiguityReasons: Object.freeze([...semantic.ambiguityReasons]),
+    evidenceReferences: Object.freeze([...semantic.evidenceReferences]),
+    providerMetadata: Object.freeze({ ...semantic.providerMetadata }),
+  });
 }
 
 export class DeterministicAIProvider implements AIProvider {
