@@ -11,6 +11,7 @@ export * from "./application/adaptive-interview-intelligence";
 export * from "./application/solution-strategy-generation";
 export * from "./application/ask-automatex";
 export * from "./application/production-evidence-ingestion";
+export * from "./application/durable-audit-workflow";
 export * from "./application/economic-evidence-bridge";
 export * from "./application/real-company-audit-pilot";
 export * from "./application/executive-decision-view";
@@ -20,6 +21,8 @@ export * from "./application/patron-decision-center";
 export * from "./infrastructure/in-memory-company-intake-repository";
 export * from "./infrastructure/prisma-patron-decision-center-read-model";
 export * from "./infrastructure/prisma-ask-automatex-read-model";
+export * from "./infrastructure/prisma-durable-audit-workflow-repository";
+export * from "./infrastructure/prisma-production-evidence-ingestion-repository";
 
 // This module is an application adaptation boundary only. Canonical
 // persistence remains in companies, discovery, interviews and knowledge.

@@ -2689,6 +2689,142 @@ model AutomationGenerationIdempotencyRecord {
   @@schema("public")
 }
 
+model AuditDiscoveryLoopRecord {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId         String   @map("organization_id") @db.Uuid
+  companyId              String   @map("company_id") @db.Uuid
+  loopId                 String   @map("loop_id")
+  initialBrainRunId      String   @map("initial_brain_run_id")
+  currentBrainRunId      String   @map("current_brain_run_id")
+  iterationNumber        Int      @default(0) @map("iteration_number")
+  materialGapIdsJson     Json     @default("[]") @map("material_gap_ids_json")
+  resolvedGapIdsJson     Json     @default("[]") @map("resolved_gap_ids_json")
+  openGapIdsJson         Json     @default("[]") @map("open_gap_ids_json")
+  pendingActionIdsJson   Json     @default("[]") @map("pending_action_ids_json")
+  approvedActionIdsJson  Json     @default("[]") @map("approved_action_ids_json")
+  executedActionIdsJson  Json     @default("[]") @map("executed_action_ids_json")
+  rejectedActionIdsJson  Json     @default("[]") @map("rejected_action_ids_json")
+  stoppingState          String   @map("stopping_state")
+  remainingQuestionBudget Int      @map("remaining_question_budget")
+  canonicalRefsJson      Json     @default("{}") @map("canonical_refs_json")
+  status                 String
+  lockVersion            Int      @default(1) @map("lock_version")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt              DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, companyId, loopId])
+  @@unique([id, organizationId])
+  @@index([organizationId, companyId, updatedAt])
+  @@map("audit_discovery_loops")
+  @@schema("public")
+}
+
+model AuditDiscoveryActionExecutionRecord {
+  id                            String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId                String   @map("organization_id") @db.Uuid
+  companyId                     String   @map("company_id") @db.Uuid
+  loopId                        String   @map("loop_id")
+  executionId                   String   @map("execution_id")
+  brainRunId                    String   @map("brain_run_id")
+  actionId                      String   @map("action_id")
+  status                        String
+  originalQuestionIntentJson    Json     @map("original_question_intent_json")
+  approvedQuestionText          String?  @map("approved_question_text")
+  productionReference           String?  @map("production_reference")
+  executedBy                    String?  @map("executed_by") @db.Uuid
+  rejectionReason               String?  @map("rejection_reason")
+  notes                         String?
+  authoritativeContextJson      Json     @default("{}") @map("authoritative_context_json")
+  createdAt                     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                     DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, companyId, executionId], map: "audit_discovery_action_execution_identity_key")
+  @@unique([organizationId, companyId, brainRunId, actionId], map: "audit_discovery_action_brain_action_key")
+  @@index([organizationId, companyId, loopId, status])
+  @@map("audit_discovery_action_executions")
+  @@schema("public")
+}
+
+model AuditDiscoveryResponseProcessingRecord {
+  id                   String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String   @map("organization_id") @db.Uuid
+  companyId            String   @map("company_id") @db.Uuid
+  processingId         String   @map("processing_id")
+  productionResponseId String   @map("production_response_id")
+  resultJson           Json     @map("result_json")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, companyId, processingId])
+  @@map("audit_discovery_response_processings")
+  @@schema("public")
+}
+
+model AuditEvidenceAcquisitionRequestRecord {
+  id                         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId             String   @map("organization_id") @db.Uuid
+  companyId                  String   @map("company_id") @db.Uuid
+  requestId                  String   @map("request_id")
+  target                     String
+  requestedEvidenceType      String   @map("requested_evidence_type")
+  reason                     String
+  gapId                      String   @map("gap_id")
+  actionId                   String   @map("action_id")
+  status                     String
+  requestedBy                String   @map("requested_by") @db.Uuid
+  receivedSourceId           String?  @map("received_source_id") @db.Uuid
+  authoritativeContextJson   Json     @default("{}") @map("authoritative_context_json")
+  createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                  DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, companyId, requestId])
+  @@unique([id, organizationId])
+  @@index([organizationId, companyId, status, updatedAt])
+  @@map("audit_evidence_acquisition_requests")
+  @@schema("public")
+}
+
+model AuditProductionEvidenceSourceRecord {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId       String    @map("organization_id") @db.Uuid
+  companyId            String    @map("company_id") @db.Uuid
+  acquisitionRequestId String?   @map("acquisition_request_id") @db.Uuid
+  sourceKey            String    @map("source_key")
+  sourceVersion        Int       @map("source_version")
+  sourceType           String    @map("source_type")
+  origin               String
+  authorOrSystem       String?   @map("author_or_system")
+  rawContent           String?   @map("raw_content")
+  structuredJson       Json?     @map("structured_json")
+  metadataJson         Json      @default("{}") @map("metadata_json")
+  receivedAt           DateTime  @map("received_at") @db.Timestamptz(6)
+  ingestedAt           DateTime? @map("ingested_at") @db.Timestamptz(6)
+  createdAt            DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, companyId, sourceKey, sourceVersion])
+  @@unique([id, organizationId])
+  @@index([organizationId, acquisitionRequestId])
+  @@map("audit_production_evidence_sources")
+  @@schema("public")
+}
+
+model AuditProductionEvidenceRecord {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  companyId      String   @map("company_id") @db.Uuid
+  sourceId       String   @map("source_id") @db.Uuid
+  evidenceKey    String   @map("evidence_key")
+  content        String
+  structuredJson Json?    @map("structured_json")
+  provenanceJson Json     @default("{}") @map("provenance_json")
+  confidence     Decimal  @db.Decimal(5, 2)
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@unique([organizationId, sourceId, evidenceKey])
+  @@index([organizationId, sourceId])
+  @@map("audit_production_evidence_records")
+  @@schema("public")
+}
+
 model RuleResult {
   id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   ruleId       String   @map("rule_id") @db.Uuid

@@ -221,7 +221,7 @@ export class ProductionEvidenceIngestionService {
   }
 }
 
-export type EvidenceRequestTarget = "SYSTEM_EVIDENCE" | "KNOWLEDGE_DOCUMENT";
+export type EvidenceRequestTarget = "SYSTEM_EVIDENCE" | "KNOWLEDGE_DOCUMENT" | "PROCESS_EVIDENCE";
 export interface EvidenceAcquisitionRequest {
   readonly requestId: string;
   readonly tenantId: string;
