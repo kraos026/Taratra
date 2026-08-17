@@ -8,6 +8,7 @@ export * from "./application/approved-discovery-action-write-bridge";
 export * from "./application/discovery-response-processing";
 export * from "./application/closed-loop-discovery-orchestrator";
 export * from "./application/adaptive-interview-intelligence";
+export * from "./application/solution-strategy-generation";
 export * from "./application/production-evidence-ingestion";
 export * from "./application/economic-evidence-bridge";
 export * from "./application/real-company-audit-pilot";
