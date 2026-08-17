@@ -284,7 +284,7 @@ async function explanationsFor(
 function overviewFor(view: ExecutiveDecisionView): PatronDecisionCenterOverview {
   return Object.freeze({
     companyId: view.company.id,
-    companyName: view.company.id,
+    companyName: view.company.name ?? view.company.id,
     auditStatus: view.auditSummary.status,
     analysisReadiness: statusFor(view),
     topProblemsCount: view.auditSummary.topProblemCount,

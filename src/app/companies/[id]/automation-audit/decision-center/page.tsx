@@ -1,9 +1,8 @@
 import { notFound } from "next/navigation";
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { createClient } from "@/infrastructure/supabase/server";
-import { ExecutiveResultService } from "@/modules/executive-results/application/executive-result-service";
-import { PrismaExecutiveResultRepository } from "@/modules/executive-results/infrastructure/prisma-executive-result-repository";
-import { unavailablePatronDecisionCenter } from "@/modules/company-intake/application/patron-decision-center";
+import { PatronDecisionCenterService } from "@/modules/company-intake/application/patron-decision-center";
+import { PrismaPatronDecisionCenterReadModel } from "@/modules/company-intake/infrastructure/prisma-patron-decision-center-read-model";
 import { PatronDecisionCenterView } from "@/modules/company-intake/presentation/patron-decision-center-view";
 
 export default async function DecisionCenterPage({
@@ -17,14 +16,12 @@ export default async function DecisionCenterPage({
   const userId = data?.claims?.sub;
   if (!userId) notFound();
 
-  const result = await withAuthenticatedDatabase(userId, (db) =>
-    new ExecutiveResultService(new PrismaExecutiveResultRepository(db), userId).get(id),
+  const center = await withAuthenticatedDatabase(userId, (db) =>
+    new PatronDecisionCenterService(new PrismaPatronDecisionCenterReadModel(db)).get({
+      userId,
+      companyId: id,
+    }),
   );
-  if (!result) notFound();
 
-  return (
-    <PatronDecisionCenterView
-      center={unavailablePatronDecisionCenter(result.company.id, result.company.name)}
-    />
-  );
+  return <PatronDecisionCenterView center={center} />;
 }

@@ -89,7 +89,7 @@ export interface ExecutiveDecisionViewOwnership {
 }
 
 export interface ExecutiveDecisionView {
-  readonly company: { readonly id: string; readonly tenantId: string };
+  readonly company: { readonly id: string; readonly tenantId: string; readonly name?: string };
   readonly ownership: ExecutiveDecisionViewOwnership;
   readonly auditSummary: {
     readonly status: string;

@@ -14,9 +14,11 @@ export * from "./application/production-evidence-ingestion";
 export * from "./application/economic-evidence-bridge";
 export * from "./application/real-company-audit-pilot";
 export * from "./application/executive-decision-view";
+export * from "./application/production-executive-decision-view";
 export * from "./application/executive-explanation-service";
 export * from "./application/patron-decision-center";
 export * from "./infrastructure/in-memory-company-intake-repository";
+export * from "./infrastructure/prisma-patron-decision-center-read-model";
 
 // This module is an application adaptation boundary only. Canonical
 // persistence remains in companies, discovery, interviews and knowledge.

@@ -1,8 +1,7 @@
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { createClient } from "@/infrastructure/supabase/server";
-import { unavailablePatronDecisionCenter } from "@/modules/company-intake/application/patron-decision-center";
-import { ExecutiveResultService } from "@/modules/executive-results/application/executive-result-service";
-import { PrismaExecutiveResultRepository } from "@/modules/executive-results/infrastructure/prisma-executive-result-repository";
+import { PatronDecisionCenterService } from "@/modules/company-intake/application/patron-decision-center";
+import { PrismaPatronDecisionCenterReadModel } from "@/modules/company-intake/infrastructure/prisma-patron-decision-center-read-model";
 import { apiError, apiSuccess } from "@/shared/presentation/api-response";
 
 export async function GET(_: Request, { params }: { readonly params: Promise<{ id: string }> }) {
@@ -12,14 +11,18 @@ export async function GET(_: Request, { params }: { readonly params: Promise<{ i
   const userId = data?.claims?.sub;
   if (error || !userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
 
-  const result = await withAuthenticatedDatabase(userId, (db) =>
-    new ExecutiveResultService(new PrismaExecutiveResultRepository(db), userId).get(id),
+  const decisionCenter = await withAuthenticatedDatabase(userId, (db) =>
+    new PatronDecisionCenterService(new PrismaPatronDecisionCenterReadModel(db)).get({
+      userId,
+      companyId: id,
+    }),
   );
-  if (!result) return apiError("COMPANY_NOT_FOUND", "Company not found", 404);
 
   return apiSuccess({
-    executiveDecisionView: null,
-    explanations: [],
-    decisionCenter: unavailablePatronDecisionCenter(result.company.id, result.company.name),
+    executiveDecisionView: decisionCenter.sourceView,
+    explanations: decisionCenter.priorityCards
+      .map((card) => card.explanation)
+      .filter((item): item is NonNullable<typeof item> => Boolean(item)),
+    decisionCenter,
   });
 }
