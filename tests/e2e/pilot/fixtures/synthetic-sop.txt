@@ -1,0 +1,4 @@
+SYNTHETIC CERTIFICATION DATA — NOT PRODUCTION EVIDENCE
+
+An operator receives a request, checks the required fields, and records the
+result in the approved system. Exceptions are escalated for human review.
