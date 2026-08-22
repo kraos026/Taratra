@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useState, useSyncExternalStore, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,11 @@ import { AuthShell } from "@/modules/auth/presentation/auth-shell";
 
 export default function LoginPage() {
   const router = useRouter();
+  const ready = useSyncExternalStore(
+    () => () => undefined,
+    () => true,
+    () => false,
+  );
   const [pending, setPending] = useState(false);
   const [message, setMessage] = useState<string>();
 
@@ -44,8 +49,9 @@ export default function LoginPage() {
       description="Connectez-vous avec votre compte existant."
       footer={{ href: "/signup", label: "Créer un compte" }}
     >
-      <form className="space-y-4" onSubmit={(event) => void submit(event)}>
+      <form className="space-y-4" method="post" onSubmit={(event) => void submit(event)}>
         <Input
+          aria-label="email"
           name="email"
           type="email"
           autoComplete="email"
@@ -53,6 +59,7 @@ export default function LoginPage() {
           required
         />
         <Input
+          aria-label="password"
           name="password"
           type="password"
           autoComplete="current-password"
@@ -64,7 +71,11 @@ export default function LoginPage() {
             Nouveau sur AutomateX ?
           </Link>
         </div>
-        <Button className="w-full bg-blue-600 hover:bg-blue-500" type="submit" disabled={pending}>
+        <Button
+          className="w-full bg-blue-600 hover:bg-blue-500"
+          type="submit"
+          disabled={pending || !ready}
+        >
           {pending ? "Connexion…" : "Se connecter"}
         </Button>
         {message && (
