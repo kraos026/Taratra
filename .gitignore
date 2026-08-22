@@ -2,6 +2,8 @@ node_modules
 .next
 .env
 .env.local
+.env.certification.local
+.env.local.certification
 coverage
 playwright-report
 test-results
