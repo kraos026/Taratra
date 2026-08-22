@@ -369,7 +369,11 @@ function referencesValid(elements: SpecificationElement[]) {
 }
 
 function hasCycle(elements: SpecificationElement[]) {
-  const dependencies = elements.filter((element) => element.type === "dependency");
+  const dependencies = elements.filter(
+    (element) =>
+      element.type === "dependency" &&
+      EXECUTION_DEPENDENCY_TYPES.has(String(element.definition.dependencyType)),
+  );
   const visiting = new Set<string>();
   const visited = new Set<string>();
   const visit = (node: string): boolean => {
@@ -386,6 +390,16 @@ function hasCycle(elements: SpecificationElement[]) {
     .filter((element) => element.type === "step")
     .some((element) => visit(element.localId));
 }
+
+const EXECUTION_DEPENDENCY_TYPES = new Set([
+  "produces",
+  "consumes",
+  "calls",
+  "stores",
+  "approves",
+  "schedules",
+  "authenticates",
+]);
 
 function dataContractsResolved(elements: SpecificationElement[]) {
   const contracts = new Set(

@@ -100,20 +100,30 @@ export class PrismaAutomationSpecificationRepository implements AutomationSpecif
           displayOrder: element.displayOrder,
         })),
       });
-    if (result.provenance.length)
-      await this.db.automationSpecificationProvenance.createMany({
-        data: result.provenance.map((item) => ({
-          organizationId,
-          automationSpecificationId: specification.id,
-          targetLocalId: item.targetLocalId,
-          sourceElementType: item.sourceElementType,
-          sourceElementId: item.sourceElementId,
-          catalogRuleCode: item.ruleCode,
-          catalogRuleVersion: item.ruleVersion,
-          reason: item.reason,
-          consumed: item.consumed,
-        })),
-      });
+    for (const item of result.provenance)
+      await this.db.$executeRaw`
+        insert into public.automation_specification_provenance(
+          organization_id,
+          automation_specification_id,
+          target_local_id,
+          source_element_type,
+          source_element_id,
+          catalog_rule_code,
+          catalog_rule_version,
+          reason,
+          consumed
+        )
+        values(
+          ${organizationId}::uuid,
+          ${specification.id}::uuid,
+          ${item.targetLocalId},
+          ${item.sourceElementType},
+          ${item.sourceElementId},
+          ${item.ruleCode},
+          ${item.ruleVersion},
+          ${item.reason},
+          ${item.consumed}
+        )`;
     if (result.validations.length)
       await this.db.automationSpecificationValidation.createMany({
         data: result.validations.map((validation) => ({

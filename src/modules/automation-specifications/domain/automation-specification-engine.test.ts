@@ -143,6 +143,18 @@ describe("AutomationSpecificationEngine", () => {
     );
   });
 
+  it("does not treat non-execution notification edges as dependency cycles", () => {
+    const notifying = input();
+    notifying.blueprint.topology.push({
+      from: "processor",
+      to: "receiver",
+      type: "notifies",
+      label: "Notify completion",
+    });
+    const result = new AutomationSpecificationEngine().generate(notifying);
+    expect(result.validations.find((item) => item.ruleCode === "graph_acyclic")?.passed).toBe(true);
+  });
+
   it("rejects an unpublished source through validation", () => {
     const unpublished = input();
     unpublished.blueprint.status = "validated";
