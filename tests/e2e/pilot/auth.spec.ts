@@ -17,6 +17,7 @@ test("Tenant A authenticates and receives a session-backed companies response", 
   await loginAsTenantA(page, config!);
   const response = await page.request.get("/api/companies");
   expect(response.status()).toBe(200);
-  await page.reload();
+  await page.goto("/companies", { waitUntil: "domcontentloaded" });
+  await page.reload({ waitUntil: "domcontentloaded" });
   await expect(page).not.toHaveURL(/\/login/);
 });

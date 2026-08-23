@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { loginAsTenantA } from "./support/auth";
-import { firstCompanyId } from "./support/company";
+import { fixtureCompanyId } from "./support/company";
 import { readPilotE2EConfig } from "./support/env";
 
 const config = readPilotE2EConfig(process.env);
@@ -8,7 +8,7 @@ const config = readPilotE2EConfig(process.env);
 test("evidence request retry remains bounded and observable", async ({ page }) => {
   test.skip(!config, "CERTIFICATION ENVIRONMENT NOT CONFIGURED");
   await loginAsTenantA(page, config!);
-  const companyId = await firstCompanyId(page);
+  const companyId = await fixtureCompanyId();
   const body = {
     target: "SYSTEM_EVIDENCE",
     requestedEvidenceType: "CSV_EXPORT",

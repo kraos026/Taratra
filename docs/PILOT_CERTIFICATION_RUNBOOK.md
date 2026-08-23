@@ -1,7 +1,43 @@
 # Pilot certification runbook
 
-This runbook validates the existing product against an isolated staging
-Supabase project. It never resets or migrates an unspecified database.
+This runbook validates the existing product against either the official local
+Supabase certification target or an explicitly configured isolated staging
+project. It never resets or migrates an unspecified database.
+
+## 0. Local reproducible certification
+
+Use the local target when certifying from a fresh shell:
+
+```bash
+npm run certification:local
+```
+
+For a fast environment check without the full Playwright journey:
+
+```bash
+npm run certification:local:bootstrap
+```
+
+The local target is intentionally fixed:
+
+- Supabase API: `http://127.0.0.1:55021`
+- Postgres: `127.0.0.1:55022`
+- AutomateX app: `http://localhost:3000`
+- `SUPABASE_PROJECT_REF=local`
+
+The runner starts the local Supabase stack if needed, injects certification
+variables into child processes, creates deterministic local Tenant A/B users and
+companies, starts the Next.js app on `localhost:3000`, then runs the pilot E2E
+suite. No `.env` file is written and no secret is printed.
+
+The local database guard fails closed if a remote Supabase URL or non-local
+Postgres URL is detected.
+
+On Windows, local certification uses the installed system Google Chrome through
+Playwright `channel: "chrome"` and does not require downloading the bundled
+Playwright Chromium browser. The runner fails fast with
+`SYSTEM CHROME FOUND = NO` if Chrome cannot be detected in the standard Windows
+install locations.
 
 ## 1. Configure staging variables securely
 

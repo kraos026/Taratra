@@ -1,7 +1,9 @@
 import { expect, test } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loginAsTenantA } from "./support/auth";
+import { fixtureCompanyId } from "./support/company";
 import { readPilotE2EConfig } from "./support/env";
 
 const config = readPilotE2EConfig(process.env);
@@ -9,10 +11,7 @@ const config = readPilotE2EConfig(process.env);
 test("evidence request and bounded evidence submission use durable routes", async ({ page }) => {
   test.skip(!config, "CERTIFICATION ENVIRONMENT NOT CONFIGURED");
   await loginAsTenantA(page, config!);
-  const companies = await page.request.get("/api/companies");
-  expect(companies.status()).toBe(200);
-  const companyId = ((await companies.json()) as { data?: { id?: string }[] }).data?.[0]?.id;
-  expect(companyId).toBeTruthy();
+  const companyId = await fixtureCompanyId();
 
   const requests = await page.request.get(
     `/api/companies/${companyId}/automation-audit/evidence-requests`,
@@ -43,7 +42,7 @@ test("evidence request and bounded evidence submission use durable routes", asyn
     {
       data: {
         requestId,
-        sourceId: "certification-csv",
+        sourceId: `certification-csv-${randomUUID()}`,
         sourceVersion: 1,
         sourceType: "CSV_EXPORT",
         rawContent: csv,

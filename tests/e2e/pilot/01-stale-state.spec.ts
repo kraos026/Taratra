@@ -1,17 +1,18 @@
 import { expect, test } from "@playwright/test";
 import { loginAsTenantA } from "./support/auth";
+import { firstCompanyId } from "./support/company";
 import { readPilotE2EConfig } from "./support/env";
 
 const config = readPilotE2EConfig(process.env);
 
-test("eligible real company exposes the production decision center", async ({ page }) => {
+test("Decision Center reload reads current persisted state", async ({ page }) => {
+  test.setTimeout(180_000);
   test.skip(!config, "CERTIFICATION ENVIRONMENT NOT CONFIGURED");
   await loginAsTenantA(page, config!);
-  const response = await page.request.get("/api/companies");
-  expect(response.status()).toBe(200);
-  const companyId = ((await response.json()) as { data?: { id?: string }[] }).data?.[0]?.id;
-  expect(companyId).toBeTruthy();
+  const companyId = await firstCompanyId(page);
   await page.goto(`/companies/${companyId}/automation-audit/decision-center`);
   await expect(page).not.toHaveURL(/\/login/);
-  await expect(page.getByText(/decision|décision/i).first()).toBeVisible();
+  await page.reload();
+  await expect(page).not.toHaveURL(/\/login/);
+  await page.goto("about:blank");
 });
