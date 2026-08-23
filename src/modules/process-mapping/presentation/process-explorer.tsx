@@ -24,6 +24,18 @@ type Detail = {
     name: string;
     description: string | null;
     sequence: number | null;
+    executionMode: string | null;
+    estimatedDurationMinutes: string | null;
+    actorKnowledgeNodeId: string | null;
+    frequency: string | null;
+    knowledgeFactIds: string[];
+    attributesJson: {
+      executionMetadataProjection?: {
+        status?: string;
+        durationSemantic?: string;
+        requiresHumanValidation?: boolean;
+      };
+    } | null;
   }[];
   edges: { id: string; fromNodeId: string; toNodeId: string; edgeType: string }[];
   ownership: {
@@ -154,6 +166,27 @@ export function ProcessExplorer({ id }: { id: string }) {
           </CardHeader>
           <CardContent>
             <p>{node.description ?? "Aucune description supplémentaire."}</p>
+            <dl className="mt-4 grid gap-2 text-sm sm:grid-cols-2">
+              <Metadata label="Mode d’exécution" value={node.executionMode ?? "Inconnu"} />
+              <Metadata
+                label="Durée"
+                value={
+                  node.estimatedDurationMinutes
+                    ? `${node.estimatedDurationMinutes} min`
+                    : "Inconnue"
+                }
+              />
+              <Metadata label="Fréquence" value={node.frequency ?? "Inconnue"} />
+              <Metadata
+                label="Acteur"
+                value={node.actorKnowledgeNodeId ? "Relié à la connaissance" : "À valider"}
+              />
+              <Metadata
+                label="Projection"
+                value={node.attributesJson?.executionMetadataProjection?.status ?? "MISSING"}
+              />
+              <Metadata label="Faits source" value={`${node.knowledgeFactIds.length}`} />
+            </dl>
             <p className="text-muted-foreground mt-2 text-sm">Identifiant : {node.nodeKey}</p>
           </CardContent>
         </Card>
@@ -169,6 +202,15 @@ function Metric({ label, value }: { label: string; value: string }) {
         <p className="text-xl font-bold">{value}</p>
       </CardContent>
     </Card>
+  );
+}
+
+function Metadata({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dt className="text-muted-foreground">{label}</dt>
+      <dd className="font-medium">{value}</dd>
+    </div>
   );
 }
 

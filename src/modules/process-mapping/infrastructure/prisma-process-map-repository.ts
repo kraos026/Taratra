@@ -153,6 +153,14 @@ export class PrismaProcessMapRepository {
           name: node.name,
           description: node.description,
           sequence: node.sequence,
+          departmentKnowledgeNodeId: node.departmentKnowledgeNodeId,
+          actorKnowledgeNodeId: node.actorKnowledgeNodeId,
+          systemKnowledgeNodeId: node.systemKnowledgeNodeId,
+          knowledgeFactIds: node.knowledgeFactIds ?? [],
+          estimatedDurationMinutes: node.estimatedDurationMinutes,
+          frequency: node.frequency,
+          executionMode: node.executionMode,
+          attributesJson: (node.attributes ?? {}) as Prisma.InputJsonValue,
         },
       });
       ids.set(node.key, created.id);

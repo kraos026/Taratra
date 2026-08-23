@@ -52,6 +52,14 @@ export interface ProcessBuild {
     name: string;
     description?: string;
     sequence: number;
+    executionMode?: string | null;
+    estimatedDurationMinutes?: number | null;
+    actorKnowledgeNodeId?: string | null;
+    departmentKnowledgeNodeId?: string | null;
+    systemKnowledgeNodeId?: string | null;
+    frequency?: string | null;
+    knowledgeFactIds?: string[];
+    attributes?: Record<string, unknown>;
   }[];
   edges: { from: string; to: string; type: GraphEdgeType }[];
   ownership: {
@@ -233,7 +241,23 @@ export class ProcessMappingEngine {
     const ignoredFacts = facts
       .filter((fact) => !relevant.some((item) => item.fact.id === fact.id))
       .map((fact) => ({ fact, reason: "Not relevant to selected pattern" }));
-    const nodes = pattern.graphTemplate.nodes.map((node, sequence) => ({ ...node, sequence }));
+    const nodes = this.enrichExecutionMetadata(
+      pattern,
+      pattern.graphTemplate.nodes.map((node, sequence) => ({
+        ...node,
+        sequence,
+        executionMode: null,
+        estimatedDurationMinutes: null,
+        actorKnowledgeNodeId: null,
+        departmentKnowledgeNodeId: null,
+        systemKnowledgeNodeId: null,
+        frequency: null,
+        knowledgeFactIds: [],
+        attributes: {},
+      })),
+      facts,
+      knowledgeNodes,
+    );
     const edges = pattern.graphTemplate.edges.map(([from, to, type]) => ({ from, to, type }));
     const departments = knowledgeNodes.filter((node) => node.type === "department");
     const actors = this.findActors(knowledgeNodes);
@@ -288,6 +312,102 @@ export class ProcessMappingEngine {
       ready,
     };
   }
+
+  private enrichExecutionMetadata(
+    pattern: ProcessPatternInput,
+    nodes: ProcessBuild["nodes"],
+    facts: KnowledgeFactInput[],
+    knowledgeNodes: KnowledgeNodeInput[],
+  ): ProcessBuild["nodes"] {
+    if (pattern.code !== "invoice_processing") return nodes;
+    const executionModeFact = facts.find((fact) => fact.key === "interview.finance.invoice_mode");
+    const manualHoursFact = facts.find((fact) => /manual_hours_month$/.test(fact.key));
+    const invoiceTimeFact = facts.find((fact) => fact.key === "interview.finance.invoice_time");
+    const frequencyFact = facts.find((fact) => /\.frequency$/.test(fact.key));
+    const ownerFact = facts.find((fact) => fact.key === "interview.finance.invoice_owner");
+    const executionMode = normalizeExecutionMode(executionModeFact?.value);
+    if (executionMode !== "manual") return nodes;
+    const manualMinutesMonthly = hoursToMinutes(manualHoursFact?.value);
+    const fallbackMinutes = minutes(invoiceTimeFact?.value);
+    const targetNodes = nodes.filter((node) => isInvoiceManualNode(node));
+    if (targetNodes.length === 0) return nodes;
+    const perNodeMonthlyMinutes =
+      manualMinutesMonthly !== null ? round(manualMinutesMonthly / targetNodes.length) : null;
+    const actorNode = resolveSingleActor(ownerFact, knowledgeNodes);
+    const departmentNode = knowledgeNodes.find((node) => node.type === "department") ?? null;
+    const lineage = [
+      executionModeFact?.id,
+      manualHoursFact?.id,
+      invoiceTimeFact?.id,
+      frequencyFact?.id,
+      ownerFact?.id,
+    ].filter(isString);
+    const projectedFrequency =
+      typeof frequencyFact?.value === "string" ? frequencyFact.value : null;
+
+    return nodes.map((node) => {
+      if (!targetNodes.some((target) => target.key === node.key)) return node;
+      const ambiguousActor = ownerFact !== undefined && actorNode === null;
+      return {
+        ...node,
+        executionMode,
+        estimatedDurationMinutes: perNodeMonthlyMinutes ?? fallbackMinutes,
+        actorKnowledgeNodeId: actorNode?.id ?? null,
+        departmentKnowledgeNodeId: departmentNode?.id ?? null,
+        frequency: projectedFrequency,
+        knowledgeFactIds: lineage,
+        attributes: {
+          ...node.attributes,
+          executionMetadataProjection: {
+            status: ambiguousActor ? "AMBIGUOUS" : "AUTO_PROJECTED",
+            durationSemantic:
+              perNodeMonthlyMinutes !== null
+                ? "allocated_monthly_manual_workload_minutes"
+                : "per_execution_minutes",
+            source: "knowledge",
+            requiresHumanValidation: ambiguousActor,
+          },
+        },
+      };
+    });
+  }
+}
+
+function normalizeExecutionMode(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim().toLowerCase();
+  if (normalized === "manual") return "manual";
+  if (normalized === "automatic" || normalized === "automated") return "automated";
+  return null;
+}
+
+function hoursToMinutes(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return round(value * 60);
+}
+
+function minutes(value: unknown): number | null {
+  if (typeof value !== "number" || !Number.isFinite(value)) return null;
+  return round(value);
+}
+
+function isInvoiceManualNode(node: ProcessBuild["nodes"][number]) {
+  return ["receive", "validate", "account", "approve"].includes(node.key);
+}
+
+function resolveSingleActor(
+  ownerFact: KnowledgeFactInput | undefined,
+  knowledgeNodes: KnowledgeNodeInput[],
+) {
+  if (!ownerFact || typeof ownerFact.value !== "string") return null;
+  const text = ownerFact.value.toLowerCase();
+  const actors = knowledgeNodes.filter((node) => ["role", "actor"].includes(node.type));
+  const matches = actors.filter((node) => text.includes(node.label.toLowerCase()));
+  return matches.length === 1 ? matches[0]! : null;
+}
+
+function isString(value: string | undefined): value is string {
+  return typeof value === "string";
 }
 
 function searchFact(fact: KnowledgeFactInput) {
