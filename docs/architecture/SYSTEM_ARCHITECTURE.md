@@ -1,6 +1,8 @@
-# System Architecture
+# AutomateX System Architecture
 
-Status: **Implemented**
+Status: **Current architecture summary**
+
+Last verified: 2026-08-23
 
 ## Platform
 
@@ -18,27 +20,40 @@ contracts and tenant isolation.
 | Interfaces     | route parsing, auth entry, response mapping, UI        | domain rules                          |
 | Composition    | provider construction and dependency injection         | behavior or orchestration             |
 
-## Canonical enterprise flow
+## Current canonical product flow
 
 ```mermaid
 flowchart LR
-  D["Discovery"] --> I["Adaptive Interview"]
-  D --> K["Enterprise Knowledge"]
-  I --> K
-  K --> P["Process Mapping"]
+  Auth["Auth"] --> Tenant["Tenant"]
+  Tenant --> Company["Company"]
+  Company --> Audit["Audit"]
+  Audit --> D["Discovery"]
+  D --> I["Interview"]
+  I --> K["Enterprise Knowledge"]
+  K --> P["Process Map"]
   P --> B["Business Analysis"]
-  B --> AI["AI Opportunity"]
-  AI --> AO["Automation Opportunity"]
-  AO --> R["ROI"]
-  R --> REC["Recommendation"]
-  REC --> SD["Solution Designer"]
+  B --> AI["AI Opportunities"]
+  AI --> AO["Automation Opportunities"]
+  AO --> R["ROI Evaluation"]
+  R --> REC["Recommendation Portfolio"]
+  REC --> SD["Solution Blueprint"]
   SD --> AS["Automation Specification"]
-  AS --> AG["Automation Generator"]
+  AS --> ER["Executive Result / Decision Center"]
 ```
 
-V1 through Recommendation, Solution Designer and Automation Specification are Implemented.
-Automation Generator is In Progress: Domain, Application, Infrastructure and Composition are
-Implemented; real graph compilation and public REST interfaces are Planned.
+This path is the current local P0 certified flow. Automation Generator, Runtime execution,
+Deployment, Monitoring, Optimization and Agents are not part of the current certified production
+path unless a later release gate explicitly promotes them.
+
+## Shadow and future layers
+
+| Layer                                            | Status           | Boundary                                                                                     |
+| ------------------------------------------------ | ---------------- | -------------------------------------------------------------------------------------------- |
+| Brain V2 and advanced AI reasoning               | SHADOW / LAB     | Complements and evaluates the product flow; not yet the only source of production decisions. |
+| Synthetic / live AI lab                          | SHADOW / LAB     | Used for quality measurement and research; not customer production authority.                |
+| Automation Generator delivery                    | PARTIAL / FUTURE | Existing internals require separate public delivery certification.                           |
+| Runtime / deployment / monitoring / optimization | PARTIAL / FUTURE | Architecture/foundation work only for current release purposes.                              |
+| Agentic architecture and skills                  | FUTURE           | Documentation-only target architecture.                                                      |
 
 ## Persistence
 
@@ -68,9 +83,10 @@ sequenceDiagram
   Tx-->>UseCase: commit or rollback
 ```
 
-## Known divergence
+## Known documentation divergence
 
-The historical [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) contains status language predating the
-completed V1 engines and V2 work. It remains useful for detailed context, but `PROJECT_STATE.md`
-now controls status. Consolidation of that long-form document is Planned and must not alter frozen
+The historical [`docs/ARCHITECTURE.md`](../ARCHITECTURE.md) and some audit reports contain status
+language from earlier recovery gates. They remain useful for detailed context, but
+[`docs/AUTOMATEX_CURRENT_STATUS.md`](../AUTOMATEX_CURRENT_STATUS.md) controls the current P0
+status. Consolidation of older long-form documents is Planned and must not alter frozen
 architecture contracts.

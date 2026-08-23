@@ -1,7 +1,9 @@
 # Work Intelligence M2 — Persistence and Enterprise Knowledge Projection Review
 
-Status: **SAFE CHECKPOINT — ARCHITECTURE CONTRACT REQUIRED**  
-Baseline: `f39aef42f3c3629e37e6e6cd563e68578983f2c7`  
+Classification: **HISTORICAL SNAPSHOT — NOT CURRENT RELEASE VERDICT**
+
+Status: **SAFE CHECKPOINT — ARCHITECTURE CONTRACT REQUIRED**
+Baseline: `f39aef42f3c3629e37e6e6cd563e68578983f2c7`
 Date: 2026-08-03
 
 ## Decision
