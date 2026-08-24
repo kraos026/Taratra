@@ -1,5 +1,5 @@
 begin;
-select plan(26);
+select plan(27);
 select has_table('public','solution_pattern_catalog','pattern catalog exists');
 select has_table('public','solution_capability_catalog','capability catalog exists');
 select has_table('public','solution_connector_requirement_catalog','connector catalog exists');
@@ -32,6 +32,39 @@ select is((
   and edge->>'from'='escalation' and edge->>'to'='assistant'
   and edge->>'type' in('produces','consumes','calls','stores','approves','schedules')
 ),0,'customer support catalog has no reverse dependency cycle');
+select is((
+ with pattern_connector_permissions as (
+  select
+   p.id as pattern_id,
+   p.code as pattern_code,
+   connector_permission.value #>> '{}' as required_permission
+  from public.solution_pattern_catalog p
+  cross join lateral jsonb_array_elements(p.template_json->'connectors') pattern_connector
+  join public.solution_connector_requirement_catalog c
+   on c.code = pattern_connector->>'code'
+   and c.published
+   and (c.organization_id is null or c.organization_id = p.organization_id)
+  cross join lateral jsonb_array_elements(to_jsonb(c.permissions)) connector_permission
+  where p.published
+ ),
+ missing_permissions as (
+  select required.pattern_id, required.pattern_code, required.required_permission
+  from pattern_connector_permissions required
+  where not exists (
+   select 1
+   from jsonb_array_elements(
+    coalesce(
+     (select p.template_json->'permissions'
+      from public.solution_pattern_catalog p
+      where p.id = required.pattern_id),
+     '[]'::jsonb
+    )
+   ) declared_permission
+   where declared_permission.value #>> '{}' = required.required_permission
+  )
+ )
+ select count(*)::integer from missing_permissions
+),0,'published pattern permissions cover all referenced connector permissions');
 select throws_like($$update public.solution_pattern_catalog set name='Changed' where code='simple_automation'$$,'%immutable%','published pattern immutable');
 select throws_like($$insert into public.solution_blueprints(organization_id,company_id,recommendation_id,recommendation_snapshot_id,roi_snapshot_id,automation_opportunity_id,automation_opportunity_snapshot_id,pattern_id,version_number,name,description,objective,architecture,components_json,capabilities_json,connectors_json,constraints_json,assumptions_json,secrets_json,permissions_json,inputs_json,outputs_json,topology_json,dependencies_json,risks_json,final_risk,estimated_technical_cost_index,complexity_score,catalog_versions_json,provenance_json,created_by) select gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),gen_random_uuid(),id,1,'x','x','x','x','[]','[]','[]','[]','[]','[]','[]','[]','[]','[]','[]','[]',0,0,0,'{"validations":[]}','{}',gen_random_uuid() from public.solution_pattern_catalog limit 1$$,'%application transaction%','direct blueprint generation is rejected');
 select lives_ok($$select set_config('app.solution_designer_internal_write','on',true)$$,'application transaction marker can be set locally');
