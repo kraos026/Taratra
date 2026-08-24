@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import type {
@@ -5,6 +6,26 @@ import type {
   InterviewKnowledgeInput,
   KnowledgeProjection,
 } from "../domain/knowledge-projection";
+
+export interface PreparedKnowledgePersistencePlan {
+  projection: KnowledgeProjection;
+  sourceIds: Map<string, string>;
+  nodeIds: Map<string, string>;
+  factIds: Map<string, string>;
+  evidenceIds: Map<string, string>;
+}
+
+export function prepareKnowledgePersistencePlan(
+  projection: KnowledgeProjection,
+): PreparedKnowledgePersistencePlan {
+  return {
+    projection,
+    sourceIds: new Map(projection.sources.map((source) => [source.key, randomUUID()])),
+    nodeIds: new Map(projection.nodes.map((node) => [node.key, randomUUID()])),
+    factIds: new Map(projection.facts.map((fact) => [fact.key, randomUUID()])),
+    evidenceIds: new Map(projection.facts.map((fact) => [fact.key, randomUUID()])),
+  };
+}
 
 export class PrismaKnowledgeRepository {
   constructor(private readonly db: TransactionClient) {}
@@ -129,6 +150,21 @@ export class PrismaKnowledgeRepository {
     userId: string,
     projection: KnowledgeProjection,
   ) {
+    return this.persistPrepared(
+      organizationId,
+      companyId,
+      userId,
+      prepareKnowledgePersistencePlan(projection),
+    );
+  }
+
+  async persistPrepared(
+    organizationId: string,
+    companyId: string,
+    userId: string,
+    plan: PreparedKnowledgePersistencePlan,
+  ) {
+    const { projection, sourceIds, nodeIds, factIds, evidenceIds } = plan;
     await this.db
       .$executeRaw`select pg_advisory_xact_lock(hashtextextended(${`${organizationId}:${companyId}:knowledge`}, 0))`;
     const latestReady = await this.db.knowledgeSnapshot.findFirst({
@@ -150,30 +186,31 @@ export class PrismaKnowledgeRepository {
     });
     const snapshot = await this.db.knowledgeSnapshot.create({
       data: {
+        id: randomUUID(),
         organizationId,
         companyId,
         createdBy: userId,
         version: (latest?.version ?? 0) + 1,
       },
     });
-    const sourceIds = new Map<string, string>();
-    for (const source of projection.sources) {
-      const created = await this.db.knowledgeSource.create({
-        data: {
+
+    if (projection.sources.length)
+      await this.db.knowledgeSource.createMany({
+        data: projection.sources.map((source) => ({
+          id: sourceIds.get(source.key)!,
           organizationId,
           snapshotId: snapshot.id,
           sourceType: source.type,
           sourceId: source.sourceId,
           sourceVersion: source.version,
           validatedAt: source.validatedAt,
-        },
+        })),
       });
-      sourceIds.set(source.key, created.id);
-    }
-    const nodeIds = new Map<string, string>();
-    for (const node of projection.nodes) {
-      const created = await this.db.knowledgeNode.create({
-        data: {
+
+    if (projection.nodes.length)
+      await this.db.knowledgeNode.createMany({
+        data: projection.nodes.map((node) => ({
+          id: nodeIds.get(node.key)!,
           organizationId,
           snapshotId: snapshot.id,
           nodeKey: node.key,
@@ -183,13 +220,13 @@ export class PrismaKnowledgeRepository {
           canonicalEntityType: node.canonicalEntityType,
           canonicalEntityId: node.canonicalEntityId,
           confidencePercentage: node.confidence,
-        },
+        })),
       });
-      nodeIds.set(node.key, created.id);
-    }
-    for (const fact of projection.facts) {
-      const created = await this.db.knowledgeFact.create({
-        data: {
+
+    if (projection.facts.length) {
+      await this.db.knowledgeFact.createMany({
+        data: projection.facts.map((fact) => ({
+          id: factIds.get(fact.key)!,
           organizationId,
           snapshotId: snapshot.id,
           nodeId: fact.nodeKey ? nodeIds.get(fact.nodeKey) : null,
@@ -198,21 +235,24 @@ export class PrismaKnowledgeRepository {
           valueJson: fact.value as Prisma.InputJsonValue,
           valueType: fact.valueType,
           confidencePercentage: fact.confidence,
-        },
+        })),
       });
-      await this.db.knowledgeEvidence.create({
-        data: {
+
+      await this.db.knowledgeEvidence.createMany({
+        data: projection.facts.map((fact) => ({
+          id: evidenceIds.get(fact.key)!,
           organizationId,
           snapshotId: snapshot.id,
-          factId: created.id,
+          factId: factIds.get(fact.key)!,
           sourceId: sourceIds.get(fact.sourceKey)!,
           sourceRecordType: fact.sourceRecordType,
           sourceRecordId: fact.sourceRecordId,
           evidenceType: fact.evidenceType,
           confidencePercentage: fact.confidence,
-        },
+        })),
       });
     }
+
     if (projection.relationships.length)
       await this.db.knowledgeRelationship.createMany({
         data: projection.relationships.map((relationship) => ({

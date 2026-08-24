@@ -47,7 +47,12 @@ describe("EnterpriseKnowledgeService", () => {
     await new EnterpriseKnowledgeService(repository, "user", asProjector(projector)).build(
       "company",
     );
-    expect(repository.persist).toHaveBeenCalledWith("org", "company", "user", projection);
+    expect(repository.persistPrepared).toHaveBeenCalledWith(
+      "org",
+      "company",
+      "user",
+      expect.objectContaining({ projection }),
+    );
   });
 
   it("rejects viewers before accessing company data", async () => {
@@ -103,7 +108,7 @@ describe("EnterpriseKnowledgeService", () => {
 
   it("returns repository idempotency metadata unchanged", async () => {
     const repository = repositoryFor("owner");
-    repository.persist.mockResolvedValue({
+    repository.persistPrepared.mockResolvedValue({
       snapshot: { id: "snapshot", companyId: "company", status: "ready", version: 1 },
       created: false,
     });
@@ -118,7 +123,7 @@ function repositoryFor(role: string) {
     context: vi.fn().mockResolvedValue({ organizationId: "org", role }),
     companyExists: vi.fn().mockResolvedValue(true),
     inputs: vi.fn().mockResolvedValue({ discovery, interview: null }),
-    persist: vi.fn().mockResolvedValue({
+    persistPrepared: vi.fn().mockResolvedValue({
       snapshot: { id: "snapshot", companyId: "company", status: "ready", version: 1 },
       created: true,
     }),
@@ -126,7 +131,7 @@ function repositoryFor(role: string) {
     context: ReturnType<typeof vi.fn>;
     companyExists: ReturnType<typeof vi.fn>;
     inputs: ReturnType<typeof vi.fn>;
-    persist: ReturnType<typeof vi.fn>;
+    persistPrepared: ReturnType<typeof vi.fn>;
   };
 }
 

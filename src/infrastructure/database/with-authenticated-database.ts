@@ -3,10 +3,14 @@ import { getPrismaClient } from "./prisma";
 import { logError, logInfo } from "@/shared/infrastructure/logger";
 
 export type TransactionClient = Prisma.TransactionClient;
+export type AuthenticatedDatabaseTransactionOptions = Parameters<
+  ReturnType<typeof getPrismaClient>["$transaction"]
+>[1];
 
 export async function withAuthenticatedDatabase<Result>(
   userId: string,
   operation: (database: TransactionClient) => Promise<Result>,
+  options?: AuthenticatedDatabaseTransactionOptions,
 ): Promise<Result> {
   logInfo({ action: "database.authenticated.enter", userId });
 
@@ -23,7 +27,7 @@ export async function withAuthenticatedDatabase<Result>(
       const result = await operation(transaction);
       logInfo({ action: "database.operation.completed", userId });
       return result;
-    });
+    }, options);
   } catch (caught) {
     logError({
       action: "database.authenticated.failed",

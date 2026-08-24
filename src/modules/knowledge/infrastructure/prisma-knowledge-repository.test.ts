@@ -25,6 +25,44 @@ const projection: KnowledgeProjection = {
   relationships: [],
 };
 
+const projectionWithFacts: KnowledgeProjection = {
+  ...projection,
+  nodes: [
+    {
+      key: "process:invoice",
+      type: "process",
+      domain: "finance",
+      label: "Invoice processing",
+      canonicalEntityType: "business_process",
+      canonicalEntityId: "33333333-3333-4333-8333-333333333333",
+      confidence: 92,
+    },
+  ],
+  facts: Array.from({ length: 29 }, (_, index) => ({
+    key: `fact:${index + 1}`,
+    domain: "finance",
+    nodeKey: "process:invoice",
+    value: { metric: index + 1 },
+    valueType: "object",
+    confidence: 80 + (index % 10),
+    sourceKey: index % 2 === 0 ? "discovery" : "interview",
+    sourceRecordType: index % 2 === 0 ? "discovery_session" : "interview_answer",
+    sourceRecordId:
+      index % 2 === 0
+        ? "11111111-1111-4111-8111-111111111111"
+        : "22222222-2222-4222-8222-222222222222",
+    evidenceType: index % 2 === 0 ? "validated_entity" : "validated_answer",
+  })),
+  relationships: [
+    {
+      fromNodeKey: "process:invoice",
+      toNodeKey: "process:invoice",
+      type: "self_reference_for_test",
+      confidence: 75,
+    },
+  ],
+};
+
 describe("PrismaKnowledgeRepository production identity", () => {
   it("selects only validated Discovery and Interview versions", async () => {
     const db = database();
@@ -101,7 +139,6 @@ describe("PrismaKnowledgeRepository production identity", () => {
       { sourceType: "discovery", sourceId: projection.sources[0]!.sourceId, sourceVersion: 3 },
     ]);
     db.knowledgeSnapshot.create.mockResolvedValue({ id: "new", version: 8 });
-    db.knowledgeSource.create.mockResolvedValue({ id: "source" });
     db.knowledgeSnapshot.update.mockResolvedValue(readySnapshot(8, "new"));
     const repository = new PrismaKnowledgeRepository(asDb(db));
     const result = await repository.persist("org", "company", "user", {
@@ -110,7 +147,23 @@ describe("PrismaKnowledgeRepository production identity", () => {
     });
     expect(result).toMatchObject({ created: true, snapshot: { id: "new", version: 8 } });
     expect(db.knowledgeSnapshot.create).toHaveBeenCalledWith({
-      data: { organizationId: "org", companyId: "company", createdBy: "user", version: 8 },
+      data: expect.objectContaining({
+        id: expect.any(String),
+        organizationId: "org",
+        companyId: "company",
+        createdBy: "user",
+        version: 8,
+      }),
+    });
+    expect(db.knowledgeSource.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          id: expect.any(String),
+          organizationId: "org",
+          snapshotId: "new",
+          sourceType: "discovery",
+        }),
+      ],
     });
   });
 
@@ -148,7 +201,127 @@ describe("PrismaKnowledgeRepository production identity", () => {
     );
     await new PrismaKnowledgeRepository(asDb(db)).persist("org", "company", "user", projection);
     expect(db.knowledgeSnapshot.update).not.toHaveBeenCalled();
-    expect(db.knowledgeSource.create).not.toHaveBeenCalled();
+    expect(db.knowledgeSource.createMany).not.toHaveBeenCalled();
+  });
+
+  it("persists canonical invoice facts, evidence, provenance, and relationships in batches", async () => {
+    const db = database();
+    db.knowledgeSnapshot.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ version: 0 });
+    db.knowledgeSnapshot.create.mockResolvedValue({ id: "snapshot", version: 1 });
+    db.knowledgeSnapshot.update.mockResolvedValue(readySnapshot(1, "snapshot"));
+
+    const result = await new PrismaKnowledgeRepository(asDb(db)).persist(
+      "org",
+      "company",
+      "user",
+      projectionWithFacts,
+    );
+
+    expect(result.created).toBe(true);
+    expect(db.knowledgeSource.createMany).toHaveBeenCalledOnce();
+    expect(db.knowledgeNode.createMany).toHaveBeenCalledOnce();
+    expect(db.knowledgeFact.createMany).toHaveBeenCalledOnce();
+    expect(db.knowledgeEvidence.createMany).toHaveBeenCalledOnce();
+    expect(db.knowledgeRelationship.createMany).toHaveBeenCalledOnce();
+    expect(db.knowledgeFact.create).not.toHaveBeenCalled();
+    expect(db.knowledgeEvidence.create).not.toHaveBeenCalled();
+
+    const factRows = db.knowledgeFact.createMany.mock.calls[0]?.[0].data;
+    const evidenceRows = db.knowledgeEvidence.createMany.mock.calls[0]?.[0].data;
+    const relationshipRows = db.knowledgeRelationship.createMany.mock.calls[0]?.[0].data;
+    expect(factRows).toHaveLength(29);
+    expect(evidenceRows).toHaveLength(29);
+    expect(relationshipRows).toHaveLength(1);
+    expect(evidenceRows?.[0]).toMatchObject({
+      id: expect.any(String),
+      organizationId: "org",
+      snapshotId: "snapshot",
+      factId: factRows?.[0]?.id,
+      sourceRecordType: "discovery_session",
+      sourceRecordId: "11111111-1111-4111-8111-111111111111",
+      evidenceType: "validated_entity",
+    });
+    expect(evidenceRows?.[1]).toMatchObject({
+      factId: factRows?.[1]?.id,
+      sourceRecordType: "interview_answer",
+      sourceRecordId: "22222222-2222-4222-8222-222222222222",
+      evidenceType: "validated_answer",
+    });
+  });
+
+  it("does not mark the snapshot ready when a batched evidence stage fails", async () => {
+    const db = database();
+    db.knowledgeSnapshot.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ version: 0 });
+    db.knowledgeSnapshot.create.mockResolvedValue({ id: "snapshot", version: 1 });
+    db.knowledgeEvidence.createMany.mockRejectedValue(new Error("evidence batch failed"));
+
+    await expect(
+      new PrismaKnowledgeRepository(asDb(db)).persist(
+        "org",
+        "company",
+        "user",
+        projectionWithFacts,
+      ),
+    ).rejects.toThrow("evidence batch failed");
+
+    expect(db.knowledgeSnapshot.update).not.toHaveBeenCalled();
+  });
+
+  it("marks the snapshot ready only after all required batched writes complete", async () => {
+    const order: string[] = [];
+    const db = database();
+    db.knowledgeSnapshot.findFirst
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce({ version: 0 });
+    db.knowledgeSnapshot.create.mockImplementation(async () => {
+      order.push("snapshot");
+      return { id: "snapshot", version: 1 };
+    });
+    db.knowledgeSource.createMany.mockImplementation(async () => {
+      order.push("sources");
+      return { count: 2 };
+    });
+    db.knowledgeNode.createMany.mockImplementation(async () => {
+      order.push("nodes");
+      return { count: 1 };
+    });
+    db.knowledgeFact.createMany.mockImplementation(async () => {
+      order.push("facts");
+      return { count: 29 };
+    });
+    db.knowledgeEvidence.createMany.mockImplementation(async () => {
+      order.push("evidence");
+      return { count: 29 };
+    });
+    db.knowledgeRelationship.createMany.mockImplementation(async () => {
+      order.push("relationships");
+      return { count: 1 };
+    });
+    db.knowledgeSnapshot.update.mockImplementation(async () => {
+      order.push("ready");
+      return readySnapshot(1, "snapshot");
+    });
+
+    await new PrismaKnowledgeRepository(asDb(db)).persist(
+      "org",
+      "company",
+      "user",
+      projectionWithFacts,
+    );
+
+    expect(order).toEqual([
+      "snapshot",
+      "sources",
+      "nodes",
+      "facts",
+      "evidence",
+      "relationships",
+      "ready",
+    ]);
   });
 });
 
@@ -176,10 +349,10 @@ function database() {
       create: vi.fn(),
       update: vi.fn(),
     },
-    knowledgeSource: { findMany: vi.fn(), create: vi.fn() },
-    knowledgeNode: { create: vi.fn() },
-    knowledgeFact: { create: vi.fn() },
-    knowledgeEvidence: { create: vi.fn() },
+    knowledgeSource: { findMany: vi.fn(), createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    knowledgeNode: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    knowledgeFact: { create: vi.fn(), createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    knowledgeEvidence: { create: vi.fn(), createMany: vi.fn().mockResolvedValue({ count: 0 }) },
     knowledgeRelationship: { createMany: vi.fn() },
     discoverySession: { findFirst: vi.fn() },
     companyProfile: { findFirst: vi.fn() },

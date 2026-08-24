@@ -33,9 +33,76 @@ describe("Enterprise Knowledge production composition", () => {
     expect(withAuthenticatedDatabase).not.toHaveBeenCalled();
   });
 
-  it("binds the authenticated identity to the database transaction", async () => {
+  it("does not open a database transaction before the requested operation needs one", async () => {
     await expect(withEnterpriseKnowledgeService(async () => "ok")).resolves.toBe("ok");
-    expect(withAuthenticatedDatabase).toHaveBeenCalledWith("user-id", expect.any(Function));
+    expect(withAuthenticatedDatabase).not.toHaveBeenCalled();
+  });
+
+  it("splits read/projection preparation from the bounded write transaction", async () => {
+    const readDb = {
+      organizationMember: {
+        findFirst: vi.fn().mockResolvedValue({ organizationId: "org", role: "owner" }),
+      },
+      company: { findFirst: vi.fn().mockResolvedValue({ id: "company" }) },
+      discoverySession: {
+        findFirst: vi.fn().mockResolvedValue({
+          id: "11111111-1111-4111-8111-111111111111",
+          version: 1,
+          status: "validated",
+          validatedAt: new Date("2026-01-01"),
+        }),
+      },
+      companyProfile: {
+        findFirst: vi.fn().mockResolvedValue({
+          industry: null,
+          countryCode: null,
+          employeeCount: null,
+          businessModel: null,
+          growthStage: null,
+        }),
+      },
+      department: { findMany: vi.fn().mockResolvedValue([]) },
+      companyRole: { findMany: vi.fn().mockResolvedValue([]) },
+      companySoftware: { findMany: vi.fn().mockResolvedValue([]) },
+      businessProcess: { findMany: vi.fn().mockResolvedValue([]) },
+      interviewSession: { findFirst: vi.fn().mockResolvedValue(null) },
+    };
+    const writeDb = {
+      $executeRaw: vi.fn().mockResolvedValue(1),
+      knowledgeSnapshot: {
+        findFirst: vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce({ version: 0 }),
+        create: vi.fn().mockResolvedValue({ id: "snapshot", version: 1 }),
+        update: vi.fn().mockResolvedValue({
+          id: "snapshot",
+          organizationId: "org",
+          companyId: "company",
+          status: "ready",
+          version: 1,
+        }),
+      },
+      knowledgeSource: { findMany: vi.fn(), createMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      knowledgeNode: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      knowledgeFact: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      knowledgeEvidence: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      knowledgeRelationship: { createMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    };
+    withAuthenticatedDatabase
+      .mockImplementationOnce(async (_userId, operation) => operation(readDb))
+      .mockImplementationOnce(async (_userId, operation) => operation(writeDb));
+
+    await expect(
+      withEnterpriseKnowledgeService((service) => service.build("company")),
+    ).resolves.toMatchObject({ snapshot: { id: "snapshot" }, created: true });
+
+    expect(withAuthenticatedDatabase).toHaveBeenNthCalledWith(1, "user-id", expect.any(Function));
+    expect(withAuthenticatedDatabase).toHaveBeenNthCalledWith(2, "user-id", expect.any(Function), {
+      timeout: 10_000,
+    });
+    expect(readDb.discoverySession.findFirst).toHaveBeenCalled();
+    expect(writeDb.knowledgeSnapshot.update).toHaveBeenCalledWith({
+      where: { id: "snapshot", organizationId: "org" },
+      data: { status: "ready", generatedAt: expect.any(Date) },
+    });
   });
 
   it("maps authorization errors without exposing internals", async () => {
