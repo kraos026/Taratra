@@ -1,4 +1,5 @@
 import pg from "pg";
+import { randomUUID } from "node:crypto";
 import { chromium } from "@playwright/test";
 import {
   LOCAL_APP_URL,
@@ -28,8 +29,13 @@ const STAGES = [
   "Executive Result",
 ];
 
+const certificationRunId = `run-${new Date()
+  .toISOString()
+  .replace(/[-:.TZ]/g, "")
+  .slice(0, 14)}-${randomUUID().slice(0, 8)}`;
+
 const audit = {
-  companyName: LOCAL_E2E_USERS.tenantA.companyName,
+  companyName: `${LOCAL_E2E_USERS.tenantA.companyName} ${certificationRunId}`,
   industry: "Business operations services",
   processName: "Manual supplier invoice processing",
 };
@@ -52,12 +58,6 @@ async function login(page) {
 }
 
 async function ensureCompany(page) {
-  const searched = await api(
-    page,
-    `/api/companies?search=${encodeURIComponent(audit.companyName)}`,
-  );
-  const existing = firstItem(searched);
-  if (existing?.id) return existing;
   const created = await api(page, "/api/companies", {
     method: "POST",
     status: [200, 201],
@@ -71,7 +71,7 @@ async function ensureCompany(page) {
       country: "France",
       description:
         "Certification tenant used to validate the canonical AutomateX audit flow with invoice processing evidence.",
-      status: "active",
+      status: "client",
     },
   });
   return unwrapCompany(created);
@@ -175,6 +175,18 @@ class CanonicalCertification {
         `Interview did not validate; status=${status}; completion=${JSON.stringify(completed?.progress ?? {})}`,
       );
     }
+    const lineage = await one(
+      `select discovery_session_id
+       from public.interview_sessions
+       where id = $1`,
+      [sessionId],
+    );
+    if (lineage?.discovery_session_id !== this.results.discoverySessionId) {
+      throw new Error(
+        `Interview lineage mismatch: interview=${sessionId}; expected discovery=${this.results.discoverySessionId}; actual discovery=${lineage?.discovery_session_id ?? "null"}`,
+      );
+    }
+    this.results.interviewDiscoverySessionId = lineage.discovery_session_id;
     this.results.interviewSessionId = sessionId;
     this.results.interview = status;
     this.logStage("Interview", sessionId);
@@ -796,6 +808,7 @@ async function main() {
   console.log("ENVIRONMENT = LOCAL CERTIFICATION");
   console.log("PRODUCTION = NO");
   console.log("REMOTE SUPABASE = FORBIDDEN");
+  console.log(`CANONICAL CERTIFICATION RUN ID = ${certificationRunId}`);
 
   runChecked("node", ["scripts/certification-db-guard.mjs"], env);
   runChecked("npx", ["prisma", "validate"], env);
