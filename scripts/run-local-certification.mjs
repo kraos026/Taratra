@@ -1,31 +1,20 @@
 import {
   assertLocalCertificationEnv,
+  cleanNextArtifacts,
   certificationEnv,
   ensureLocalSupabase,
   logPresence,
   runChecked,
-  waitForLocalLogin,
+  startProductionApp,
+  stopProcessTree,
 } from "./local-certification-support.mjs";
 import { configureSystemChromeForPlaywright } from "./system-chrome.mjs";
-import { spawn, spawnSync } from "node:child_process";
-import fs from "node:fs";
-import path from "node:path";
 
 const bootstrapOnly = process.argv.includes("--bootstrap-only");
 let appProcess = null;
 
 function stopAppProcess() {
-  if (!appProcess?.pid) return;
-  if (process.platform === "win32") {
-    spawnSync("taskkill.exe", ["/pid", String(appProcess.pid), "/t", "/f"], {
-      encoding: "utf8",
-      shell: false,
-      stdio: "ignore",
-    });
-    appProcess = null;
-    return;
-  }
-  appProcess.kill();
+  stopProcessTree(appProcess);
   appProcess = null;
 }
 
@@ -63,6 +52,7 @@ runChecked(process.execPath, ["scripts/validate-pilot-certification-env.mjs"], e
 runChecked("npx", ["prisma", "validate"], env);
 runChecked("npx", ["prisma", "generate"], env);
 runChecked(process.execPath, ["scripts/ensure-local-certification-identities.mjs"], env);
+cleanNextArtifacts();
 runChecked("npm", ["run", "build"], env);
 
 appProcess = await startProductionApp(env);
@@ -95,45 +85,3 @@ for (const file of pilotFiles) {
 }
 
 console.log("LOCAL CERTIFICATION: PASS");
-
-async function startProductionApp(env) {
-  console.log("LOCAL APP: starting production server on http://localhost:3000");
-  const npm = executableForPlatform("npm");
-  const child = spawn(
-    npm.command,
-    [...npm.argsPrefix, "run", "start", "--", "-H", "localhost", "-p", "3000"],
-    {
-      env,
-      shell: false,
-      stdio: ["ignore", "pipe", "pipe"],
-    },
-  );
-  child.stdout.on("data", (data) => {
-    const text = data.toString();
-    if (/ready|started|local/i.test(text)) process.stdout.write(text);
-  });
-  child.stderr.on("data", (data) => process.stderr.write(data.toString()));
-  await waitForLocalLogin(90_000);
-  return child;
-}
-
-function executableForPlatform(command) {
-  if (process.platform !== "win32") return { command, argsPrefix: [] };
-  if (command === "npm") return nodeCliExecutable("npm-cli.js");
-  if (command === "npx") return nodeCliExecutable("npx-cli.js");
-  return { command, argsPrefix: [] };
-}
-
-function nodeCliExecutable(cliFileName) {
-  const cliPath = path.join(
-    path.dirname(process.execPath),
-    "node_modules",
-    "npm",
-    "bin",
-    cliFileName,
-  );
-  if (!fs.existsSync(cliPath)) {
-    return { command: cliFileName === "npm-cli.js" ? "npm.cmd" : "npx.cmd", argsPrefix: [] };
-  }
-  return { command: process.execPath, argsPrefix: [cliPath] };
-}

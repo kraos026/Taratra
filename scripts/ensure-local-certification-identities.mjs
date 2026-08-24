@@ -24,6 +24,7 @@ const database = new pg.Client({ connectionString: env.DATABASE_URL });
 await database.connect();
 
 try {
+  await waitForAuthAdminReadiness();
   for (const tenant of [LOCAL_E2E_USERS.tenantA, LOCAL_E2E_USERS.tenantB]) {
     const userId = await ensureUser(tenant.email, tenant.password);
     const organizationId = await ensureOrganization(tenant.organizationName);
@@ -36,6 +37,20 @@ try {
   console.log("LOCAL CERTIFICATION IDENTITIES: companies = PRESENT");
 } finally {
   await database.end();
+}
+
+async function waitForAuthAdminReadiness(timeoutMs = 90_000) {
+  const start = Date.now();
+  let lastError = "unknown";
+
+  while (Date.now() - start < timeoutMs) {
+    const listed = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+    if (!listed.error) return;
+    lastError = listed.error.message || listed.error.name || "unknown";
+    await sleep(1_000);
+  }
+
+  throw new Error(`LOCAL CERTIFICATION IDENTITIES: auth admin API not ready: ${lastError}`);
 }
 
 async function ensureUser(email, password) {
@@ -67,6 +82,10 @@ async function ensureUser(email, password) {
     throw new Error(`LOCAL CERTIFICATION IDENTITIES: user update failed: ${updated.error.message}`);
   }
   return existing.id;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function ensureOrganization(name) {

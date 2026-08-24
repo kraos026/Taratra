@@ -55,6 +55,11 @@ export function certificationEnvFromProcess() {
   });
 }
 
+export function cleanNextArtifacts() {
+  const nextDir = path.join(process.cwd(), ".next");
+  fs.rmSync(nextDir, { recursive: true, force: true });
+}
+
 export function assertLocalCertificationEnv(env) {
   const database = parseUrl(env.DATABASE_URL, "DATABASE_URL");
   const direct = parseUrl(env.DIRECT_URL, "DIRECT_URL");
@@ -121,18 +126,18 @@ export function readSupabaseStatus() {
 }
 
 export async function ensureAutomatexApp(env) {
-  if (await localLoginReady()) {
-    console.log("LOCAL APP: already running");
-    return null;
-  }
-  if ((await portOpen("127.0.0.1", 3000)) || (await portOpen("::1", 3000)))
-    throw new Error("LOCAL APP: port 3000 is busy but /login is not ready");
+  return startProductionApp(env);
+}
 
-  console.log("LOCAL APP: starting on http://localhost:3000");
+export async function startProductionApp(env) {
+  if ((await portOpen("127.0.0.1", 3000)) || (await portOpen("::1", 3000)))
+    throw new Error("LOCAL APP: port 3000 is busy; certification requires an owned server");
+
+  console.log("LOCAL APP: starting production server on http://localhost:3000");
   const npm = executableForPlatform("npm");
   const child = spawn(
     npm.command,
-    [...npm.argsPrefix, "run", "dev", "--", "-H", "localhost", "-p", "3000"],
+    [...npm.argsPrefix, "run", "start", "--", "-H", "localhost", "-p", "3000"],
     {
       env,
       shell: false,
@@ -144,8 +149,21 @@ export async function ensureAutomatexApp(env) {
     if (/ready|started|local/i.test(text)) process.stdout.write(text);
   });
   child.stderr.on("data", (data) => process.stderr.write(sanitizeSupabaseOutput(data.toString())));
-  await waitForLocalLogin(90_000);
+  await waitForAppReadiness(90_000);
   return child;
+}
+
+export function stopProcessTree(child) {
+  if (!child?.pid) return;
+  if (process.platform === "win32") {
+    spawnSync("taskkill.exe", ["/pid", String(child.pid), "/t", "/f"], {
+      encoding: "utf8",
+      shell: false,
+      stdio: "ignore",
+    });
+    return;
+  }
+  child.kill();
 }
 
 export async function waitForLocalLogin(timeoutMs) {
@@ -158,9 +176,37 @@ export async function waitForLocalLogin(timeoutMs) {
 }
 
 export async function localLoginReady() {
-  return (
-    (await httpReady(`${LOCAL_APP_URL}/login`)) || (await httpReady("http://[::1]:3000/login"))
-  );
+  return await httpReady(`${LOCAL_APP_URL}/login`, 200);
+}
+
+export async function waitForAppReadiness(timeoutMs) {
+  const checks = [
+    { path: "/login", expectedStatus: 200, expectedContentType: "text/html" },
+    { path: "/api/companies", expectedStatus: 401, expectedContentType: "application/json" },
+    {
+      path: "/api/companies/00000000-0000-0000-0000-000000000000/automation-audit/decision-center",
+      expectedStatus: 401,
+      expectedContentType: "application/json",
+    },
+  ];
+  const start = Date.now();
+  let last = "";
+  while (Date.now() - start < timeoutMs) {
+    const results = [];
+    for (const check of checks) {
+      const result = await httpCheck(`${LOCAL_APP_URL}${check.path}`);
+      results.push(`${check.path}:${result.status}:${result.contentType}`);
+      if (
+        result.status !== check.expectedStatus ||
+        !result.contentType.includes(check.expectedContentType)
+      )
+        break;
+    }
+    if (results.length === checks.length) return;
+    last = results.join(", ");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  throw new Error(`LOCAL APP readiness timed out: ${last}`);
 }
 
 export async function waitForHttp(url, timeoutMs) {
@@ -172,14 +218,24 @@ export async function waitForHttp(url, timeoutMs) {
   throw new Error(`HTTP readiness timed out: ${url}`);
 }
 
-export async function httpReady(url) {
+export async function httpReady(url, expectedStatus) {
+  const result = await httpCheck(url);
+  return expectedStatus === undefined
+    ? result.status >= 200 && result.status < 500
+    : result.status === expectedStatus;
+}
+
+export async function httpCheck(url) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 5_000);
   try {
     const response = await fetch(url, { redirect: "manual", signal: controller.signal });
-    return response.status >= 200 && response.status < 500;
+    return {
+      status: response.status,
+      contentType: response.headers.get("content-type") ?? "",
+    };
   } catch {
-    return false;
+    return { status: 0, contentType: "" };
   } finally {
     clearTimeout(timeout);
   }
