@@ -1,5 +1,6 @@
-import { RoiEvaluationEngine, type AssumptionCode } from "../domain/roi-engine";
+import { RoiEvaluationEngine, type AssumptionCode, type RoiInput } from "../domain/roi-engine";
 import type { PrismaRoiEvaluationRepository } from "../infrastructure/prisma-roi-evaluation-repository";
+import type { PreparedRoiPersistencePlan } from "../infrastructure/prisma-roi-evaluation-repository";
 import {
   RoiConflictError,
   RoiForbiddenError,
@@ -28,6 +29,24 @@ export class RoiEvaluationService {
       unknownAssumptions: AssumptionCode[];
     },
   ) {
+    const prepared = await this.evaluateInput(automationSnapshotId, request);
+    return this.repo.persist(
+      prepared.organizationId,
+      prepared.companyId,
+      this.userId,
+      prepared.input,
+      this.engine.evaluate(prepared.input),
+      null,
+    );
+  }
+  async evaluateInput(
+    automationSnapshotId: string,
+    request: {
+      currency: string;
+      suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
+      unknownAssumptions: AssumptionCode[];
+    },
+  ): Promise<RoiPreparedInput> {
     const context = await this.context();
     this.editor(context.role);
     const input = await this.repo.input(
@@ -42,16 +61,26 @@ export class RoiEvaluationService {
       throw new RoiValidationError(
         "A published Automation Opportunity and aligned canonical sources are required",
       );
-    return this.repo.persist(
-      context.organizationId,
-      source.companyId,
-      this.userId,
+    return {
+      organizationId: context.organizationId,
+      companyId: source.companyId,
       input,
-      this.engine.evaluate(input),
-      null,
-    );
+      previousVersionId: null,
+    };
   }
   async rebuild(id: string, lockVersion: number) {
+    const prepared = await this.rebuildInput(id, lockVersion);
+    return this.repo.persist(
+      prepared.organizationId,
+      prepared.companyId,
+      this.userId,
+      prepared.input,
+      this.engine.rebuild(prepared.input),
+      prepared.previousVersionId,
+      prepared.expectedPreviousLockVersion,
+    );
+  }
+  async rebuildInput(id: string, lockVersion: number): Promise<RoiPreparedInput> {
     const context = await this.context();
     this.editor(context.role);
     const current = await this.repo.snapshot(context.organizationId, id);
@@ -66,15 +95,13 @@ export class RoiEvaluationService {
       frozen.unknownAssumptions,
     );
     if (!input) throw new RoiValidationError("Published source contracts are unavailable");
-    return this.repo.persist(
-      context.organizationId,
-      current.companyId,
-      this.userId,
+    return {
+      organizationId: context.organizationId,
+      companyId: current.companyId,
       input,
-      this.engine.rebuild(input),
-      current.id,
-      current.lockVersion,
-    );
+      previousVersionId: current.id,
+      expectedPreviousLockVersion: current.lockVersion,
+    };
   }
   async revise(
     id: string,
@@ -85,6 +112,27 @@ export class RoiEvaluationService {
       unknownAssumptions: AssumptionCode[];
     },
   ) {
+    const prepared = await this.reviseInput(id, request);
+    return this.repo.persist(
+      prepared.organizationId,
+      prepared.companyId,
+      this.userId,
+      prepared.input,
+      this.engine.evaluate(prepared.input),
+      prepared.previousVersionId,
+      prepared.expectedPreviousLockVersion,
+      "draft",
+    );
+  }
+  async reviseInput(
+    id: string,
+    request: {
+      lockVersion: number;
+      currency: string;
+      suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
+      unknownAssumptions: AssumptionCode[];
+    },
+  ): Promise<RoiPreparedInput> {
     const context = await this.context();
     this.editor(context.role);
     const current = await this.repo.snapshot(context.organizationId, id);
@@ -99,15 +147,31 @@ export class RoiEvaluationService {
       request.unknownAssumptions,
     );
     if (!input) throw new RoiValidationError("Published source contracts are unavailable");
-    return this.repo.persist(
-      context.organizationId,
-      current.companyId,
-      this.userId,
+    return {
+      organizationId: context.organizationId,
+      companyId: current.companyId,
       input,
-      this.engine.evaluate(input),
-      current.id,
-      request.lockVersion,
-      "draft",
+      previousVersionId: current.id,
+      expectedPreviousLockVersion: request.lockVersion,
+      expectedPreviousStatus: "draft",
+    };
+  }
+  calculate(input: RoiInput, mode: "evaluate" | "rebuild" = "evaluate") {
+    return mode === "rebuild" ? this.engine.rebuild(input) : this.engine.evaluate(input);
+  }
+  async persistPrepared(prepared: RoiPreparedInput, plan: PreparedRoiPersistencePlan) {
+    const context = await this.context();
+    this.editor(context.role);
+    if (context.organizationId !== prepared.organizationId) throw new RoiForbiddenError();
+    return this.repo.persistPrepared(
+      prepared.organizationId,
+      prepared.companyId,
+      this.userId,
+      prepared.input,
+      plan,
+      prepared.previousVersionId,
+      prepared.expectedPreviousLockVersion,
+      prepared.expectedPreviousStatus,
     );
   }
   async get(id: string) {
@@ -149,4 +213,13 @@ export class RoiEvaluationService {
       throw new RoiValidationError("ROI traceability is incomplete");
     return this.repo.transition(context.organizationId, id, lockVersion, "published");
   }
+}
+
+export interface RoiPreparedInput {
+  readonly organizationId: string;
+  readonly companyId: string;
+  readonly input: RoiInput;
+  readonly previousVersionId: string | null;
+  readonly expectedPreviousLockVersion?: number;
+  readonly expectedPreviousStatus?: "draft";
 }

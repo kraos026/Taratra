@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import { RoiConflictError } from "../application/roi-errors";
@@ -9,11 +10,151 @@ import type {
   RoiModelDefinition,
 } from "../domain/roi-engine";
 type Result = ReturnType<RoiEvaluationEngine["evaluate"]>;
+export interface PreparedRoiPersistencePlan {
+  readonly snapshotId: string;
+  readonly scenarioRows: Prisma.RoiScenarioCreateManyInput[];
+  readonly assumptionRows: Prisma.RoiScenarioAssumptionCreateManyInput[];
+  readonly evaluationRows: Prisma.RoiEvaluationCreateManyInput[];
+  readonly contributionRows: Prisma.RoiContributionCreateManyInput[];
+  readonly metricRows: Prisma.RoiMetricCreateManyInput[];
+  readonly evidenceRows: Prisma.RoiEvidenceCreateManyInput[];
+  readonly validationRows: Prisma.RoiValidationCreateManyInput[];
+  readonly catalogVersionsJson: Prisma.InputJsonValue;
+  readonly provenanceJson: Prisma.InputJsonValue;
+}
+
 const latest = <T extends { code: string }>(rows: T[]) => {
   const map = new Map<string, T>();
   for (const row of rows) if (!map.has(row.code)) map.set(row.code, row);
   return [...map.values()];
 };
+
+export function prepareRoiPersistencePlan(
+  organizationId: string,
+  input: RoiInput,
+  result: Result,
+): PreparedRoiPersistencePlan {
+  const snapshotId = randomUUID();
+  const scenarioRows: Prisma.RoiScenarioCreateManyInput[] = [];
+  const assumptionRows: Prisma.RoiScenarioAssumptionCreateManyInput[] = [];
+  const evaluationRows: Prisma.RoiEvaluationCreateManyInput[] = [];
+  const contributionRows: Prisma.RoiContributionCreateManyInput[] = [];
+  const metricRows: Prisma.RoiMetricCreateManyInput[] = [];
+  const evidenceRows: Prisma.RoiEvidenceCreateManyInput[] = [];
+
+  for (const scenarioResult of result.scenarios) {
+    const scenarioId = randomUUID();
+    scenarioRows.push({
+      id: scenarioId,
+      organizationId,
+      snapshotId,
+      type: scenarioResult.type,
+      modelId: scenarioResult.model.id,
+      volumeFactor: scenarioResult.volumeFactor,
+      costFactor: scenarioResult.costFactor,
+    });
+
+    assumptionRows.push(
+      ...scenarioResult.assumptions.map((item) => ({
+        organizationId,
+        snapshotId,
+        scenarioId,
+        assumptionId: item.definition.id,
+        value: item.value,
+        unit: item.definition.unit,
+        source: item.source,
+      })),
+    );
+
+    for (const item of scenarioResult.evaluations) {
+      const evaluationId = randomUUID();
+      evaluationRows.push({
+        id: evaluationId,
+        organizationId,
+        snapshotId,
+        scenarioId,
+        automationOpportunityId: item.opportunity.id,
+        identifier: `${item.opportunity.identifier}:${scenarioResult.type}`,
+        title: item.opportunity.title,
+        description: item.opportunity.description,
+        confidence: item.confidence,
+      });
+
+      contributionRows.push(
+        ...item.contributions.map((value) => ({
+          organizationId,
+          snapshotId,
+          scenarioId,
+          evaluationId,
+          assumptionId: value.assumption.id,
+          code: value.assumption.code,
+          inputValue: value.inputValue,
+          contribution: value.contribution,
+          calculationJson: value.calculation as Prisma.InputJsonValue,
+        })),
+      );
+
+      metricRows.push(
+        ...item.metrics.map((metric) => ({
+          organizationId,
+          snapshotId,
+          scenarioId,
+          evaluationId,
+          code: metric.code,
+          value: metric.value,
+          specialValue: metric.specialValue,
+          unit: metric.unit,
+          calculationJson: metric.calculation as Prisma.InputJsonValue,
+        })),
+      );
+
+      evidenceRows.push(
+        ...item.opportunity.evidence.map((value) => ({
+          organizationId,
+          snapshotId,
+          scenarioId,
+          evaluationId,
+          automationEvidenceId: value.id,
+          businessFindingId: value.businessFindingId,
+          knowledgeFactId: value.knowledgeFactId,
+          explanation: "Referenced Automation Opportunity evidence",
+        })),
+      );
+    }
+  }
+
+  return {
+    snapshotId,
+    scenarioRows,
+    assumptionRows,
+    evaluationRows,
+    contributionRows,
+    metricRows,
+    evidenceRows,
+    validationRows: result.validations.map((item) => ({
+      organizationId,
+      snapshotId,
+      ...item,
+    })),
+    catalogVersionsJson: result.catalogVersions as unknown as Prisma.InputJsonValue,
+    provenanceJson: {
+      automationOpportunitySnapshotId: input.automationSnapshotId,
+      aiOpportunitySnapshotId: input.aiSnapshotId,
+      businessAnalysisId: input.analysisId,
+      processMapId: input.processMapId,
+      knowledgeSnapshotId: input.knowledgeSnapshotId,
+      assumptionInputs: input.assumptions.map((definition) =>
+        input.unknownAssumptions.includes(definition.code)
+          ? { code: definition.code, status: "unknown" }
+          : {
+              code: definition.code,
+              status: "known",
+              value: input.suppliedAssumptions[definition.code] ?? definition.defaultValue,
+            },
+      ),
+    } as Prisma.InputJsonValue,
+  };
+}
 
 export class PrismaRoiEvaluationRepository {
   constructor(private readonly db: TransactionClient) {}
@@ -219,6 +360,29 @@ export class PrismaRoiEvaluationRepository {
     expectedPreviousLockVersion?: number,
     expectedPreviousStatus?: "draft",
   ) {
+    const plan = prepareRoiPersistencePlan(organizationId, input, result);
+    return this.persistPrepared(
+      organizationId,
+      companyId,
+      userId,
+      input,
+      plan,
+      previousVersionId,
+      expectedPreviousLockVersion,
+      expectedPreviousStatus,
+    );
+  }
+
+  async persistPrepared(
+    organizationId: string,
+    companyId: string,
+    userId: string,
+    input: RoiInput,
+    plan: PreparedRoiPersistencePlan,
+    previousVersionId: string | null,
+    expectedPreviousLockVersion?: number,
+    expectedPreviousStatus?: "draft",
+  ) {
     await this.db
       .$executeRaw`select pg_advisory_xact_lock(hashtextextended(${`${organizationId}:${input.automationSnapshotId}:roi`},0))`;
     const latestSnapshot = await this.db.roiEvaluationSnapshot.findFirst({
@@ -234,6 +398,7 @@ export class PrismaRoiEvaluationRepository {
       throw new RoiConflictError();
     const snapshot = await this.db.roiEvaluationSnapshot.create({
       data: {
+        id: plan.snapshotId,
         organizationId,
         companyId,
         automationOpportunitySnapshotId: input.automationSnapshotId,
@@ -244,109 +409,22 @@ export class PrismaRoiEvaluationRepository {
         previousVersionId,
         versionNumber: (latestSnapshot?.versionNumber ?? 0) + 1,
         currency: input.currency,
-        catalogVersionsJson: result.catalogVersions as unknown as Prisma.InputJsonValue,
-        provenanceJson: {
-          automationOpportunitySnapshotId: input.automationSnapshotId,
-          aiOpportunitySnapshotId: input.aiSnapshotId,
-          businessAnalysisId: input.analysisId,
-          processMapId: input.processMapId,
-          knowledgeSnapshotId: input.knowledgeSnapshotId,
-          assumptionInputs: input.assumptions.map((definition) =>
-            input.unknownAssumptions.includes(definition.code)
-              ? { code: definition.code, status: "unknown" }
-              : {
-                  code: definition.code,
-                  status: "known",
-                  value: input.suppliedAssumptions[definition.code] ?? definition.defaultValue,
-                },
-          ),
-        } as Prisma.InputJsonValue,
+        catalogVersionsJson: plan.catalogVersionsJson,
+        provenanceJson: plan.provenanceJson,
         createdBy: userId,
       },
     });
-    for (const scenarioResult of result.scenarios) {
-      const scenario = await this.db.roiScenario.create({
-        data: {
-          organizationId,
-          snapshotId: snapshot.id,
-          type: scenarioResult.type,
-          modelId: scenarioResult.model.id,
-          volumeFactor: scenarioResult.volumeFactor,
-          costFactor: scenarioResult.costFactor,
-        },
-      });
-      await this.db.roiScenarioAssumption.createMany({
-        data: scenarioResult.assumptions.map((item) => ({
-          organizationId,
-          snapshotId: snapshot.id,
-          scenarioId: scenario.id,
-          assumptionId: item.definition.id,
-          value: item.value,
-          unit: item.definition.unit,
-          source: item.source,
-        })),
-      });
-      for (const item of scenarioResult.evaluations) {
-        const evaluation = await this.db.roiEvaluation.create({
-          data: {
-            organizationId,
-            snapshotId: snapshot.id,
-            scenarioId: scenario.id,
-            automationOpportunityId: item.opportunity.id,
-            identifier: `${item.opportunity.identifier}:${scenarioResult.type}`,
-            title: item.opportunity.title,
-            description: item.opportunity.description,
-            confidence: item.confidence,
-          },
-        });
-        await this.db.roiContribution.createMany({
-          data: item.contributions.map((value) => ({
-            organizationId,
-            snapshotId: snapshot.id,
-            scenarioId: scenario.id,
-            evaluationId: evaluation.id,
-            assumptionId: value.assumption.id,
-            code: value.assumption.code,
-            inputValue: value.inputValue,
-            contribution: value.contribution,
-            calculationJson: value.calculation as Prisma.InputJsonValue,
-          })),
-        });
-        await this.db.roiMetric.createMany({
-          data: item.metrics.map((metric) => ({
-            organizationId,
-            snapshotId: snapshot.id,
-            scenarioId: scenario.id,
-            evaluationId: evaluation.id,
-            code: metric.code,
-            value: metric.value,
-            specialValue: metric.specialValue,
-            unit: metric.unit,
-            calculationJson: metric.calculation as Prisma.InputJsonValue,
-          })),
-        });
-        if (item.opportunity.evidence.length)
-          await this.db.roiEvidence.createMany({
-            data: item.opportunity.evidence.map((value) => ({
-              organizationId,
-              snapshotId: snapshot.id,
-              scenarioId: scenario.id,
-              evaluationId: evaluation.id,
-              automationEvidenceId: value.id,
-              businessFindingId: value.businessFindingId,
-              knowledgeFactId: value.knowledgeFactId,
-              explanation: "Referenced Automation Opportunity evidence",
-            })),
-          });
-      }
-    }
-    await this.db.roiValidation.createMany({
-      data: result.validations.map((item) => ({
-        organizationId,
-        snapshotId: snapshot.id,
-        ...item,
-      })),
-    });
+    if (plan.scenarioRows.length) await this.db.roiScenario.createMany({ data: plan.scenarioRows });
+    if (plan.assumptionRows.length)
+      await this.db.roiScenarioAssumption.createMany({ data: plan.assumptionRows });
+    if (plan.evaluationRows.length)
+      await this.db.roiEvaluation.createMany({ data: plan.evaluationRows });
+    if (plan.contributionRows.length)
+      await this.db.roiContribution.createMany({ data: plan.contributionRows });
+    if (plan.metricRows.length) await this.db.roiMetric.createMany({ data: plan.metricRows });
+    if (plan.evidenceRows.length) await this.db.roiEvidence.createMany({ data: plan.evidenceRows });
+    if (plan.validationRows.length)
+      await this.db.roiValidation.createMany({ data: plan.validationRows });
     return snapshot;
   }
   async transition(
