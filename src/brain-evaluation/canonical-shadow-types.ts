@@ -1,4 +1,5 @@
-export type RoiDirection = "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "INSUFFICIENT_EVIDENCE";
+export type RoiDirection =
+  "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "INSUFFICIENT_EVIDENCE" | "STRATEGIC_NON_QUANTIFIED";
 
 export type BenchmarkArm = "CANONICAL" | "BRAIN_ONLY" | "HYBRID";
 
@@ -40,6 +41,13 @@ export type BenchmarkWinner =
 
 export type BenchmarkSeverity = "low" | "medium" | "high" | "critical";
 
+export type BenchmarkExpectedOutcome =
+  | "AUTOMATE_NOW"
+  | "AUTOMATE_AFTER_REMEDIATION"
+  | "NEEDS_MORE_EVIDENCE"
+  | "DEFER"
+  | "DO_NOT_AUTOMATE";
+
 export interface BenchmarkPublicInput {
   readonly caseId: string;
   readonly title: string;
@@ -79,6 +87,12 @@ export interface BenchmarkEvidenceMapping {
 export interface BenchmarkScoringMetadata {
   readonly aliases: Readonly<Record<string, readonly string[]>>;
   readonly evidenceMappings: readonly BenchmarkEvidenceMapping[];
+  readonly expectedOutcome: BenchmarkExpectedOutcome;
+  readonly adversarial: boolean;
+  readonly uncertaintyRequired: boolean;
+  readonly roiIndeterminate: boolean;
+  readonly humanReviewRequired: boolean;
+  readonly multiOpportunity: boolean;
 }
 
 export interface BenchmarkGroundTruth {
@@ -90,8 +104,15 @@ export interface BenchmarkGroundTruth {
   readonly expectedExclusions: readonly BenchmarkConcept[];
   readonly expectedPriorityOrder: readonly string[];
   readonly expectedRoiDirection: RoiDirection;
+  readonly expectedDeferrals: readonly string[];
+  readonly expectedRejections: readonly string[];
+  readonly expectedProcessRemediation: readonly string[];
+  readonly expectedEvidenceRequests: readonly string[];
+  readonly expectedRisks: readonly string[];
+  readonly expectedHumanReview: readonly string[];
   readonly requiredEvidence: readonly string[];
   readonly risksToRecognize: readonly string[];
+  readonly criticalFailureConditions: readonly string[];
 }
 
 export interface BenchmarkCase {

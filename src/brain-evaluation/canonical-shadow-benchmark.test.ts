@@ -14,12 +14,86 @@ import type {
   BrainShadowBenchmarkSnapshot,
 } from "./canonical-shadow-types";
 
-describe("Canonical vs Brain Shadow Benchmark fairness V2", () => {
-  it("defines exactly five unique benchmark cases", () => {
+describe("Canonical shadow V3 fixture design validation", () => {
+  it("defines exactly 25 unique benchmark cases while preserving the baseline IDs", () => {
     const ids = canonicalShadowCases.map((item) => item.publicInput.caseId);
 
-    expect(ids).toHaveLength(5);
-    expect(new Set(ids).size).toBe(5);
+    expect(ids).toHaveLength(25);
+    expect(new Set(ids).size).toBe(25);
+    expect(ids.slice(0, 5)).toEqual([
+      "manual_invoice_processing",
+      "customer_support_overload",
+      "employee_onboarding_hr_admin",
+      "sales_lead_qualification",
+      "inventory_purchasing_workflow",
+    ]);
+  });
+
+  it("has unique case IDs", () => {
+    const ids = canonicalShadowCases.map((item) => item.publicInput.caseId);
+
+    expect(new Set(ids).size).toBe(ids.length);
+  });
+
+  it("keeps hidden truth and scorer-only ontology out of public input", () => {
+    for (const benchmarkCase of canonicalShadowCases) {
+      const publicWithoutRunId = { ...benchmarkCase.publicInput, caseId: "case-id-is-not-content" };
+      const publicJson = JSON.stringify(publicWithoutRunId);
+      const hiddenJson = JSON.stringify(benchmarkCase.hiddenGroundTruth);
+      const scorerJson = JSON.stringify(benchmarkCase.scoringMetadata);
+
+      expect(publicJson).not.toContain("hiddenGroundTruth");
+      expect(publicJson).not.toContain("scoringMetadata");
+      expect(publicJson).not.toContain("expectedFindings");
+      expect(publicJson).not.toContain("forbiddenInventions");
+      expect(publicJson).not.toContain("aliases");
+      expect(publicJson).not.toContain("supports");
+      for (const conceptId of conceptIds(hiddenJson)) expect(publicJson).not.toContain(conceptId);
+      expect(scorerJson).toContain("aliases");
+      expect(scorerJson).toContain("supports");
+    }
+  });
+
+  it("keeps the outcome distribution roughly balanced", () => {
+    expect(distribution("expectedOutcome")).toEqual({
+      AUTOMATE_NOW: 8,
+      AUTOMATE_AFTER_REMEDIATION: 5,
+      NEEDS_MORE_EVIDENCE: 6,
+      DEFER: 3,
+      DO_NOT_AUTOMATE: 3,
+    });
+  });
+
+  it("covers adversarial, uncertainty, ROI, human-review and multi-opportunity requirements", () => {
+    expect(countFlag("adversarial")).toBeGreaterThanOrEqual(10);
+    expect(countFlag("uncertaintyRequired")).toBeGreaterThanOrEqual(8);
+    expect(countFlag("roiIndeterminate")).toBeGreaterThanOrEqual(8);
+    expect(countFlag("humanReviewRequired")).toBeGreaterThanOrEqual(6);
+    expect(countFlag("multiOpportunity")).toBeGreaterThanOrEqual(8);
+  });
+
+  it("defines the required V3 hidden ground-truth fields for every case", () => {
+    for (const benchmarkCase of canonicalShadowCases) {
+      expect(benchmarkCase.hiddenGroundTruth).toHaveProperty("expectedDeferrals");
+      expect(benchmarkCase.hiddenGroundTruth).toHaveProperty("expectedRejections");
+      expect(benchmarkCase.hiddenGroundTruth).toHaveProperty("expectedProcessRemediation");
+      expect(benchmarkCase.hiddenGroundTruth).toHaveProperty("expectedEvidenceRequests");
+      expect(benchmarkCase.hiddenGroundTruth).toHaveProperty("expectedRisks");
+      expect(benchmarkCase.hiddenGroundTruth).toHaveProperty("expectedHumanReview");
+      expect(benchmarkCase.hiddenGroundTruth).toHaveProperty("criticalFailureConditions");
+      expect(benchmarkCase.scoringMetadata.expectedOutcome).toMatch(
+        /AUTOMATE_NOW|AUTOMATE_AFTER_REMEDIATION|NEEDS_MORE_EVIDENCE|DEFER|DO_NOT_AUTOMATE/,
+      );
+    }
+  });
+});
+
+describe("Canonical vs Brain Shadow Benchmark fairness V2", () => {
+  it("defines exactly 25 unique benchmark cases", () => {
+    const ids = canonicalShadowCases.map((item) => item.publicInput.caseId);
+
+    expect(ids).toHaveLength(25);
+    expect(new Set(ids).size).toBe(25);
   });
 
   it("keeps hidden truth and scorer metadata separated from public benchmark inputs", () => {
@@ -278,12 +352,12 @@ describe("Canonical vs Brain Shadow Benchmark fairness V2", () => {
     expect(result.perCase[0]?.brainOnlyIncrementalValue).toBe(true);
   });
 
-  it("keeps promotion impossible with only five MVP cases", () => {
+  it("keeps promotion impossible for the V3 design suite", () => {
     const result = runCanonicalShadowBenchmark({ codeSha: "fixed-sha" });
 
-    expect(result.caseCount).toBe(5);
+    expect(result.caseCount).toBe(25);
     expect(result.promotionEligible).toBe(false);
-    expect(result.promotionRationale).toContain("five labeled cases");
+    expect(result.promotionRationale).toContain("diagnostic");
   });
 
   it("produces deterministic output for identical inputs", () => {
@@ -298,6 +372,34 @@ function conceptIds(hiddenJson: string): readonly string[] {
   return [...hiddenJson.matchAll(/"[a-z0-9]+(?:_[a-z0-9]+)+"/g)].map((match) =>
     match[0]!.replaceAll('"', ""),
   );
+}
+
+function distribution(field: "expectedOutcome"): Record<string, number> {
+  const counts: Record<string, number> = {
+    AUTOMATE_NOW: 0,
+    AUTOMATE_AFTER_REMEDIATION: 0,
+    NEEDS_MORE_EVIDENCE: 0,
+    DEFER: 0,
+    DO_NOT_AUTOMATE: 0,
+  };
+
+  for (const benchmarkCase of canonicalShadowCases) {
+    counts[benchmarkCase.scoringMetadata[field]] += 1;
+  }
+
+  return counts;
+}
+
+function countFlag(
+  field:
+    | "adversarial"
+    | "uncertaintyRequired"
+    | "roiIndeterminate"
+    | "humanReviewRequired"
+    | "multiOpportunity",
+): number {
+  return canonicalShadowCases.filter((benchmarkCase) => benchmarkCase.scoringMetadata[field])
+    .length;
 }
 
 function emptyBrain(publicInput: BenchmarkPublicInput): BrainShadowBenchmarkSnapshot {
