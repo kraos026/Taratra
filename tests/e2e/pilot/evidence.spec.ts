@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 import { loginAsTenantA } from "./support/auth";
-import { fixtureCompanyId } from "./support/company";
+import { createCertificationCompany } from "./support/company";
 import { readPilotE2EConfig } from "./support/env";
 
 const config = readPilotE2EConfig(process.env);
@@ -11,7 +11,7 @@ const config = readPilotE2EConfig(process.env);
 test("evidence request and bounded evidence submission use durable routes", async ({ page }) => {
   test.skip(!config, "CERTIFICATION ENVIRONMENT NOT CONFIGURED");
   await loginAsTenantA(page, config!);
-  const companyId = await fixtureCompanyId();
+  const companyId = await createCertificationCompany(page);
 
   const requests = await page.request.get(
     `/api/companies/${companyId}/automation-audit/evidence-requests`,

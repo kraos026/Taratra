@@ -1,4 +1,5 @@
 import { expect, type Page } from "@playwright/test";
+import { randomUUID } from "node:crypto";
 import pg from "pg";
 import { apiItems } from "./api";
 
@@ -9,6 +10,39 @@ type CompanyItem = {
   id?: string;
   name?: string;
 };
+
+export function uniqueCertificationCompanyName(prefix = "AutomateX E2E Certification Company") {
+  const configuredRunId = process.env.AUTOMATEX_E2E_RUN_ID?.trim();
+  const runId = configuredRunId || `run-${Date.now()}-${randomUUID().slice(0, 8)}`;
+  return `${prefix} ${runId}`;
+}
+
+export async function createCertificationCompany(
+  page: Page,
+  name = uniqueCertificationCompanyName(),
+): Promise<string> {
+  const response = await page.request.post("/api/companies", {
+    data: {
+      name,
+      sectorId: "operations",
+      employeeCount: 42,
+      companySize: "small",
+      primaryContactName: "Certification Owner",
+      primaryContactRole: "Operations Director",
+      country: "France",
+      description: "Isolated certification company created by the Playwright E2E harness.",
+      status: "client",
+    },
+  });
+  expect([200, 201]).toContain(response.status());
+  const payload = (await response.json()) as {
+    data?: { id?: string; company?: { id?: string } };
+    id?: string;
+  };
+  const id = payload.data?.company?.id ?? payload.data?.id ?? payload.id;
+  expect(id, `Created certification company ${name} must return an id`).toBeTruthy();
+  return id!;
+}
 
 export async function firstCompanyId(page: Page): Promise<string> {
   return certificationCompanyId(page, tenantACertificationCompanyName);

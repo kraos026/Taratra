@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { loginAsTenantA } from "./support/auth";
-import { fixtureCompanyId } from "./support/company";
+import { createCertificationCompany } from "./support/company";
 import { readPilotE2EConfig } from "./support/env";
 
 const config = readPilotE2EConfig(process.env);
@@ -8,7 +8,7 @@ const config = readPilotE2EConfig(process.env);
 test("Discovery loads through the existing company-scoped route", async ({ page }) => {
   test.skip(!config, "CERTIFICATION ENVIRONMENT NOT CONFIGURED");
   await loginAsTenantA(page, config!);
-  const companyId = await fixtureCompanyId();
+  const companyId = await createCertificationCompany(page);
   await page
     .goto(`/companies/${companyId}/discovery`, { waitUntil: "domcontentloaded" })
     .catch((error: unknown) => {
