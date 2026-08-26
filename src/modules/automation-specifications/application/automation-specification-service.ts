@@ -2,8 +2,12 @@ import {
   AutomationSpecificationAggregate,
   AutomationSpecificationInvariantError,
 } from "../domain/automation-specification-aggregate";
+import type { AutomationSpecificationInput } from "../domain/automation-specification";
 import { AutomationSpecificationEngine } from "../domain/automation-specification-engine";
-import type { AutomationSpecificationRepository } from "./automation-specification-repository";
+import type {
+  AutomationSpecificationRepository,
+  PreparedAutomationSpecificationPersistencePlan,
+} from "./automation-specification-repository";
 import {
   AutomationSpecificationConflictError,
   AutomationSpecificationForbiddenError,
@@ -19,31 +23,64 @@ export class AutomationSpecificationService {
   ) {}
 
   async generate(solutionBlueprintId: string) {
-    const context = await this.editorContext();
-    const input = await this.repository.input(context.organizationId, solutionBlueprintId);
-    if (!input) throw new AutomationSpecificationValidationError("Published Blueprint required");
+    const prepared = await this.generateInput(solutionBlueprintId);
     return this.repository.persist(
-      context.organizationId,
+      prepared.organizationId,
       this.userId,
-      input,
-      this.engine.generate(input),
+      prepared.input,
+      this.engine.generate(prepared.input),
       null,
     );
   }
 
+  async generateInput(solutionBlueprintId: string): Promise<AutomationSpecificationPreparedInput> {
+    const context = await this.editorContext();
+    const input = await this.repository.input(context.organizationId, solutionBlueprintId);
+    if (!input) throw new AutomationSpecificationValidationError("Published Blueprint required");
+    return { organizationId: context.organizationId, input, previousVersionId: null };
+  }
+
   async rebuild(id: string, lockVersion: number) {
+    const prepared = await this.rebuildInput(id, lockVersion);
+    return this.repository.persist(
+      prepared.organizationId,
+      this.userId,
+      prepared.input,
+      this.engine.rebuild(prepared.input),
+      prepared.previousVersionId,
+    );
+  }
+
+  async rebuildInput(
+    id: string,
+    lockVersion: number,
+  ): Promise<AutomationSpecificationPreparedInput> {
     const context = await this.editorContext();
     const current = await this.repository.prepareRebuild(context.organizationId, id, lockVersion);
     if (!current) throw new AutomationSpecificationNotFoundError();
     this.enforce(() => this.aggregate(current, []).prepareRebuild(lockVersion));
     const input = await this.repository.input(context.organizationId, current.solutionBlueprintId);
     if (!input) throw new AutomationSpecificationValidationError("Published Blueprint required");
-    return this.repository.persist(
-      context.organizationId,
-      this.userId,
-      input,
-      this.engine.rebuild(input),
-      current.id,
+    return { organizationId: context.organizationId, input, previousVersionId: current.id };
+  }
+
+  calculate(input: AutomationSpecificationPreparedInput, mode: "generate" | "rebuild") {
+    return mode === "rebuild"
+      ? this.engine.rebuild(input.input)
+      : this.engine.generate(input.input);
+  }
+
+  async persistPrepared(
+    prepared: AutomationSpecificationPreparedInput,
+    plan: PreparedAutomationSpecificationPersistencePlan,
+  ) {
+    const context = await this.editorContext();
+    if (context.organizationId !== prepared.organizationId)
+      throw new AutomationSpecificationForbiddenError();
+    return this.repository.persistPrepared(
+      prepared.organizationId,
+      plan,
+      prepared.previousVersionId,
     );
   }
 
@@ -141,4 +178,10 @@ export class AutomationSpecificationService {
       throw error;
     }
   }
+}
+
+export interface AutomationSpecificationPreparedInput {
+  readonly organizationId: string;
+  readonly input: AutomationSpecificationInput;
+  readonly previousVersionId: string | null;
 }

@@ -1,4 +1,4 @@
-import { createHash } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import type {
@@ -10,6 +10,7 @@ import type {
 } from "../domain/automation-specification";
 import type {
   AutomationSpecificationDetail,
+  PreparedAutomationSpecificationPersistencePlan,
   AutomationSpecificationRepository,
   AutomationSpecificationSnapshot,
 } from "../application/automation-specification-repository";
@@ -61,12 +62,27 @@ export class PrismaAutomationSpecificationRepository implements AutomationSpecif
     result: AutomationSpecificationResult,
     previousVersionId: string | null,
   ) {
+    const plan = prepareAutomationSpecificationPersistencePlan(
+      organizationId,
+      userId,
+      input,
+      result,
+    );
+    const snapshot = await this.persistPrepared(organizationId, plan, previousVersionId);
+    return this.detail(organizationId, snapshot.id);
+  }
+
+  async persistPrepared(
+    organizationId: string,
+    plan: PreparedAutomationSpecificationPersistencePlan,
+    previousVersionId: string | null,
+  ): Promise<AutomationSpecificationSnapshot> {
     await this.db
       .$executeRaw`select set_config('app.automation_specification_internal_write','on',true)`;
     await this.db
-      .$executeRaw`select pg_advisory_xact_lock(hashtextextended(${`${organizationId}:${input.blueprint.id}:automation-specification`},0))`;
+      .$executeRaw`select pg_advisory_xact_lock(hashtextextended(${`${organizationId}:${plan.specificationHeader.solutionBlueprintId}:automation-specification`},0))`;
     const latest = await this.db.automationSpecification.findFirst({
-      where: { organizationId, solutionBlueprintId: input.blueprint.id },
+      where: { organizationId, solutionBlueprintId: plan.specificationHeader.solutionBlueprintId },
       orderBy: { versionNumber: "desc" },
     });
     if (
@@ -76,69 +92,67 @@ export class PrismaAutomationSpecificationRepository implements AutomationSpecif
       throw new AutomationSpecificationConflictError();
     const specification = await this.db.automationSpecification.create({
       data: {
-        organizationId,
-        solutionBlueprintId: input.blueprint.id,
-        solutionBlueprintVersionNumber: input.blueprint.versionNumber,
+        id: plan.specificationHeader.id,
+        organizationId: plan.specificationHeader.organizationId,
+        solutionBlueprintId: plan.specificationHeader.solutionBlueprintId,
+        solutionBlueprintVersionNumber: plan.specificationHeader.solutionBlueprintVersionNumber,
         previousVersionId,
         versionNumber: (latest?.versionNumber ?? 0) + 1,
-        name: result.name,
-        objective: result.objective,
-        scope: result.scope,
-        sourceFingerprint: fingerprint(input.blueprint),
-        catalogVersionsJson: json(result.catalogVersions),
-        createdBy: userId,
+        name: plan.specificationHeader.name,
+        objective: plan.specificationHeader.objective,
+        scope: plan.specificationHeader.scope,
+        sourceFingerprint: plan.specificationHeader.sourceFingerprint,
+        catalogVersionsJson: json(plan.specificationHeader.catalogVersionsJson),
+        createdBy: plan.specificationHeader.createdBy,
       },
     });
-    if (result.elements.length)
+    if (plan.elementRows.length)
       await this.db.automationSpecificationElement.createMany({
-        data: result.elements.map((element) => ({
-          organizationId,
-          automationSpecificationId: specification.id,
+        data: plan.elementRows.map((element) => ({
+          id: element.id,
+          organizationId: element.organizationId,
+          automationSpecificationId: element.automationSpecificationId,
           localId: element.localId,
-          elementType: element.type,
-          definitionJson: json(element.definition),
+          elementType: element.elementType,
+          definitionJson: json(element.definitionJson),
           displayOrder: element.displayOrder,
         })),
       });
-    for (const item of result.provenance)
-      await this.db.$executeRaw`
-        insert into public.automation_specification_provenance(
-          organization_id,
-          automation_specification_id,
-          target_local_id,
-          source_element_type,
-          source_element_id,
-          catalog_rule_code,
-          catalog_rule_version,
-          reason,
-          consumed
-        )
-        values(
-          ${organizationId}::uuid,
-          ${specification.id}::uuid,
-          ${item.targetLocalId},
-          ${item.sourceElementType},
-          ${item.sourceElementId},
-          ${item.ruleCode},
-          ${item.ruleVersion},
-          ${item.reason},
-          ${item.consumed}
-        )`;
-    if (result.validations.length)
+    if (plan.provenanceRows.length)
+      await this.db.automationSpecificationProvenance.createMany({
+        data: plan.provenanceRows.map((item) => ({
+          id: item.id,
+          organizationId: item.organizationId,
+          automationSpecificationId: item.automationSpecificationId,
+          targetLocalId: item.targetLocalId,
+          sourceElementType: item.sourceElementType,
+          sourceElementId: item.sourceElementId,
+          catalogRuleCode: item.catalogRuleCode,
+          catalogRuleVersion: item.catalogRuleVersion,
+          reason: item.reason,
+          consumed: item.consumed,
+        })),
+      });
+    if (plan.validationRows.length)
       await this.db.automationSpecificationValidation.createMany({
-        data: result.validations.map((validation) => ({
-          organizationId,
-          automationSpecificationId: specification.id,
+        data: plan.validationRows.map((validation) => ({
+          id: validation.id,
+          organizationId: validation.organizationId,
+          automationSpecificationId: validation.automationSpecificationId,
           ruleCode: validation.ruleCode,
           ruleVersion: validation.ruleVersion,
           severity: validation.severity,
           passed: validation.passed,
           targetLocalId: validation.targetLocalId,
           message: validation.message,
-          detailsJson: json(validation.details),
+          detailsJson: json(validation.detailsJson),
         })),
       });
-    return this.detail(organizationId, specification.id);
+    return {
+      ...specification,
+      status: specification.status,
+      isLatestVersion: true,
+    };
   }
 
   async prepareRebuild(
@@ -317,4 +331,60 @@ function json(value: unknown): Prisma.InputJsonValue {
 
 function fingerprint(blueprint: PublishedBlueprint) {
   return createHash("sha256").update(JSON.stringify(blueprint)).digest("hex");
+}
+
+export function prepareAutomationSpecificationPersistencePlan(
+  organizationId: string,
+  userId: string,
+  input: AutomationSpecificationInput,
+  result: AutomationSpecificationResult,
+): PreparedAutomationSpecificationPersistencePlan {
+  const specificationId = randomUUID();
+  return {
+    specificationHeader: {
+      id: specificationId,
+      organizationId,
+      solutionBlueprintId: input.blueprint.id,
+      solutionBlueprintVersionNumber: input.blueprint.versionNumber,
+      name: result.name,
+      objective: result.objective,
+      scope: result.scope,
+      sourceFingerprint: fingerprint(input.blueprint),
+      catalogVersionsJson: result.catalogVersions,
+      createdBy: userId,
+    },
+    elementRows: result.elements.map((element) => ({
+      id: randomUUID(),
+      organizationId,
+      automationSpecificationId: specificationId,
+      localId: element.localId,
+      elementType: element.type,
+      definitionJson: element.definition,
+      displayOrder: element.displayOrder,
+    })),
+    provenanceRows: result.provenance.map((item) => ({
+      id: randomUUID(),
+      organizationId,
+      automationSpecificationId: specificationId,
+      targetLocalId: item.targetLocalId,
+      sourceElementType: item.sourceElementType,
+      sourceElementId: item.sourceElementId,
+      catalogRuleCode: item.ruleCode,
+      catalogRuleVersion: item.ruleVersion,
+      reason: item.reason,
+      consumed: item.consumed,
+    })),
+    validationRows: result.validations.map((validation) => ({
+      id: randomUUID(),
+      organizationId,
+      automationSpecificationId: specificationId,
+      ruleCode: validation.ruleCode,
+      ruleVersion: validation.ruleVersion,
+      severity: validation.severity,
+      passed: validation.passed,
+      targetLocalId: validation.targetLocalId,
+      message: validation.message,
+      detailsJson: validation.details,
+    })),
+  };
 }
