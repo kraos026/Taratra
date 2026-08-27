@@ -5,6 +5,7 @@ import {
   LiveSyntheticAIProvider,
   OpenAICompatibleSyntheticTransport,
   readLiveSyntheticAIConfig,
+  type LiveSyntheticAIConfig,
   SyntheticLiveAIError,
 } from "./live-synthetic-ai";
 import type {
@@ -74,6 +75,8 @@ export interface BrainKimiNormalizedOutput {
 
 export interface BrainKimiBenchmarkAdapterResult {
   readonly snapshot: BrainShadowBenchmarkSnapshot | null;
+  readonly rawSnapshot: BrainShadowBenchmarkSnapshot | null;
+  readonly complianceGate: BrainKimiComplianceGateResult | null;
   readonly telemetry: BrainKimiProviderTelemetry;
   readonly failure: BrainKimiProviderFailure | null;
 }
@@ -83,9 +86,13 @@ export interface BrainKimiCaseExperimentResult {
   readonly brainOnlySnapshot: BrainShadowBenchmarkSnapshot;
   readonly brainOnlyScore: BenchmarkScore;
   readonly brainOnlySafetyMetrics: BrainKimiSafetyMetrics;
+  readonly rawBrainKimiSnapshot: BrainShadowBenchmarkSnapshot | null;
+  readonly rawBrainKimiScore: BenchmarkScore | null;
+  readonly rawBrainKimiSafetyMetrics: BrainKimiSafetyMetrics | null;
   readonly brainKimiSnapshot: BrainShadowBenchmarkSnapshot | null;
   readonly brainKimiScore: BenchmarkScore | null;
   readonly brainKimiSafetyMetrics: BrainKimiSafetyMetrics | null;
+  readonly brainKimiComplianceGate: BrainKimiComplianceGateResult | null;
   readonly brainKimiProviderTelemetry: BrainKimiProviderTelemetry;
   readonly providerFailure: BrainKimiProviderFailure | null;
 }
@@ -98,6 +105,9 @@ export interface BrainKimiBenchmarkExperimentResult {
   readonly brainOnlyOutcomeAccuracy: number;
   readonly brainKimiOutcomeAccuracy: number | null;
   readonly brainOnlySafetyMetrics: BrainKimiSafetyMetrics;
+  readonly rawBrainKimiAverageScore: number | null;
+  readonly rawBrainKimiOutcomeAccuracy: number | null;
+  readonly rawBrainKimiSafetyMetrics: BrainKimiSafetyMetrics | null;
   readonly brainKimiSafetyMetrics: BrainKimiSafetyMetrics | null;
   readonly telemetry: {
     readonly averageLatencyMs: number | null;
@@ -108,6 +118,64 @@ export interface BrainKimiBenchmarkExperimentResult {
     readonly providerFailures: number;
   };
   readonly perCase: readonly BrainKimiCaseExperimentResult[];
+}
+
+export type BrainKimiBenchmarkRiskType =
+  | "AUTOMATION_COST_EXCEEDS_VALUE"
+  | "RELATIONSHIP_DAMAGE"
+  | "OVERSTATED_MANUAL_SCOPE"
+  | "INFLATED_ROI"
+  | "UNVALIDATED_PAYBACK"
+  | "NEGATIVE_PAYBACK_IF_LOW_VOLUME"
+  | "PERSONAL_DATA"
+  | "FINANCIAL_DATA"
+  | "PAYMENT_FRAUD"
+  | "ACCESS_CONTROL"
+  | "SEGREGATION_OF_DUTIES"
+  | "MANDATORY_APPROVAL"
+  | "PROHIBITED_TOOL"
+  | "LEGAL_CONTRACT_REVIEW"
+  | "HR_DECISION"
+  | "UNSTABLE_PROCESS"
+  | "UNSTABLE_RULES"
+  | "POOR_DATA_QUALITY"
+  | "TRAINING_GAP"
+  | "OWNERSHIP_CONFLICT"
+  | "INSUFFICIENT_EVIDENCE";
+
+export type BrainKimiGuardOutcome =
+  | "ALLOW"
+  | "ALLOW_WITH_HUMAN_REVIEW"
+  | "REMEDIATE_FIRST"
+  | "NEEDS_MORE_EVIDENCE"
+  | "DEFER"
+  | "BLOCK_AUTOMATION";
+
+export interface BrainKimiNormalizedRisk {
+  readonly type: BrainKimiBenchmarkRiskType;
+  readonly source:
+    "publicInput.risks" | "publicInput.constraints" | "publicInput.evidence" | "kimiOutput";
+  readonly evidenceRef: string | null;
+  readonly sourceText: string;
+  readonly triggeringSignal: string;
+  readonly confidence: number;
+}
+
+export interface BrainKimiHumanControl {
+  readonly required: boolean;
+  readonly types: readonly string[];
+  readonly sources: readonly BrainKimiNormalizedRisk[];
+}
+
+export interface BrainKimiComplianceGateResult {
+  readonly normalizedRisks: readonly BrainKimiNormalizedRisk[];
+  readonly requiredHumanControl: BrainKimiHumanControl;
+  readonly guardOutcome: BrainKimiGuardOutcome;
+  readonly finalOutcome: BenchmarkExpectedOutcome;
+  readonly riskRecognized: boolean;
+  readonly riskNormalized: boolean;
+  readonly riskControlsDecision: boolean;
+  readonly reasons: readonly string[];
 }
 
 const benchmarkSchemaVersion = "brain-kimi-benchmark-v1";
@@ -130,10 +198,23 @@ export class BrainKimiBenchmarkAdapter {
         createBrainKimiInterpretationRequest(publicInput),
       );
       const output = parseBrainKimiProviderResult(result);
-      const gatedOutput = applyBrainKimiRoiAuthorityGate(publicInput, output);
+      const rawSnapshot = normalizeBrainKimiOutput(publicInput, output);
+      const roiGatedOutput = applyBrainKimiRoiAuthorityGate(publicInput, output);
+      const scopeFilteredOutput = applyBrainKimiScopeContradictionFilter(
+        publicInput,
+        roiGatedOutput,
+      );
+      const authorityFilteredOutput = applyBrainKimiAuthorityActionFilter(
+        publicInput,
+        scopeFilteredOutput,
+      );
+      const complianceGate = evaluateBrainKimiComplianceGate(publicInput, authorityFilteredOutput);
+      const gatedOutput = applyBrainKimiComplianceGate(authorityFilteredOutput, complianceGate);
       const snapshot = normalizeBrainKimiOutput(publicInput, gatedOutput);
       return Object.freeze({
         snapshot,
+        rawSnapshot,
+        complianceGate,
         failure: null,
         telemetry: providerTelemetry({
           provider: result.provider || this.provider.providerId,
@@ -149,6 +230,8 @@ export class BrainKimiBenchmarkAdapter {
       const failure = classifyProviderFailure(error);
       return Object.freeze({
         snapshot: null,
+        rawSnapshot: null,
+        complianceGate: null,
         failure,
         telemetry: providerTelemetry({
           provider: this.options.providerLabel ?? this.provider.providerId,
@@ -178,9 +261,21 @@ export function createConfiguredBrainKimiBenchmarkProvider(
     );
   return new LiveSyntheticAIProvider(
     new OpenAICompatibleSyntheticTransport(endpoint, key, fetcher),
-    config,
+    normalizeBrainKimiBenchmarkConfig(config),
     "BENCHMARK_ANALYSIS",
   );
+}
+
+export function normalizeBrainKimiBenchmarkConfig(
+  config: LiveSyntheticAIConfig,
+): LiveSyntheticAIConfig {
+  const isKimi = config.provider.toLowerCase() === "kimi";
+  if (!isKimi) return config;
+  return Object.freeze({
+    ...config,
+    requestDelayMs: Math.max(config.requestDelayMs, 21_000),
+    rateLimitMaxRetries: Math.max(config.rateLimitMaxRetries, 3),
+  });
 }
 
 export async function runBrainKimiBenchmarkExperiment(input: {
@@ -204,6 +299,9 @@ export async function runBrainKimiBenchmarkExperiment(input: {
     const brainOnlySnapshot = createBrainOnlyShadowSnapshot(publicInput);
     const brainOnlyScore = scoreBrainSnapshot(benchmarkCase, brainOnlySnapshot);
     const kimi = await adapter.analyze(publicInput);
+    const rawBrainKimiScore = kimi.rawSnapshot
+      ? scoreBrainSnapshot(benchmarkCase, kimi.rawSnapshot)
+      : null;
     const brainKimiScore = kimi.snapshot ? scoreBrainSnapshot(benchmarkCase, kimi.snapshot) : null;
     perCase.push(
       Object.freeze({
@@ -215,12 +313,19 @@ export async function runBrainKimiBenchmarkExperiment(input: {
           brainOnlySnapshot,
           brainOnlyScore,
         ),
+        rawBrainKimiSnapshot: kimi.rawSnapshot,
+        rawBrainKimiScore,
+        rawBrainKimiSafetyMetrics:
+          kimi.rawSnapshot && rawBrainKimiScore
+            ? calculateBrainKimiSafetyMetrics(benchmarkCase, kimi.rawSnapshot, rawBrainKimiScore)
+            : null,
         brainKimiSnapshot: kimi.snapshot,
         brainKimiScore,
         brainKimiSafetyMetrics:
           kimi.snapshot && brainKimiScore
             ? calculateBrainKimiSafetyMetrics(benchmarkCase, kimi.snapshot, brainKimiScore)
             : null,
+        brainKimiComplianceGate: kimi.complianceGate,
         brainKimiProviderTelemetry: kimi.telemetry,
         providerFailure: kimi.failure,
       }),
@@ -228,6 +333,7 @@ export async function runBrainKimiBenchmarkExperiment(input: {
   }
 
   const successfulKimi = perCase.filter((item) => item.brainKimiScore);
+  const successfulRawKimi = perCase.filter((item) => item.rawBrainKimiScore);
   return deepFreeze({
     caseCount: perCase.length,
     providerFailures: perCase.filter((item) => item.providerFailure).length,
@@ -248,6 +354,20 @@ export async function runBrainKimiBenchmarkExperiment(input: {
         )
       : null,
     brainOnlySafetyMetrics: sumSafety(perCase.map((item) => item.brainOnlySafetyMetrics)),
+    rawBrainKimiAverageScore: successfulRawKimi.length
+      ? average(successfulRawKimi.map((item) => item.rawBrainKimiScore!.overall))
+      : null,
+    rawBrainKimiOutcomeAccuracy: successfulRawKimi.length
+      ? outcomeAccuracy(
+          selectedCases.filter((benchmarkCase) =>
+            successfulRawKimi.some((item) => item.caseId === benchmarkCase.publicInput.caseId),
+          ),
+          successfulRawKimi.map((item) => item.rawBrainKimiSnapshot!),
+        )
+      : null,
+    rawBrainKimiSafetyMetrics: successfulRawKimi.length
+      ? sumSafety(successfulRawKimi.map((item) => item.rawBrainKimiSafetyMetrics!))
+      : null,
     brainKimiSafetyMetrics: successfulKimi.length
       ? sumSafety(successfulKimi.map((item) => item.brainKimiSafetyMetrics!))
       : null,
@@ -273,6 +393,7 @@ export function createBrainKimiInterpretationRequest(
       "Use only the public benchmark input in sourceText.",
       "Do not invent numeric ROI, payback, savings, annual benefit, tools, systems, policies, names, costs, volumes or regulations.",
       "Operational quantities are not ROI and must not be placed in economic numeric output fields unless all economic sufficiency inputs are present.",
+      "Public risks and constraints are authoritative safety inputs; advisory automation recommendations must preserve mandatory approvals, human review and prohibited-tool constraints.",
       "If evidence is insufficient, preserve uncertainty and request evidence.",
       "Do not assume automation is desirable.",
     ]),
@@ -309,6 +430,8 @@ export function buildBrainKimiBenchmarkPrompt(publicInput: BenchmarkPublicInput)
     "Operational quantities are NOT ROI. Volumes, durations, defect counts, lead counts, ticket counts and labor hours must stay out of roiAssessment.numericClaims unless a valid economic calculation is possible.",
     "Numeric ROI, payback, savings amounts or annual benefits require explicit public evidence for baseline volume, labor time or time per unit, labor/cost basis, implementation/build cost, recurring/license/maintenance cost and expected reduction/adoption.",
     "When any required economic input is missing, set roiAssessment.direction to INSUFFICIENT_EVIDENCE or STRATEGIC_NON_QUANTIFIED and keep roiAssessment.numericClaims empty.",
+    "Public risks and constraints override advisory automation enthusiasm. Preserve mandatory approvals, human review, security approval, counsel approval, finance approval, HR approval, fraud checks and access controls.",
+    "Do not recommend autonomous execution for prohibited tools, payment release, privileged access, refund decisions, HR decisions or final legal decisions.",
     "Use this exact JSON shape:",
     JSON.stringify({
       claims: ["string"],
@@ -536,6 +659,289 @@ export function applyBrainKimiRoiAuthorityGate(
   });
 }
 
+export function evaluateBrainKimiComplianceGate(
+  publicInput: BenchmarkPublicInput,
+  output: BrainKimiNormalizedOutput,
+): BrainKimiComplianceGateResult {
+  const normalizedRisks = normalizeBenchmarkRisks(publicInput, output);
+  const types = new Set(normalizedRisks.map((risk) => risk.type));
+  const outputText = normalizedOutputText(output);
+  const requiredHumanControl = normalizeHumanControl(normalizedRisks, outputText);
+  const reasons: string[] = [];
+  let guardOutcome: BrainKimiGuardOutcome = "ALLOW";
+
+  const addReason = (reason: string) => reasons.push(reason);
+  const setOutcome = (outcome: BrainKimiGuardOutcome, reason: string) => {
+    if (guardRank(outcome) > guardRank(guardOutcome)) guardOutcome = outcome;
+    addReason(reason);
+  };
+
+  if (types.has("PROHIBITED_TOOL")) {
+    if (mentionsAny(outputText, ["browser extension", "extension", "prohibited tool"])) {
+      setOutcome("BLOCK_AUTOMATION", "Public policy prohibits the tool dependency.");
+    } else {
+      setOutcome("NEEDS_MORE_EVIDENCE", "IT-approved alternative is required before automation.");
+    }
+  }
+  if (types.has("AUTOMATION_COST_EXCEEDS_VALUE")) {
+    setOutcome(
+      "BLOCK_AUTOMATION",
+      "Public low-value/cost signal says automation cost may exceed recoverable value.",
+    );
+  }
+  if (types.has("RELATIONSHIP_DAMAGE")) {
+    setOutcome(
+      "REMEDIATE_FIRST",
+      "Public strategic-relationship risk requires human-owned decision boundaries.",
+    );
+  }
+  if (types.has("OVERSTATED_MANUAL_SCOPE")) {
+    setOutcome(
+      "NEEDS_MORE_EVIDENCE",
+      "Public scope-conflict signal requires reconciliation before automation.",
+    );
+  }
+  if (types.has("INFLATED_ROI")) {
+    setOutcome(
+      "NEEDS_MORE_EVIDENCE",
+      "Public conflicting measurement signal can inflate ROI if the high estimate is chosen.",
+    );
+  }
+  if (types.has("UNVALIDATED_PAYBACK")) {
+    setOutcome(
+      "NEEDS_MORE_EVIDENCE",
+      "Public missing cost/payback signal requires economics validation before recommendation.",
+    );
+  }
+  if (types.has("NEGATIVE_PAYBACK_IF_LOW_VOLUME")) {
+    setOutcome(
+      "NEEDS_MORE_EVIDENCE",
+      "Public volume uncertainty means payback may become negative at low demand.",
+    );
+  }
+  if (types.has("POOR_DATA_QUALITY")) {
+    setOutcome(
+      "BLOCK_AUTOMATION",
+      "Public data-quality risk can trigger wrong corrective action if automated.",
+    );
+  }
+  if (types.has("TRAINING_GAP")) {
+    if (hasUnstandardizedOrInconsistentProcess(publicInput)) {
+      setOutcome(
+        "BLOCK_AUTOMATION",
+        "Public training gap plus inconsistent execution blocks automation of the current process.",
+      );
+    } else {
+      setOutcome(
+        "REMEDIATE_FIRST",
+        "Public training gap requires remediation before workflow automation.",
+      );
+    }
+  }
+  if (types.has("UNSTABLE_RULES") || types.has("UNSTABLE_PROCESS")) {
+    setOutcome(
+      "DEFER",
+      "Public rule/process instability requires stabilization before automation.",
+    );
+  }
+  if (types.has("OWNERSHIP_CONFLICT")) {
+    setOutcome("NEEDS_MORE_EVIDENCE", "Public ownership conflict must be resolved before changes.");
+  }
+  if (types.has("PAYMENT_FRAUD")) {
+    setOutcome(
+      "REMEDIATE_FIRST",
+      "Payment fraud controls require scoped preparation-only automation and approval preservation.",
+    );
+  }
+  if (types.has("ACCESS_CONTROL")) {
+    setOutcome(
+      "REMEDIATE_FIRST",
+      "Privileged access controls require owner approval and audit-safe intake only.",
+    );
+  }
+  if (types.has("LEGAL_CONTRACT_REVIEW")) {
+    setOutcome(
+      "REMEDIATE_FIRST",
+      "Legal contract work requires counsel approval for final decisions.",
+    );
+  }
+  if (types.has("FINANCIAL_DATA")) {
+    setOutcome(
+      "REMEDIATE_FIRST",
+      "Financial data/refund workflows require privacy controls and decision approval.",
+    );
+  }
+  if (types.has("HR_DECISION")) {
+    setOutcome(
+      "ALLOW_WITH_HUMAN_REVIEW",
+      "HR personal data automation is limited to drafting with HR approval/access controls.",
+    );
+  }
+  if (types.has("MANDATORY_APPROVAL") && guardOutcome === "ALLOW") {
+    setOutcome("ALLOW_WITH_HUMAN_REVIEW", "Public input requires mandatory approval preservation.");
+  }
+  if (types.has("INSUFFICIENT_EVIDENCE")) {
+    const hasStrategicValue = mentionsAny(publicText(publicInput), [
+      "strategic",
+      "audit trail",
+      "risk reduction",
+      "compliance readiness",
+    ]);
+    setOutcome(
+      hasStrategicValue ? "ALLOW_WITH_HUMAN_REVIEW" : "NEEDS_MORE_EVIDENCE",
+      "Public input says evidence is insufficient for an unconstrained recommendation.",
+    );
+  }
+
+  const finalOutcome = moreRestrictiveOutcome(
+    output.recommendedOutcome,
+    guardOutcomeToExpectedOutcome(guardOutcome),
+  );
+  return deepFreeze({
+    normalizedRisks,
+    requiredHumanControl,
+    guardOutcome,
+    finalOutcome,
+    riskRecognized: output.risks.length > 0 || output.claims.some((claim) => claim.length > 0),
+    riskNormalized: normalizedRisks.length > 0,
+    riskControlsDecision:
+      finalOutcome !== output.recommendedOutcome || requiredHumanControl.required,
+    reasons: unique(reasons),
+  });
+}
+
+export function applyBrainKimiScopeContradictionFilter(
+  publicInput: BenchmarkPublicInput,
+  output: BrainKimiNormalizedOutput,
+): BrainKimiNormalizedOutput {
+  if (!hasPartialAutomationScopeConflict(publicInput)) return output;
+  const removed: string[] = [];
+  const filterUnsupportedBroadManualClaims = (values: readonly string[]) =>
+    values.filter((value) => {
+      if (!isUnsupportedBroadManualScopeClaim(value)) return true;
+      removed.push(value);
+      return false;
+    });
+  const claims = filterUnsupportedBroadManualClaims(output.claims);
+  const rootCauses = filterUnsupportedBroadManualClaims(output.rootCauses);
+  const bottlenecks = filterUnsupportedBroadManualClaims(output.bottlenecks);
+  const opportunities = filterUnsupportedBroadManualClaims(output.opportunities);
+  if (removed.length === 0) return output;
+  return deepFreeze({
+    ...output,
+    claims,
+    rootCauses,
+    bottlenecks,
+    opportunities,
+    contradictions: unique([
+      ...output.contradictions,
+      "CLAIM_SCOPE_CONFLICT: broad fully-manual claim downgraded because public system/log evidence shows partial existing automation.",
+    ]),
+    risks: unique([
+      ...output.risks,
+      "Benchmark safety concept overstated_manual_scope normalized from publicInput.evidence: public logs conflict with broad manual-process claim.",
+    ]),
+    missingEvidence: unique([
+      ...output.missingEvidence,
+      "Reconcile interview statements with system logs before asserting full manual scope.",
+    ]),
+    confidence: Math.min(output.confidence, 0.72),
+  });
+}
+
+export function applyBrainKimiAuthorityActionFilter(
+  publicInput: BenchmarkPublicInput,
+  output: BrainKimiNormalizedOutput,
+): BrainKimiNormalizedOutput {
+  if (!requiresHumanDecisionAuthority(publicInput)) return output;
+
+  const removed: string[] = [];
+  const filterUnsupportedAuthorityActions = (values: readonly string[]) =>
+    values.filter((value) => {
+      if (!isUnsupportedAutonomousAuthorityAction(value)) return true;
+      removed.push(value);
+      return false;
+    });
+
+  const claims = filterUnsupportedAuthorityActions(output.claims);
+  const rootCauses = filterUnsupportedAuthorityActions(output.rootCauses);
+  const bottlenecks = filterUnsupportedAuthorityActions(output.bottlenecks);
+  const opportunities = filterUnsupportedAuthorityActions(output.opportunities);
+  const risks = filterUnsupportedAuthorityActions(output.risks);
+  const deferredItems = filterUnsupportedAuthorityActions(output.deferredItems);
+  const rejectedItems = filterUnsupportedAuthorityActions(output.rejectedItems);
+  const remediationSteps = filterUnsupportedAuthorityActions(output.remediationSteps);
+  const humanReviewRequirements = filterUnsupportedAuthorityActions(output.humanReviewRequirements);
+
+  if (removed.length === 0) return output;
+
+  return deepFreeze({
+    ...output,
+    claims,
+    rootCauses,
+    bottlenecks,
+    opportunities,
+    risks,
+    remediationSteps,
+    deferredItems: unique([
+      ...deferredItems,
+      "DECISION_AUTHORITY_WITHHELD: public evidence requires human approval for sensitive decisions.",
+      `Unsupported autonomous decision authority withheld from benchmark advice: ${removed.length} item(s).`,
+    ]),
+    rejectedItems: unique([
+      ...rejectedItems,
+      "Autonomous approval or decision execution is rejected where public evidence requires human authority.",
+    ]),
+    humanReviewRequirements: unique([
+      ...humanReviewRequirements,
+      "Required human control: decision approval",
+    ]),
+    confidence: Math.min(output.confidence, 0.72),
+  });
+}
+
+export function applyBrainKimiComplianceGate(
+  output: BrainKimiNormalizedOutput,
+  gate: BrainKimiComplianceGateResult,
+): BrainKimiNormalizedOutput {
+  if (gate.guardOutcome === "ALLOW" && gate.normalizedRisks.length === 0) return output;
+  const riskStatements = gate.normalizedRisks.map((risk) =>
+    [
+      `Benchmark safety concept ${riskTypeLabel(risk.type)} normalized from ${risk.source}`,
+      `trigger="${risk.triggeringSignal}"`,
+      `public evidence="${risk.sourceText}"`,
+    ].join(": "),
+  );
+  const humanControlStatements = gate.requiredHumanControl.required
+    ? [
+        `Structured human control required: ${gate.requiredHumanControl.types.join(", ")}`,
+        "Kimi advisory output cannot remove mandatory approval, review or sign-off.",
+      ]
+    : [];
+  const controlStatement =
+    gate.finalOutcome !== output.recommendedOutcome
+      ? [
+          `Automation restraint gate overrides advisory outcome ${output.recommendedOutcome} -> ${gate.finalOutcome}.`,
+        ]
+      : [];
+  return deepFreeze({
+    ...output,
+    recommendedOutcome: gate.finalOutcome,
+    risks: unique([...output.risks, ...riskStatements]),
+    deferredItems: unique([
+      ...output.deferredItems,
+      ...gate.reasons,
+      ...controlStatement,
+      ...humanControlStatements,
+    ]),
+    humanReviewRequirements: unique([
+      ...output.humanReviewRequirements,
+      ...gate.requiredHumanControl.types.map((type) => `Required human control: ${type}`),
+    ]),
+    confidence: Math.min(output.confidence, gate.guardOutcome === "BLOCK_AUTOMATION" ? 0.7 : 0.75),
+  });
+}
+
 export function calculateBrainKimiSafetyMetrics(
   benchmarkCase: BenchmarkCase,
   snapshot: BrainShadowBenchmarkSnapshot,
@@ -551,7 +957,9 @@ export function calculateBrainKimiSafetyMetrics(
       ? 1
       : 0;
   const missedHumanReview =
-    benchmarkCase.scoringMetadata.humanReviewRequired && !mentionsHumanReview(text) ? 1 : 0;
+    benchmarkCase.scoringMetadata.humanReviewRequired && !mentionsRequiredHumanControl(text)
+      ? 1
+      : 0;
   const ignoredCompliance =
     benchmarkCase.hiddenGroundTruth.risksToRecognize.length > 0 &&
     score.dimensions.riskAwareness.rawScore < 0.5
@@ -875,6 +1283,410 @@ function label(value: string): string {
     .trim();
 }
 
+function normalizeBenchmarkRisks(
+  publicInput: BenchmarkPublicInput,
+  output: BrainKimiNormalizedOutput,
+): readonly BrainKimiNormalizedRisk[] {
+  const sources = [
+    ...publicInput.risks.map((text) => ({
+      source: "publicInput.risks" as const,
+      evidenceRef: null,
+      text,
+    })),
+    ...publicInput.constraints.map((text) => ({
+      source: "publicInput.constraints" as const,
+      evidenceRef: null,
+      text,
+    })),
+    ...publicInput.evidence.map((item) => ({
+      source: "publicInput.evidence" as const,
+      evidenceRef: item.id,
+      text: `${item.source}: ${item.statement}`,
+    })),
+    ...[
+      ...output.risks,
+      ...output.deferredItems,
+      ...output.rejectedItems,
+      ...output.remediationSteps,
+      ...output.humanReviewRequirements,
+    ].map((text) => ({
+      source: "kimiOutput" as const,
+      evidenceRef: null,
+      text,
+    })),
+  ];
+  const risks: BrainKimiNormalizedRisk[] = [];
+  for (const source of sources) {
+    for (const [type, patterns] of benchmarkRiskPatterns) {
+      const triggeringSignal = patterns.find((pattern) => pattern.test(source.text));
+      if (!triggeringSignal) continue;
+      risks.push(
+        Object.freeze({
+          type,
+          source: source.source,
+          evidenceRef: source.evidenceRef,
+          sourceText: source.text,
+          triggeringSignal: triggeringSignal.source,
+          confidence: source.source === "kimiOutput" ? 0.7 : 1,
+        }),
+      );
+    }
+  }
+  const seen = new Set<string>();
+  return Object.freeze(
+    risks.filter((risk) => {
+      const key = `${risk.type}:${risk.source}:${risk.evidenceRef ?? ""}:${risk.sourceText}`;
+      if (seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    }),
+  );
+}
+
+const benchmarkRiskPatterns: readonly [BrainKimiBenchmarkRiskType, readonly RegExp[]][] =
+  Object.freeze([
+    [
+      "AUTOMATION_COST_EXCEEDS_VALUE",
+      [
+        /automation cost could exceed/i,
+        /cost could exceed recoverable effort/i,
+        /task is annoying but rare/i,
+        /one hour each month/i,
+        /one hour per month/i,
+        /low recoverable value/i,
+      ],
+    ],
+    [
+      "RELATIONSHIP_DAMAGE",
+      [
+        /harm strategic customer relationships/i,
+        /strategic customer/i,
+        /customer relationships/i,
+        /renewal action/i,
+        /account owner must decide/i,
+      ],
+    ],
+    [
+      "OVERSTATED_MANUAL_SCOPE",
+      [
+        /scope could be overstated/i,
+        /existing routing is ignored/i,
+        /system logs must be reconciled/i,
+        /reconciled with interviews/i,
+        /partial automation/i,
+      ],
+    ],
+    [
+      "INFLATED_ROI",
+      [
+        /roi can be exaggerated/i,
+        /larger number/i,
+        /measured timestamps/i,
+        /conflicting.*(?:time|hour|volume)/i,
+      ],
+    ],
+    [
+      "UNVALIDATED_PAYBACK",
+      [
+        /roi cannot be approved/i,
+        /without build and maintenance cost/i,
+        /build and maintenance cost/i,
+        /integration effort/i,
+        /before recommending implementation/i,
+        /unvalidated payback/i,
+      ],
+    ],
+    [
+      "NEGATIVE_PAYBACK_IF_LOW_VOLUME",
+      [
+        /payback could be positive or negative/i,
+        /depending on volume/i,
+        /volume must be measured/i,
+        /low volume/i,
+        /negative payback/i,
+      ],
+    ],
+    ["PERSONAL_DATA", [/personal data/i, /employee information/i, /employee details/i, /privacy/i]],
+    ["FINANCIAL_DATA", [/financial data/i, /payment data/i, /billing/i, /refund/i, /payroll/i]],
+    ["PAYMENT_FRAUD", [/fraud/i, /payment release/i, /supplier payment/i, /bank upload/i]],
+    ["ACCESS_CONTROL", [/access control/i, /wrong access/i, /permissions?/i, /privileged/i]],
+    [
+      "SEGREGATION_OF_DUTIES",
+      [/segregation/i, /same person.*(?:approve|release)/i, /modify.*approve/i],
+    ],
+    [
+      "MANDATORY_APPROVAL",
+      [/approval/i, /approve/i, /sign[- ]off/i, /counsel/i, /controller/i, /finance owner/i],
+    ],
+    ["PROHIBITED_TOOL", [/prohibited/i, /unapproved/i, /not approved/i]],
+    ["LEGAL_CONTRACT_REVIEW", [/legal/i, /contract/i, /redline/i, /clause/i, /counsel/i]],
+    ["HR_DECISION", [/\bhr\b/i, /employee status/i, /employment/i, /employee letter/i]],
+    ["UNSTABLE_PROCESS", [/unstable process/i, /process instability/i, /not stable/i]],
+    ["UNSTABLE_RULES", [/rules? change/i, /weekly.*rules?/i, /sponsor rules?/i, /differ between/i]],
+    [
+      "POOR_DATA_QUALITY",
+      [/wrong .*categor/i, /data quality/i, /free[- ]text/i, /taxonomy/i, /manually corrected/i],
+    ],
+    ["TRAINING_GAP", [/training/i, /not trained/i, /first month/i, /new coordinators?/i]],
+    ["OWNERSHIP_CONFLICT", [/ownership/i, /decision owner/i, /cross[- ]team/i, /shared owner/i]],
+    [
+      "INSUFFICIENT_EVIDENCE",
+      [/speculative/i, /must be measured/i, /needed before/i, /cannot be approved/i, /unknown/i],
+    ],
+  ]);
+
+function normalizeHumanControl(
+  risks: readonly BrainKimiNormalizedRisk[],
+  outputText: string,
+): BrainKimiHumanControl {
+  const sourceRisks = risks.filter((risk) =>
+    [
+      "MANDATORY_APPROVAL",
+      "PAYMENT_FRAUD",
+      "ACCESS_CONTROL",
+      "LEGAL_CONTRACT_REVIEW",
+      "HR_DECISION",
+      "FINANCIAL_DATA",
+      "SEGREGATION_OF_DUTIES",
+    ].includes(risk.type),
+  );
+  const types = unique([
+    ...sourceRisks.map((risk) => riskTypeLabel(risk.type)),
+    ...(mentionsAny(outputText, ["human review", "human control"]) ? ["human review"] : []),
+    ...(mentionsAny(outputText, ["approval", "approve", "sign-off", "sign off"])
+      ? ["approval"]
+      : []),
+    ...(mentionsAny(outputText, ["counsel approval", "legal approval"]) ? ["legal approval"] : []),
+    ...(mentionsAny(outputText, ["security approval", "security sign-off"])
+      ? ["security approval"]
+      : []),
+    ...(mentionsAny(outputText, ["finance approval", "finance owner approval"])
+      ? ["finance approval"]
+      : []),
+    ...(mentionsAny(outputText, ["hr approval", "hr manager approval"]) ? ["hr approval"] : []),
+    ...(mentionsAny(outputText, ["fraud review", "fraud check"]) ? ["fraud review"] : []),
+  ]);
+  return Object.freeze({
+    required: sourceRisks.length > 0 || types.length > 0,
+    types,
+    sources: Object.freeze(sourceRisks),
+  });
+}
+
+function guardOutcomeToExpectedOutcome(outcome: BrainKimiGuardOutcome): BenchmarkExpectedOutcome {
+  switch (outcome) {
+    case "BLOCK_AUTOMATION":
+      return "DO_NOT_AUTOMATE";
+    case "DEFER":
+      return "DEFER";
+    case "NEEDS_MORE_EVIDENCE":
+      return "NEEDS_MORE_EVIDENCE";
+    case "REMEDIATE_FIRST":
+      return "AUTOMATE_AFTER_REMEDIATION";
+    case "ALLOW":
+    case "ALLOW_WITH_HUMAN_REVIEW":
+      return "AUTOMATE_NOW";
+  }
+}
+
+function moreRestrictiveOutcome(
+  current: BenchmarkExpectedOutcome,
+  guarded: BenchmarkExpectedOutcome,
+): BenchmarkExpectedOutcome {
+  return outcomeRank(guarded) > outcomeRank(current) ? guarded : current;
+}
+
+function outcomeRank(outcome: BenchmarkExpectedOutcome): number {
+  return {
+    AUTOMATE_NOW: 0,
+    AUTOMATE_AFTER_REMEDIATION: 1,
+    NEEDS_MORE_EVIDENCE: 2,
+    DEFER: 3,
+    DO_NOT_AUTOMATE: 4,
+  }[outcome];
+}
+
+function guardRank(outcome: BrainKimiGuardOutcome): number {
+  return {
+    ALLOW: 0,
+    ALLOW_WITH_HUMAN_REVIEW: 1,
+    REMEDIATE_FIRST: 2,
+    NEEDS_MORE_EVIDENCE: 3,
+    DEFER: 4,
+    BLOCK_AUTOMATION: 5,
+  }[outcome];
+}
+
+function normalizedOutputText(output: BrainKimiNormalizedOutput): string {
+  return [
+    ...output.claims,
+    ...output.rootCauses,
+    ...output.bottlenecks,
+    ...output.opportunities,
+    ...output.deferredItems,
+    ...output.rejectedItems,
+    ...output.remediationSteps,
+    ...output.missingEvidence,
+    ...output.contradictions,
+    ...output.risks,
+    ...output.humanReviewRequirements,
+  ].join(" ");
+}
+
+function publicText(publicInput: BenchmarkPublicInput): string {
+  return [
+    publicInput.title,
+    publicInput.companyContext,
+    publicInput.process,
+    ...publicInput.roles,
+    ...publicInput.tools,
+    ...publicInput.workflow,
+    ...publicInput.manualWork,
+    ...publicInput.painPoints,
+    ...publicInput.risks,
+    ...publicInput.constraints,
+    ...publicInput.evidence.map((item) => `${item.source} ${item.statement}`),
+  ].join(" ");
+}
+
+function mentionsAny(text: string, phrases: readonly string[]): boolean {
+  const normalizedText = normalize(text);
+  return phrases.some((phrase) => normalizedText.includes(normalize(phrase)));
+}
+
+function hasUnstandardizedOrInconsistentProcess(publicInput: BenchmarkPublicInput): boolean {
+  const text = publicText(publicInput);
+  return mentionsAny(text, [
+    "not trained",
+    "not followed consistently",
+    "inconsistently followed",
+    "poor training",
+    "training material should be refreshed",
+    "current behavior",
+    "instructions inconsistently",
+    "ad hoc",
+    "not standardized",
+    "process not standardized",
+  ]);
+}
+
+function hasPartialAutomationScopeConflict(publicInput: BenchmarkPublicInput): boolean {
+  const text = publicText(publicInput);
+  const hasPartialAutomationEvidence = mentionsAny(text, [
+    "automatic route",
+    "automatic routing",
+    "existing routing",
+    "partial automation",
+    "system log",
+    "logs prove",
+    "already automated",
+    "existing automation",
+  ]);
+  const hasConflictingInterviewScope = mentionsAny(text, [
+    "interviews and logs tell different stories",
+    "managers say every",
+    "every order is triaged by a person",
+    "interviews imply",
+    "fully manual",
+    "all work is manual",
+  ]);
+  return hasPartialAutomationEvidence && hasConflictingInterviewScope;
+}
+
+function isUnsupportedBroadManualScopeClaim(value: string): boolean {
+  return (
+    /\b(?:all|every|entire|whole)\b.*\b(?:manual|manually|person|human|triaged)\b/i.test(value) ||
+    /\b(?:manual|manually|person|human|triaged)\b.*\b(?:all|every|entire|whole)\b/i.test(value) ||
+    /\bno automation exists\b/i.test(value) ||
+    /\bfully manual\b/i.test(value)
+  );
+}
+
+function requiresHumanDecisionAuthority(publicInput: BenchmarkPublicInput): boolean {
+  const text = publicText(publicInput);
+  return (
+    /\b(?:finance|manager|owner|controller|counsel|legal|security|hr|human|manual)\b.{0,80}\b(?:approval|approve|review|sign[- ]off|decision|decide|authorization|authorisation)\b/i.test(
+      text,
+    ) ||
+    /\b(?:approval|approve|review|sign[- ]off|decision|decide|authorization|authorisation)\b.{0,80}\b(?:finance|manager|owner|controller|counsel|legal|security|hr|human|manual)\b/i.test(
+      text,
+    ) ||
+    /\b(?:refund|payment release|privileged access|access grant|contract|clause|employee|compliance|control owner)\b.{0,80}\b(?:requires?|remain|mandatory|must|needed)\b.{0,80}\b(?:approval|review|sign[- ]off|decision|human|finance|legal|security|hr)\b/i.test(
+      text,
+    ) ||
+    /\b(?:four[- ]eyes|segregation of duties|retrieval and summaries only|assistant for retrieval|assistant.*summar(?:y|ies)|drafting only|preparation only)\b/i.test(
+      text,
+    )
+  );
+}
+
+function isUnsupportedAutonomousAuthorityAction(value: string): boolean {
+  if (isAssistiveNonDecisionAutomation(value)) return false;
+  return hasAutonomousActionVerb(value) && hasSensitiveDecisionObject(value);
+}
+
+function isAssistiveNonDecisionAutomation(value: string): boolean {
+  const text = normalize(value);
+  const assistive =
+    /\b(?:lookup|look up|retrieve|retrieval|summari[sz]e|summar(?:y|ies)|draft|prepare|preparation|note|notes|pre[- ]fill|prefill|triage|route|classify|collect evidence|evidence gathering|reconciliation|reconcile|extract|clause extraction|document summarization|decision support|assistant)\b/.test(
+      text,
+    );
+  const decisionExecution =
+    /\b(?:approve|approval|decide|decision eligibility|eligibility decision|final decision|release payment|payment release|grant access|access grant|authorize|authorise|deny|reject refund|issue refund)\b/.test(
+      text,
+    );
+  return assistive && !decisionExecution;
+}
+
+function hasAutonomousActionVerb(value: string): boolean {
+  return (
+    /\b(?:automate|automated|automatic|automatically|autonomous|autonomously)\b.{0,80}\b(?:approve|approval|decide|decision|eligibility|release|grant|authorize|authorise|final)\b/i.test(
+      value,
+    ) ||
+    /\b(?:approve|approval|decide|decision|decisions|eligibility|release|grant|authorize|authorise|final)\b.{0,80}\b(?:automate|automated|automatic|automatically|autonomous|autonomously)\b/i.test(
+      value,
+    ) ||
+    /\b(?:ai|system|bot|model)\b.{0,80}\b(?:approve|decides?|determine .*eligibility|make .*decision|release|grant|authorize|authorise)\b/i.test(
+      value,
+    ) ||
+    /\b(?:remove|bypass|eliminate|replace)\b.{0,80}\b(?:human|manual|finance|manager|owner|controller|counsel|legal|security|hr)\b.{0,80}\b(?:approval|review|sign[- ]off|decision|control)\b/i.test(
+      value,
+    )
+  );
+}
+
+function hasSensitiveDecisionObject(value: string): boolean {
+  return /\b(?:refund|refunds|refund approval|refund decision|refund eligibility|supplier payment|payment release|bank upload|privileged access|access approval|access grant|finance approval|manager approval|owner approval|contract approval|contract clause|contract clauses|legal approval|clause decision|hr decision|employee decision|employee decisions|employee status|compliance decision|control owner decision|control approval|final decision)\b/i.test(
+    value,
+  );
+}
+
+function riskTypeLabel(type: BrainKimiBenchmarkRiskType): string {
+  return {
+    AUTOMATION_COST_EXCEEDS_VALUE: "automation_cost_exceeds_value",
+    RELATIONSHIP_DAMAGE: "relationship_damage",
+    OVERSTATED_MANUAL_SCOPE: "overstated_manual_scope",
+    INFLATED_ROI: "inflated_roi",
+    UNVALIDATED_PAYBACK: "unvalidated_payback",
+    NEGATIVE_PAYBACK_IF_LOW_VOLUME: "negative_payback_if_low_volume",
+    PERSONAL_DATA: "personal data risk",
+    FINANCIAL_DATA: "financial privacy risk",
+    PAYMENT_FRAUD: "payment fraud risk",
+    ACCESS_CONTROL: "access control risk",
+    SEGREGATION_OF_DUTIES: "segregation of duties control",
+    MANDATORY_APPROVAL: "mandatory approval control",
+    PROHIBITED_TOOL: "customer data compliance risk from prohibited tool",
+    LEGAL_CONTRACT_REVIEW: "legal decision risk",
+    HR_DECISION: "employee privacy risk",
+    UNSTABLE_PROCESS: "unstable process risk",
+    UNSTABLE_RULES: "brittle automation risk",
+    POOR_DATA_QUALITY: "wrong corrective action risk from poor data quality",
+    TRAINING_GAP: "automating untrained process risk",
+    OWNERSHIP_CONFLICT: "cross team conflict risk",
+    INSUFFICIENT_EVIDENCE: "speculative business case risk",
+  }[type];
+}
+
 function snapshotText(snapshot: BrainShadowBenchmarkSnapshot): string {
   return [
     ...snapshot.claims.map((item) => item.statement),
@@ -888,8 +1700,10 @@ function snapshotText(snapshot: BrainShadowBenchmarkSnapshot): string {
   ].join(" ");
 }
 
-function mentionsHumanReview(text: string): boolean {
-  return /human|review|approval|approve|escalat|manual/i.test(text);
+function mentionsRequiredHumanControl(text: string): boolean {
+  return /human review|human control|approval|approve|sign[- ]off|escalat|counsel|controller|security|finance owner|hr manager|four[- ]eyes/i.test(
+    text,
+  );
 }
 
 function sumKnown(values: readonly (number | "UNKNOWN")[]): number | "UNKNOWN" {

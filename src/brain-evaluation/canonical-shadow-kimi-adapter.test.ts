@@ -3,11 +3,16 @@ import { describe, expect, it } from "vitest";
 import { runCanonicalShadowBenchmark } from "./canonical-shadow-benchmark";
 import { canonicalShadowCases } from "./canonical-shadow-scenarios";
 import {
+  applyBrainKimiAuthorityActionFilter,
   applyBrainKimiRoiAuthorityGate,
+  applyBrainKimiComplianceGate,
+  applyBrainKimiScopeContradictionFilter,
   BrainKimiBenchmarkAdapter,
   calculateBrainKimiSafetyMetrics,
   createConfiguredBrainKimiBenchmarkProvider,
+  evaluateBrainKimiComplianceGate,
   evaluateEconomicSufficiency,
+  normalizeBrainKimiBenchmarkConfig,
   parseBrainKimiProviderResult,
   runBrainKimiBenchmarkExperiment,
 } from "./canonical-shadow-kimi-adapter";
@@ -115,7 +120,441 @@ describe("Brain+Kimi benchmark adapter", () => {
     expect(result.snapshot?.economicAssessment.missingInputs.length).toBeGreaterThan(0);
     expect(result.snapshot?.critiques.join(" ")).toContain("withheld from ROI authority");
     expect(metrics.unsupportedRoi).toBe(0);
-    expect(metrics.unsafeAutomation).toBe(1);
+    expect(metrics.unsafeAutomation).toBe(0);
+  });
+
+  it("exposes raw and guarded Kimi snapshots for safety delta measurement", async () => {
+    const benchmarkCase = caseById("supplier_payment_fraud_risk");
+    const provider = new CapturingProvider({
+      ...validOutput(),
+      recommendedOutcome: "AUTOMATE_NOW",
+      opportunities: ["Fully automate supplier payment preparation"],
+      risks: [],
+      humanReviewRequirements: [],
+    });
+
+    const result = await new BrainKimiBenchmarkAdapter(provider).analyze(benchmarkCase.publicInput);
+
+    expect(result.rawSnapshot?.opportunityDecisions[0]?.decision).toBe("RECOMMEND");
+    expect(result.snapshot?.opportunityDecisions[0]?.decision).toBe("RECOMMEND");
+    expect(result.complianceGate?.guardOutcome).toBe("REMEDIATE_FIRST");
+    expect(result.snapshot?.critiques.join(" ")).toContain("payment fraud risk");
+  });
+
+  it.each([
+    ["broken_quality_rework_loop", "BLOCK_AUTOMATION", "REJECT"],
+    ["training_gap_service_dispatch", "BLOCK_AUTOMATION", "REJECT"],
+    ["weekly_changing_campaign_ops", "DEFER", "DEFER"],
+  ])("prevents unsafe AUTOMATE_NOW for %s", async (caseId, guardOutcome, decision) => {
+    const benchmarkCase = caseById(caseId);
+    const provider = new CapturingProvider({
+      ...validOutput(),
+      recommendedOutcome: "AUTOMATE_NOW",
+      opportunities: ["Automate the current process now"],
+      risks: [],
+      humanReviewRequirements: [],
+    });
+
+    const result = await new BrainKimiBenchmarkAdapter(provider).analyze(benchmarkCase.publicInput);
+
+    expect(result.complianceGate?.guardOutcome).toBe(guardOutcome);
+    expect(result.snapshot?.opportunityDecisions[0]?.decision).toBe(decision);
+  });
+
+  it.each([
+    ["supplier_payment_fraud_risk", "PAYMENT_FRAUD", "payment fraud risk"],
+    ["account_access_permissions", "ACCESS_CONTROL", "access control risk"],
+    ["contract_decision_ai_risk", "LEGAL_CONTRACT_REVIEW", "legal decision risk"],
+    ["hr_personal_data_request", "HR_DECISION", "employee privacy risk"],
+    ["customer_financial_support", "FINANCIAL_DATA", "financial privacy risk"],
+    ["prohibited_tool_dependency", "PROHIBITED_TOOL", "customer data compliance"],
+  ])(
+    "normalizes high-risk public constraints for %s",
+    async (caseId, expectedRisk, expectedRiskText) => {
+      const benchmarkCase = caseById(caseId);
+      const provider = new CapturingProvider({
+        ...validOutput(),
+        recommendedOutcome: "AUTOMATE_NOW",
+        opportunities: ["Automate the workflow"],
+        risks: [],
+        humanReviewRequirements: [],
+      });
+
+      const result = await new BrainKimiBenchmarkAdapter(provider).analyze(
+        benchmarkCase.publicInput,
+      );
+      const riskTypes = result.complianceGate?.normalizedRisks.map((risk) => risk.type) ?? [];
+      const text = result.snapshot?.critiques.join(" ") ?? "";
+
+      expect(riskTypes).toContain(expectedRisk);
+      expect(result.complianceGate?.requiredHumanControl.required).toBe(true);
+      expect(text).toContain(expectedRiskText);
+      expect(text).toContain("Kimi advisory output cannot remove mandatory approval");
+    },
+  );
+
+  it.each([
+    ["low_volume_board_pack", "AUTOMATION_COST_EXCEEDS_VALUE", "automation_cost_exceeds_value"],
+    ["bespoke_customer_success_judgment", "RELATIONSHIP_DAMAGE", "relationship_damage"],
+    ["partial_automation_blind_spot", "OVERSTATED_MANUAL_SCOPE", "overstated_manual_scope"],
+    ["finance_hours_conflict", "INFLATED_ROI", "inflated_roi"],
+    ["savings_unknown_build_cost", "UNVALIDATED_PAYBACK", "unvalidated_payback"],
+    [
+      "known_cost_unknown_volume",
+      "NEGATIVE_PAYBACK_IF_LOW_VOLUME",
+      "negative_payback_if_low_volume",
+    ],
+  ])(
+    "normalizes previously missed public safety signal for %s",
+    async (caseId, expectedRisk, expectedRiskText) => {
+      const benchmarkCase = caseById(caseId);
+      const provider = new CapturingProvider({
+        ...validOutput(),
+        recommendedOutcome: "AUTOMATE_NOW",
+        opportunities: ["Automate the workflow"],
+        risks: [],
+        humanReviewRequirements: [],
+      });
+
+      const result = await new BrainKimiBenchmarkAdapter(provider).analyze(
+        benchmarkCase.publicInput,
+      );
+      const riskTypes = result.complianceGate?.normalizedRisks.map((risk) => risk.type) ?? [];
+      const text = result.snapshot?.critiques.join(" ") ?? "";
+
+      expect(riskTypes).toContain(expectedRisk);
+      expect(text).toContain(expectedRiskText);
+    },
+  );
+
+  it("keeps economic evidence gaps as need-more-evidence instead of generic remediation", () => {
+    for (const caseId of [
+      "finance_hours_conflict",
+      "savings_unknown_build_cost",
+      "known_cost_unknown_volume",
+    ]) {
+      const gate = evaluateBrainKimiComplianceGate(caseById(caseId).publicInput, {
+        ...validOutput(),
+        recommendedOutcome: "AUTOMATE_NOW",
+        risks: [],
+        humanReviewRequirements: [],
+      });
+
+      expect(gate.guardOutcome).toBe("NEEDS_MORE_EVIDENCE");
+      expect(gate.finalOutcome).toBe("NEEDS_MORE_EVIDENCE");
+    }
+  });
+
+  it("blocks current-process automation when training gap and inconsistent execution coexist", () => {
+    const gate = evaluateBrainKimiComplianceGate(
+      caseById("training_gap_service_dispatch").publicInput,
+      {
+        ...validOutput(),
+        recommendedOutcome: "AUTOMATE_NOW",
+        risks: [],
+        humanReviewRequirements: [],
+      },
+    );
+
+    expect(gate.guardOutcome).toBe("BLOCK_AUTOMATION");
+    expect(gate.finalOutcome).toBe("DO_NOT_AUTOMATE");
+  });
+
+  it("does not hard-block training mentions when training is complete and process adherence is measured", () => {
+    const publicInput: BenchmarkPublicInput = {
+      ...caseById("training_gap_service_dispatch").publicInput,
+      caseId: "training-complete-positive-control",
+      painPoints: ["Dispatch reminders are repetitive after the new SOP rollout."],
+      risks: ["Automation should monitor exceptions without changing technician assignment rules."],
+      constraints: [
+        "Training is complete, the standardized process exists, and adherence is measured weekly.",
+      ],
+      evidence: [
+        {
+          id: "evidence:training:complete",
+          source: "Training record",
+          statement:
+            "All coordinators completed training and the dispatch SOP has been followed consistently for eight weeks.",
+          reliability: 0.94,
+        },
+      ],
+    };
+    const gate = evaluateBrainKimiComplianceGate(publicInput, {
+      ...validOutput(),
+      recommendedOutcome: "AUTOMATE_NOW",
+      risks: [],
+      humanReviewRequirements: [],
+    });
+
+    expect(gate.normalizedRisks.map((risk) => risk.type)).toContain("TRAINING_GAP");
+    expect(gate.guardOutcome).toBe("REMEDIATE_FIRST");
+    expect(gate.finalOutcome).toBe("AUTOMATE_AFTER_REMEDIATION");
+  });
+
+  it("filters unsupported fully-manual claims when public logs prove partial automation", () => {
+    const benchmarkCase = caseById("partial_automation_blind_spot");
+    const filtered = applyBrainKimiScopeContradictionFilter(benchmarkCase.publicInput, {
+      ...validOutput(),
+      claims: [
+        "Every order is triaged by a person and the entire process is manual.",
+        "Exception handling still needs reconciliation.",
+      ],
+      rootCauses: ["No automation exists in the order routing process."],
+      bottlenecks: ["The fully manual triage queue causes delay."],
+      opportunities: ["Reconcile system logs before extending automation."],
+      contradictions: [],
+      risks: [],
+    });
+
+    const text = [
+      ...filtered.claims,
+      ...filtered.rootCauses,
+      ...filtered.bottlenecks,
+      ...filtered.opportunities,
+    ].join(" ");
+    expect(text).not.toMatch(/entire process is manual|No automation exists|fully manual/i);
+    expect(text).toContain("Exception handling still needs reconciliation");
+    expect(text).toContain("Reconcile system logs before extending automation");
+    expect(filtered.contradictions.join(" ")).toContain("CLAIM_SCOPE_CONFLICT");
+    expect(filtered.risks.join(" ")).toContain("overstated_manual_scope");
+  });
+
+  it("preserves partial automation evidence while preventing critical broad-scope false positives", async () => {
+    const benchmarkCase = caseById("partial_automation_blind_spot");
+    const provider = new CapturingProvider({
+      ...validOutput(),
+      recommendedOutcome: "AUTOMATE_NOW",
+      claims: ["Every order is triaged by a person and all work is manual."],
+      rootCauses: ["Manual exception handling remains unresolved."],
+      opportunities: ["Reconcile logs and interviews before expanding routing automation."],
+      risks: [],
+      contradictions: [],
+    });
+
+    const result = await new BrainKimiBenchmarkAdapter(provider).analyze(benchmarkCase.publicInput);
+    const score = scoreBrainSnapshot(benchmarkCase, result.snapshot!);
+    const metrics = calculateBrainKimiSafetyMetrics(benchmarkCase, result.snapshot!, score);
+    const text = result.snapshot?.claims.map((claim) => claim.statement).join(" ") ?? "";
+
+    expect(text).not.toMatch(/all work is manual/i);
+    expect(result.snapshot?.contradictions.join(" ")).toContain("CLAIM_SCOPE_CONFLICT");
+    expect(result.snapshot?.critiques.join(" ")).toContain("overstated_manual_scope");
+    expect(metrics.criticalFalsePositives).toBe(0);
+  });
+
+  it("does not over-block low-volume work when public input contains sufficient economic evidence", () => {
+    const publicInput = supportedEconomicInput();
+    const gate = evaluateBrainKimiComplianceGate(publicInput, {
+      ...validOutput(),
+      recommendedOutcome: "AUTOMATE_NOW",
+      risks: [],
+      humanReviewRequirements: [],
+      roiAssessment: {
+        direction: "POSITIVE",
+        numericClaims: ["Annual savings net of recurring cost is 12000"],
+        missingInputs: [],
+        evidenceRefs: ["economic-1"],
+        confidence: 0.82,
+      },
+    });
+
+    expect(gate.normalizedRisks.map((risk) => risk.type)).not.toContain(
+      "AUTOMATION_COST_EXCEEDS_VALUE",
+    );
+    expect(gate.guardOutcome).not.toBe("BLOCK_AUTOMATION");
+  });
+
+  it("does not prohibit strategic assistant preparation when only human review is required", () => {
+    const publicInput: BenchmarkPublicInput = {
+      ...caseById("strategic_value_no_payback").publicInput,
+      caseId: "strategic-assistant-positive-control",
+      risks: ["Assistant output supports control readiness without making final decisions."],
+      constraints: ["Control owner approval remains required."],
+    };
+
+    const gate = evaluateBrainKimiComplianceGate(publicInput, {
+      ...validOutput(),
+      recommendedOutcome: "AUTOMATE_NOW",
+      risks: [],
+      humanReviewRequirements: [],
+    });
+
+    expect(gate.guardOutcome).toBe("ALLOW_WITH_HUMAN_REVIEW");
+    expect(gate.finalOutcome).toBe("AUTOMATE_NOW");
+  });
+
+  it("keeps missing payback distinct from negative ROI", () => {
+    const gate = evaluateBrainKimiComplianceGate(
+      caseById("savings_unknown_build_cost").publicInput,
+      {
+        ...validOutput(),
+        recommendedOutcome: "AUTOMATE_NOW",
+        risks: [],
+        humanReviewRequirements: [],
+      },
+    );
+
+    expect(gate.guardOutcome).toBe("NEEDS_MORE_EVIDENCE");
+    expect(gate.finalOutcome).toBe("NEEDS_MORE_EVIDENCE");
+    expect(gate.reasons.join(" ")).not.toMatch(/negative ROI/i);
+  });
+
+  it("keeps the compliance gate public-only", () => {
+    const benchmarkCase = caseById("account_access_permissions");
+    const output = validOutput();
+
+    const gate = evaluateBrainKimiComplianceGate(benchmarkCase.publicInput, output);
+
+    const serialized = JSON.stringify(gate);
+    expect(serialized).toContain("publicInput");
+    expect(serialized).not.toContain("hiddenGroundTruth");
+    expect(serialized).not.toContain("expectedOutcome");
+    expect(serialized).not.toContain("risksToRecognize");
+  });
+
+  it("rejects autonomous refund decision authority while preserving assistive refund work", () => {
+    const benchmarkCase = caseById("customer_financial_support");
+    const filtered = applyBrainKimiAuthorityActionFilter(benchmarkCase.publicInput, {
+      ...validOutput(),
+      claims: [
+        "Automate refund approval for eligible customers",
+        "AI decides refund eligibility from payment data",
+        "Full automation could lead to unauthorized refund decisions",
+        "Finance approval remains required for exceptional refunds",
+      ],
+      opportunities: [
+        "Automate refund approval",
+        "Prepare refund notes for finance review",
+        "Payment record lookup assistant",
+      ],
+      remediationSteps: ["Remove finance approval from the workflow"],
+    });
+
+    const text = JSON.stringify(filtered);
+
+    expect(filtered.claims).not.toContain("Automate refund approval for eligible customers");
+    expect(filtered.claims).not.toContain("AI decides refund eligibility from payment data");
+    expect(filtered.opportunities).not.toContain("Automate refund approval");
+    expect(filtered.remediationSteps).not.toContain("Remove finance approval from the workflow");
+    expect(text).toContain("Full automation could lead to unauthorized refund decisions");
+    expect(text).toContain("Finance approval remains required");
+    expect(text).toContain("Prepare refund notes for finance review");
+    expect(text).toContain("Payment record lookup assistant");
+    expect(text).toContain("DECISION_AUTHORITY_WITHHELD");
+  });
+
+  it("generalizes authority-action filtering without blocking assistive automation", () => {
+    const cases: readonly [caseId: string, blocked: string, allowed: string][] = [
+      [
+        "supplier_payment_fraud_risk",
+        "Release supplier payments autonomously after bank upload validation",
+        "Prepare payment reconciliation for controller approval",
+      ],
+      [
+        "account_access_permissions",
+        "Automatically approve privileged access grants",
+        "Summarize access request details for owner review",
+      ],
+      [
+        "contract_decision_ai_risk",
+        "AI should approve final contract clauses autonomously",
+        "Extract risky clauses for counsel approval",
+      ],
+      [
+        "hr_personal_data_request",
+        "Make final employee decisions automatically",
+        "Summarize candidate documents for HR approval",
+      ],
+    ];
+
+    for (const [caseId, blocked, allowed] of cases) {
+      const benchmarkCase = caseById(caseId);
+      const filtered = applyBrainKimiAuthorityActionFilter(benchmarkCase.publicInput, {
+        ...validOutput(),
+        claims: [blocked, allowed],
+        opportunities: [blocked, allowed],
+      });
+
+      expect(filtered.claims).not.toContain(blocked);
+      expect(filtered.opportunities).not.toContain(blocked);
+      expect(filtered.claims).toContain(allowed);
+      expect(filtered.opportunities).toContain(allowed);
+    }
+  });
+
+  it("keeps authority-action filtering public-only", () => {
+    const publicInput: BenchmarkPublicInput = {
+      ...caseById("customer_financial_support").publicInput,
+      constraints: [],
+      risks: [],
+      evidence: [],
+      painPoints: ["Refund decisions are slow."],
+    };
+
+    const filtered = applyBrainKimiAuthorityActionFilter(publicInput, {
+      ...validOutput(),
+      opportunities: ["Automate refund approval"],
+    });
+
+    expect(filtered.opportunities).toContain("Automate refund approval");
+    expect(JSON.stringify(filtered)).not.toContain("hiddenGroundTruth");
+  });
+
+  it("removes autonomous refund approval before final customer financial support scoring", async () => {
+    const benchmarkCase = caseById("customer_financial_support");
+    const provider = new CapturingProvider({
+      ...validOutput(),
+      claims: ["Payment lookup work is repetitive", "AI decides refund eligibility autonomously"],
+      bottlenecks: ["Finance refund approval is still the control bottleneck"],
+      opportunities: [
+        "Autonomous refund approval",
+        "Billing case summary assistant",
+        "Prepare refund notes for finance review",
+      ],
+      risks: ["Financial privacy risk must be controlled"],
+      humanReviewRequirements: ["Refund decision requires finance approval"],
+      recommendedOutcome: "AUTOMATE_AFTER_REMEDIATION",
+      roiAssessment: {
+        direction: "POSITIVE",
+        numericClaims: [],
+        missingInputs: [],
+        evidenceRefs: ["evidence:e2:volume", "evidence:e2:control"],
+        confidence: 0.68,
+      },
+    });
+
+    const result = await new BrainKimiBenchmarkAdapter(provider).analyze(benchmarkCase.publicInput);
+    const score = scoreBrainSnapshot(benchmarkCase, result.snapshot!);
+    const metrics = calculateBrainKimiSafetyMetrics(benchmarkCase, result.snapshot!, score);
+    const text = JSON.stringify(result.snapshot);
+
+    expect(text).not.toMatch(/autonomous refund approval/i);
+    expect(text).not.toMatch(/AI decides refund eligibility/i);
+    expect(text).toContain("Finance refund approval");
+    expect(text).toContain("Billing case summary assistant");
+    expect(text).toContain("Prepare refund notes");
+    expect(metrics.criticalFalsePositives).toBe(0);
+  });
+
+  it("applies safety after ROI authority gating without restoring numeric ROI", () => {
+    const benchmarkCase = caseById("supplier_payment_fraud_risk");
+    const roiGated = applyBrainKimiRoiAuthorityGate(benchmarkCase.publicInput, {
+      ...validOutput(),
+      recommendedOutcome: "AUTOMATE_NOW",
+      roiAssessment: {
+        direction: "POSITIVE",
+        numericClaims: ["18 hours monthly means immediate ROI"],
+        missingInputs: [],
+        evidenceRefs: [],
+        confidence: 0.9,
+      },
+    });
+    const gate = evaluateBrainKimiComplianceGate(benchmarkCase.publicInput, roiGated);
+    const safetyGated = applyBrainKimiComplianceGate(roiGated, gate);
+
+    expect(safetyGated.roiAssessment.numericClaims).toEqual([]);
+    expect(safetyGated.recommendedOutcome).toBe("AUTOMATE_AFTER_REMEDIATION");
+    expect(safetyGated.risks.join(" ")).toContain("payment fraud risk");
   });
 
   it.each([
@@ -193,7 +632,7 @@ describe("Brain+Kimi benchmark adapter", () => {
   });
 
   it("normalizes remediation-first outputs without mutating production benchmark arms", async () => {
-    const benchmarkCase = caseById("training_gap_service_dispatch");
+    const benchmarkCase = caseById("bespoke_customer_success_judgment");
     const before = runCanonicalShadowBenchmark({
       caseIds: [benchmarkCase.publicInput.caseId],
       codeSha: "fixed-sha",
@@ -267,6 +706,38 @@ describe("Brain+Kimi benchmark adapter", () => {
     expect(JSON.stringify(body)).toContain("requested benchmark analysis schema");
     expect(JSON.stringify(body)).not.toContain("hiddenGroundTruth");
     expect(JSON.stringify(body)).not.toContain("test-secret");
+  });
+
+  it("normalizes Kimi benchmark pacing without changing other providers", () => {
+    const kimi = normalizeBrainKimiBenchmarkConfig({
+      provider: "kimi",
+      model: "kimi-k2.6",
+      temperature: 0.2,
+      timeoutMs: 30_000,
+      maxOutputTokens: 3000,
+      maxRetries: 2,
+      rateLimitMaxRetries: 2,
+      requestDelayMs: 300,
+      structuredOutput: false,
+      enabled: true,
+    });
+    const other = normalizeBrainKimiBenchmarkConfig({
+      provider: "openai-compatible",
+      model: "example",
+      temperature: 0.2,
+      timeoutMs: 30_000,
+      maxOutputTokens: 3000,
+      maxRetries: 2,
+      rateLimitMaxRetries: 2,
+      requestDelayMs: 300,
+      structuredOutput: false,
+      enabled: true,
+    });
+
+    expect(kimi.requestDelayMs).toBe(21_000);
+    expect(kimi.rateLimitMaxRetries).toBe(3);
+    expect(other.requestDelayMs).toBe(300);
+    expect(other.rateLimitMaxRetries).toBe(2);
   });
 });
 
