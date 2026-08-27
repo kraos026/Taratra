@@ -12,7 +12,13 @@ import {
 } from "./synthetic-expression-contract";
 
 export type SyntheticPromptKind =
-  "INTERVIEW" | "FOLLOW_UP" | "EMAIL" | "SOP" | "MEETING_NOTES" | "PROCESS_DESCRIPTION";
+  | "INTERVIEW"
+  | "FOLLOW_UP"
+  | "EMAIL"
+  | "SOP"
+  | "MEETING_NOTES"
+  | "PROCESS_DESCRIPTION"
+  | "BENCHMARK_ANALYSIS";
 
 export interface SyntheticPromptContract {
   readonly kind: SyntheticPromptKind;
@@ -58,6 +64,12 @@ export const SYNTHETIC_PROMPT_CONTRACTS: Readonly<
     version: "2",
     system:
       "Return exactly one JSON object matching the synthetic expression envelope. Put process prose only in content. Do not output commentary or invent facts, metrics, systems, or policies.",
+  }),
+  BENCHMARK_ANALYSIS: Object.freeze({
+    kind: "BENCHMARK_ANALYSIS",
+    version: "1",
+    system:
+      "Return exactly one JSON object matching the requested benchmark analysis schema from the user message. Do not output markdown or commentary. Use only the supplied public benchmark input. Do not invent metrics, systems, policies, regulations, names, costs or volumes. Preserve uncertainty, missing evidence, contradictions, compliance/security constraints, human review and remediation-before-automation.",
   }),
 });
 
@@ -252,7 +264,8 @@ export class OpenAICompatibleSyntheticTransport implements LiveAITransport {
             {
               role: "system",
               content:
-                input.capabilities.expressionFormat === "PLAIN"
+                input.capabilities.expressionFormat === "PLAIN" &&
+                input.prompt.kind !== "BENCHMARK_ANALYSIS"
                   ? plainExpressionPrompt(input.prompt, input.perspectiveManifest)
                   : input.prompt.system,
             },
@@ -751,6 +764,7 @@ export class LiveSyntheticAIProvider implements AIProvider {
     result: AIInterpretationResult,
     request: AIInterpretationRequest,
   ): AIInterpretationResult {
+    if (this.promptKind === "BENCHMARK_ANALYSIS") return result;
     const text = result.candidates
       .map((candidate) => candidate.statement)
       .join(" ")

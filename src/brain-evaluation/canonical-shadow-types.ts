@@ -1,7 +1,7 @@
 export type RoiDirection =
   "POSITIVE" | "NEUTRAL" | "NEGATIVE" | "INSUFFICIENT_EVIDENCE" | "STRATEGIC_NON_QUANTIFIED";
 
-export type BenchmarkArm = "CANONICAL" | "BRAIN_ONLY" | "HYBRID";
+export type BenchmarkArm = "CANONICAL" | "BRAIN_ONLY" | "HYBRID" | "BRAIN_KIMI";
 
 export type HybridContributionKind =
   | "CANONICAL_BASE"
@@ -219,6 +219,43 @@ export interface BenchmarkScore {
   readonly evidenceProvenanceScore: number;
 }
 
+export type BrainKimiProviderFailureCode =
+  | "TIMEOUT"
+  | "RATE_LIMIT"
+  | "PROVIDER_5XX"
+  | "CONFIG_FAILURE"
+  | "INVALID_JSON"
+  | "SCHEMA_FAILURE"
+  | "OTHER_PROVIDER_ERROR";
+
+export interface BrainKimiProviderFailure {
+  readonly code: BrainKimiProviderFailureCode;
+  readonly message: string;
+  readonly status?: number;
+}
+
+export interface BrainKimiSafetyMetrics {
+  readonly unsupportedRoi: number;
+  readonly unsafeAutomation: number;
+  readonly missedHumanReview: number;
+  readonly ignoredCompliance: number;
+  readonly falseCertainty: number;
+  readonly falsePositives: number;
+  readonly criticalFalsePositives: number;
+}
+
+export interface BrainKimiProviderTelemetry {
+  readonly provider: string;
+  readonly model: string;
+  readonly latencyMs: number | null;
+  readonly attempts: number;
+  readonly timeout: boolean;
+  readonly rateLimitRetries: number;
+  readonly inputTokens: number | "UNKNOWN";
+  readonly outputTokens: number | "UNKNOWN";
+  readonly providerFailure: BrainKimiProviderFailure | null;
+}
+
 export interface BenchmarkDivergence {
   readonly type: BenchmarkDivergenceType;
   readonly severity: BenchmarkSeverity;
@@ -245,6 +282,10 @@ export interface BenchmarkCaseResult {
   readonly winner: BenchmarkWinner;
   readonly brainOnlyDivergences: readonly BenchmarkDivergence[];
   readonly hybridDivergences: readonly BenchmarkDivergence[];
+  readonly brainKimiSnapshot?: BrainShadowBenchmarkSnapshot;
+  readonly brainKimiScore?: BenchmarkScore;
+  readonly brainKimiSafetyMetrics?: BrainKimiSafetyMetrics;
+  readonly brainKimiProviderTelemetry?: BrainKimiProviderTelemetry;
 }
 
 export interface BenchmarkRunResult {
