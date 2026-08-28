@@ -101,4 +101,36 @@ describe("InterviewService", () => {
       "confirmed",
     );
   });
+
+  it("can persist an answer without refreshing progress in the write transaction", async () => {
+    const { service, repo, question } = subject();
+    await service.persistAnswer("session", 1, question.id, true, "confirmed");
+
+    expect(repo.answer).toHaveBeenCalledWith(
+      "org",
+      "session",
+      question.id,
+      "user",
+      true,
+      "confirmed",
+    );
+    expect(repo.removeIneligibleAnswers).not.toHaveBeenCalled();
+    expect(repo.storeProgress).not.toHaveBeenCalled();
+    expect(repo.answers).not.toHaveBeenCalled();
+  });
+
+  it("refreshes progress after the write without recursively loading a full view again", async () => {
+    const { service, repo, question } = subject();
+    repo.answers.mockResolvedValueOnce([{ questionId: question.id, code: question.code }]);
+    repo.answers.mockResolvedValueOnce([{ questionId: question.id, code: question.code }]);
+
+    const view = await service.refreshAnswerProgress("session");
+
+    expect(repo.session).toHaveBeenCalledTimes(1);
+    expect(repo.context).toHaveBeenCalledTimes(1);
+    expect(repo.answers).toHaveBeenCalledTimes(2);
+    expect(repo.storeProgress).toHaveBeenCalledOnce();
+    expect(view.session.id).toBe("session");
+    expect(view.answers).toEqual([{ questionId: question.id, code: question.code }]);
+  });
 });

@@ -79,6 +79,17 @@ export class InterviewService {
     value: unknown,
     confidence: "confirmed" | "uncertain",
   ) {
+    const session = await this.persistAnswer(id, lockVersion, questionId, value, confidence);
+    return this.refreshProgress(session.organizationId, id, session.companyId);
+  }
+
+  async persistAnswer(
+    id: string,
+    lockVersion: number,
+    questionId: string,
+    value: unknown,
+    confidence: "confirmed" | "uncertain",
+  ) {
     const context = await this.context();
     this.write(context.role);
     const session = await this.repo.session(context.organizationId, id);
@@ -97,7 +108,14 @@ export class InterviewService {
       "Validated deterministic answer",
       {},
     );
-    return this.refreshProgress(context.organizationId, id, session.companyId);
+    return { organizationId: context.organizationId, companyId: session.companyId };
+  }
+
+  async refreshAnswerProgress(id: string) {
+    const context = await this.context();
+    const session = await this.repo.session(context.organizationId, id);
+    if (!session) throw new InterviewNotFoundError();
+    return this.refreshProgress(context.organizationId, id, session.companyId, session);
   }
 
   async skip(
@@ -164,7 +182,14 @@ export class InterviewService {
     return this.view(id);
   }
 
-  private async refreshProgress(organizationId: string, id: string, companyId: string) {
+  private async refreshProgress(
+    organizationId: string,
+    id: string,
+    companyId: string,
+    currentSession?: Awaited<ReturnType<PrismaInterviewRepository["session"]>>,
+  ) {
+    const session = currentSession ?? (await this.repo.session(organizationId, id));
+    if (!session) throw new InterviewNotFoundError();
     const [questions, initialAnswers, facts] = await Promise.all([
       this.repo.questions(organizationId),
       this.repo.answers(organizationId, id),
@@ -179,6 +204,12 @@ export class InterviewService {
     const answers = await this.repo.answers(organizationId, id);
     const progress = this.engine.calculateProgress(questions, facts, answers);
     await this.repo.storeProgress(organizationId, id, progress);
-    return this.view(id);
+    return {
+      session,
+      answers,
+      progress,
+      nextQuestion: this.engine.nextQuestion(questions, facts, answers),
+      questions: eligible,
+    };
   }
 }

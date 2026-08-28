@@ -10,15 +10,15 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const input = interviewAnswerSchema.safeParse(await request.json().catch(() => null));
   if (!id.success || !input.success)
     return apiError("VALIDATION_ERROR", "Invalid interview answer", 400);
-  return withInterviewService((service) =>
-    service
-      .answer(
-        id.data,
-        input.data.lockVersion,
-        input.data.questionId,
-        input.data.value,
-        input.data.confidence,
-      )
-      .then(apiSuccess),
+  const write = await withInterviewService((service) =>
+    service.persistAnswer(
+      id.data,
+      input.data.lockVersion,
+      input.data.questionId,
+      input.data.value,
+      input.data.confidence,
+    ),
   );
+  if (write instanceof Response) return write;
+  return withInterviewService((service) => service.refreshAnswerProgress(id.data).then(apiSuccess));
 }
