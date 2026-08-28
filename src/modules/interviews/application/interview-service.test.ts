@@ -72,6 +72,22 @@ describe("InterviewService", () => {
     expect(repo.create).toHaveBeenCalledWith("org", "company", "discovery", "user", 1);
   });
 
+  it("loads a validated interview instead of creating a new draft", async () => {
+    const { service, repo } = subject();
+    repo.latest.mockResolvedValue({ id: "validated", status: "validated", companyId: "company" });
+    await service.start("company");
+    expect(repo.create).not.toHaveBeenCalled();
+    expect(repo.session).toHaveBeenCalledWith("org", "validated");
+  });
+
+  it("views the latest company interview without creating one", async () => {
+    const { service, repo } = subject();
+    repo.latest.mockResolvedValue({ id: "existing", status: "validated", companyId: "company" });
+    await service.companyView("company");
+    expect(repo.create).not.toHaveBeenCalled();
+    expect(repo.session).toHaveBeenCalledWith("org", "existing");
+  });
+
   it("validates and persists an answer through the engine", async () => {
     const { service, repo, question } = subject();
     await service.answer("session", 1, question.id, true, "confirmed");

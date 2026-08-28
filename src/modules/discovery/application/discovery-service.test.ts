@@ -26,6 +26,12 @@ describe("DiscoveryService", () => {
     await subject.start("company");
     expect(repo.create).toHaveBeenCalledWith("org", "company", "user", 1);
   });
+  it("loads a validated session instead of creating a new draft", async () => {
+    const { service: subject, repo } = service();
+    repo.latest.mockResolvedValue({ id: "validated", status: "validated", answers: [] });
+    await expect(subject.start("company")).resolves.toMatchObject({ id: "validated" });
+    expect(repo.create).not.toHaveBeenCalled();
+  });
   it("prevents a viewer from creating", async () =>
     await expect(service("viewer").service.start("company")).rejects.toMatchObject({
       code: "FORBIDDEN",

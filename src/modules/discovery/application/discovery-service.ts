@@ -23,7 +23,7 @@ export class DiscoveryService {
     this.editor(c.role);
     if (!(await this.repo.company(c.organizationId, companyId))) throw new DiscoveryNotFoundError();
     const existing = await this.repo.latest(c.organizationId, companyId);
-    if (existing && ["draft", "in_progress", "completed"].includes(existing.status))
+    if (existing && ["draft", "in_progress", "completed", "validated"].includes(existing.status))
       return existing;
     return this.repo.create(c.organizationId, companyId, this.userId, (existing?.version ?? 0) + 1);
   }

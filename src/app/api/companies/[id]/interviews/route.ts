@@ -7,3 +7,9 @@ export async function POST(_request: Request, { params }: { params: Promise<{ id
   if (!parsed.success) return apiError("VALIDATION_ERROR", "Invalid company id", 400);
   return withInterviewService((service) => service.start(parsed.data).then(apiSuccess));
 }
+
+export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const parsed = interviewIdSchema.safeParse((await params).id);
+  if (!parsed.success) return apiError("VALIDATION_ERROR", "Invalid company id", 400);
+  return withInterviewService((service) => service.companyView(parsed.data).then(apiSuccess));
+}

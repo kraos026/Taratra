@@ -30,7 +30,7 @@ export class InterviewService {
     if (!discovery)
       throw new InterviewValidationError("A validated Discovery is required to start an interview");
     const existing = await this.repo.latest(context.organizationId, companyId);
-    if (existing && ["draft", "in_progress", "completed"].includes(existing.status))
+    if (existing && ["draft", "in_progress", "completed", "validated"].includes(existing.status))
       return this.view(existing.id);
     const created = await this.repo.create(
       context.organizationId,
@@ -41,6 +41,15 @@ export class InterviewService {
     );
     await this.repo.timeline(context.organizationId, created.id, this.userId, "started");
     return this.view(created.id);
+  }
+
+  async companyView(companyId: string) {
+    const context = await this.context();
+    if (!(await this.repo.validatedDiscovery(context.organizationId, companyId)))
+      throw new InterviewValidationError("A validated Discovery is required to view an interview");
+    const existing = await this.repo.latest(context.organizationId, companyId);
+    if (!existing) throw new InterviewNotFoundError();
+    return this.view(existing.id);
   }
 
   async view(id: string) {

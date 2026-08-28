@@ -42,14 +42,34 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
   const [message, setMessage] = useState("");
 
   useEffect(() => {
-    fetch(`/api/companies/${companyId}/interviews`, { method: "POST" })
-      .then(readView)
-      .then(setView)
+    fetch(`/api/companies/${companyId}/interviews`)
+      .then(async (response) => {
+        if (response.status === 404) return null;
+        return readView(response);
+      })
+      .then((next) => {
+        setView(next);
+        if (!next) setMessage("Aucun entretien actif. Démarrez un entretien si nécessaire.");
+      })
       .catch((error: unknown) =>
-        setMessage(error instanceof Error ? error.message : "Impossible de démarrer l’entretien"),
+        setMessage(error instanceof Error ? error.message : "Impossible de charger l’entretien"),
       )
       .finally(() => setBusy(false));
   }, [companyId]);
+
+  async function startInterview() {
+    setBusy(true);
+    setMessage("Démarrage…");
+    try {
+      const response = await fetch(`/api/companies/${companyId}/interviews`, { method: "POST" });
+      setView(await readView(response));
+      setMessage("");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Impossible de démarrer l’entretien");
+    } finally {
+      setBusy(false);
+    }
+  }
 
   async function act(path: string, body?: object) {
     if (!view) return;
@@ -75,8 +95,11 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
   if (busy && !view) return <InterviewSkeleton />;
   if (!view)
     return (
-      <div role="alert" className="rounded-xl border border-red-300 p-6">
-        {message || "Entretien indisponible. Vérifiez que Discovery est validée."}
+      <div role="status" className="mx-auto max-w-5xl space-y-4 rounded-xl border p-6">
+        <p>{message || "Entretien indisponible. Vérifiez que Discovery est validée."}</p>
+        <Button disabled={busy} onClick={startInterview}>
+          Démarrer l’entretien
+        </Button>
       </div>
     );
 

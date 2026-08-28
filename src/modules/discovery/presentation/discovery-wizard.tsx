@@ -31,15 +31,20 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
   const [message, setMessage] = useState("");
   const index = steps.indexOf(step);
   useEffect(() => {
-    fetch(`/api/companies/${companyId}/discovery`, { method: "POST" })
+    fetch(`/api/companies/${companyId}/discovery`)
       .then(async (r) => {
-        if (!r.ok) throw new Error("Impossible de démarrer la découverte");
+        if (r.status === 404) return null;
+        if (!r.ok) throw new Error("Impossible de charger la découverte");
         return ((await r.json()) as { data: Session }).data;
       })
       .then((s) => {
-        setSession(s);
-        setStep(s.currentStep);
-        setDraft(readAnswers(s));
+        if (s) {
+          setSession(s);
+          setStep(s.currentStep);
+          setDraft(readAnswers(s));
+        } else {
+          setMessage("Aucune découverte active. Démarrez une nouvelle Discovery si nécessaire.");
+        }
         setBusy(false);
       })
       .catch((e) => {
@@ -84,13 +89,34 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
         : "Complétez toutes les étapes avant validation.",
     );
   }
+  async function startDiscovery() {
+    setBusy(true);
+    setMessage("Démarrage…");
+    fetch(`/api/companies/${companyId}/discovery`, { method: "POST" })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Impossible de démarrer la découverte");
+        return ((await r.json()) as { data: Session }).data;
+      })
+      .then((s) => {
+        setSession(s);
+        setStep(s.currentStep);
+        setDraft(readAnswers(s));
+        setMessage("");
+      })
+      .catch((error: unknown) => setMessage(error instanceof Error ? error.message : "Erreur"))
+      .finally(() => setBusy(false));
+  }
   if (busy && !session) return <WizardSkeleton />;
   if (!session)
     return (
-      <div role="alert" className="rounded-xl border border-red-300 p-6">
-        {message}
+      <div role="status" className="mx-auto max-w-4xl space-y-4 rounded-xl border p-6">
+        <p>{message}</p>
+        <Button disabled={busy} onClick={startDiscovery}>
+          Démarrer la Discovery
+        </Button>
       </div>
     );
+  const readOnly = session.status === "validated";
   return (
     <div className="mx-auto max-w-4xl space-y-6">
       <header>
@@ -133,11 +159,11 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
             </Button>
           )}
           {index < steps.length - 1 ? (
-            <Button disabled={busy} onClick={() => save(steps[index + 1])}>
+            <Button disabled={busy || readOnly} onClick={() => save(steps[index + 1])}>
               Enregistrer et continuer
             </Button>
           ) : (
-            <Button disabled={busy} onClick={validate}>
+            <Button disabled={busy || readOnly} onClick={validate}>
               Valider la Discovery
             </Button>
           )}
