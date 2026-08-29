@@ -12,7 +12,7 @@ vi.mock("@/infrastructure/database/with-authenticated-database", () => ({
   withAuthenticatedDatabase,
 }));
 
-import { evaluateRoiSnapshot } from "./roi-api";
+import { evaluateRoiSnapshot, getRoiEvaluationDetail } from "./roi-api";
 
 describe("ROI Evaluation production composition", () => {
   beforeEach(() => {
@@ -109,5 +109,52 @@ describe("ROI Evaluation production composition", () => {
     expect(withAuthenticatedDatabase).toHaveBeenNthCalledWith(2, "user-id", expect.any(Function), {
       timeout: 10_000,
     });
+  });
+
+  it("hydrates ROI detail through bounded read batches", async () => {
+    const contextDb = {
+      organizationMember: {
+        findFirst: vi.fn().mockResolvedValue({ organizationId: "org", role: "owner" }),
+      },
+    };
+    const snapshot = { id: "roi", organizationId: "org", status: "published" };
+    const snapshotDb = {
+      roiEvaluationSnapshot: { findFirst: vi.fn().mockResolvedValue(snapshot) },
+    };
+    const scenariosDb = {
+      roiScenario: { findMany: vi.fn().mockResolvedValue([{ id: "scenario" }]) },
+      roiEvaluation: { findMany: vi.fn().mockResolvedValue([{ id: "evaluation" }]) },
+    };
+    const assumptionsDb = {
+      roiScenarioAssumption: { findMany: vi.fn().mockResolvedValue([{ scenarioId: "scenario" }]) },
+      roiContribution: { findMany: vi.fn().mockResolvedValue([{ evaluationId: "evaluation" }]) },
+    };
+    const metricsDb = {
+      roiMetric: { findMany: vi.fn().mockResolvedValue([{ evaluationId: "evaluation" }]) },
+      roiEvidence: { findMany: vi.fn().mockResolvedValue([{ evaluationId: "evaluation" }]) },
+      roiValidation: { findMany: vi.fn().mockResolvedValue([{ code: "roi_valid" }]) },
+    };
+    withAuthenticatedDatabase
+      .mockImplementationOnce(async (_userId, operation) => operation(contextDb))
+      .mockImplementationOnce(async (_userId, operation) => operation(snapshotDb))
+      .mockImplementationOnce(async (_userId, operation) => operation(scenariosDb))
+      .mockImplementationOnce(async (_userId, operation) => operation(assumptionsDb))
+      .mockImplementationOnce(async (_userId, operation) => operation(metricsDb));
+
+    await expect(getRoiEvaluationDetail("roi")).resolves.toMatchObject({
+      snapshot,
+      scenarios: [{ id: "scenario" }],
+      evaluations: [{ id: "evaluation" }],
+      assumptions: [{ scenarioId: "scenario" }],
+      contributions: [{ evaluationId: "evaluation" }],
+      metrics: [{ evaluationId: "evaluation" }],
+      evidence: [{ evaluationId: "evaluation" }],
+      validations: [{ code: "roi_valid" }],
+    });
+
+    expect(withAuthenticatedDatabase).toHaveBeenCalledTimes(5);
+    for (const call of withAuthenticatedDatabase.mock.calls) {
+      expect(call[2]).toEqual({ timeout: 10_000 });
+    }
   });
 });

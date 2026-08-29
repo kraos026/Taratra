@@ -2,14 +2,19 @@ import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authen
 import { createClient } from "@/infrastructure/supabase/server";
 import { apiError } from "@/shared/presentation/api-response";
 import { RoiEvaluationEngine, type AssumptionCode } from "../domain/roi-engine";
-import { RoiEvaluationError } from "../application/roi-errors";
+import { RoiEvaluationError, RoiForbiddenError, RoiNotFoundError } from "../application/roi-errors";
 import { RoiEvaluationService } from "../application/roi-service";
 import {
   prepareRoiPersistencePlan,
   PrismaRoiEvaluationRepository,
+  type RoiEvaluationDetail,
 } from "../infrastructure/prisma-roi-evaluation-repository";
 
 const ROI_WRITE_TRANSACTION_OPTIONS = {
+  timeout: 10_000,
+} as const;
+
+const ROI_READ_TRANSACTION_OPTIONS = {
   timeout: 10_000,
 } as const;
 
@@ -28,6 +33,82 @@ export async function withRoiEvaluationService<T>(
     return await withAuthenticatedDatabase(userId, (db) =>
       operation(new RoiEvaluationService(new PrismaRoiEvaluationRepository(db), userId)),
     );
+  } catch (caught) {
+    if (caught instanceof RoiEvaluationError)
+      return apiError(caught.code, caught.message, caught.status);
+    return apiError("INTERNAL_ERROR", "Unexpected error", 500);
+  }
+}
+
+export async function getRoiEvaluationDetail(id: string): Promise<RoiEvaluationDetail | Response> {
+  const userId = await authenticatedUserId();
+  if (!userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
+  try {
+    const context = await withAuthenticatedDatabase(
+      userId,
+      (db) => new PrismaRoiEvaluationRepository(db).context(userId),
+      ROI_READ_TRANSACTION_OPTIONS,
+    );
+    if (!context) throw new RoiForbiddenError();
+
+    const snapshot = await withAuthenticatedDatabase(
+      userId,
+      (db) => new PrismaRoiEvaluationRepository(db).snapshot(context.organizationId, id),
+      ROI_READ_TRANSACTION_OPTIONS,
+    );
+    if (!snapshot) throw new RoiNotFoundError();
+
+    const [scenariosAndEvaluations, assumptionsAndContributions, metricsEvidenceAndValidations] =
+      await Promise.all([
+        withAuthenticatedDatabase(
+          userId,
+          async (db) => {
+            const repo = new PrismaRoiEvaluationRepository(db);
+            const [scenarios, evaluations] = await Promise.all([
+              repo.detailScenarios(context.organizationId, id),
+              repo.detailEvaluations(context.organizationId, id),
+            ]);
+            return { scenarios, evaluations };
+          },
+          ROI_READ_TRANSACTION_OPTIONS,
+        ),
+        withAuthenticatedDatabase(
+          userId,
+          async (db) => {
+            const repo = new PrismaRoiEvaluationRepository(db);
+            const [assumptions, contributions] = await Promise.all([
+              repo.detailAssumptions(context.organizationId, id),
+              repo.detailContributions(context.organizationId, id),
+            ]);
+            return { assumptions, contributions };
+          },
+          ROI_READ_TRANSACTION_OPTIONS,
+        ),
+        withAuthenticatedDatabase(
+          userId,
+          async (db) => {
+            const repo = new PrismaRoiEvaluationRepository(db);
+            const [metrics, evidence, validations] = await Promise.all([
+              repo.detailMetrics(context.organizationId, id),
+              repo.detailEvidence(context.organizationId, id),
+              repo.detailValidations(context.organizationId, id),
+            ]);
+            return { metrics, evidence, validations };
+          },
+          ROI_READ_TRANSACTION_OPTIONS,
+        ),
+      ]);
+
+    return {
+      snapshot,
+      scenarios: scenariosAndEvaluations.scenarios,
+      evaluations: scenariosAndEvaluations.evaluations,
+      assumptions: assumptionsAndContributions.assumptions,
+      contributions: assumptionsAndContributions.contributions,
+      metrics: metricsEvidenceAndValidations.metrics,
+      evidence: metricsEvidenceAndValidations.evidence,
+      validations: metricsEvidenceAndValidations.validations,
+    };
   } catch (caught) {
     if (caught instanceof RoiEvaluationError)
       return apiError(caught.code, caught.message, caught.status);

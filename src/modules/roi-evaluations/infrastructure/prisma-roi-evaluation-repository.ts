@@ -10,6 +10,16 @@ import type {
   RoiModelDefinition,
 } from "../domain/roi-engine";
 type Result = ReturnType<RoiEvaluationEngine["evaluate"]>;
+export interface RoiEvaluationDetail {
+  readonly snapshot: NonNullable<Awaited<ReturnType<PrismaRoiEvaluationRepository["snapshot"]>>>;
+  readonly scenarios: Awaited<ReturnType<PrismaRoiEvaluationRepository["detailScenarios"]>>;
+  readonly evaluations: Awaited<ReturnType<PrismaRoiEvaluationRepository["detailEvaluations"]>>;
+  readonly assumptions: Awaited<ReturnType<PrismaRoiEvaluationRepository["detailAssumptions"]>>;
+  readonly contributions: Awaited<ReturnType<PrismaRoiEvaluationRepository["detailContributions"]>>;
+  readonly metrics: Awaited<ReturnType<PrismaRoiEvaluationRepository["detailMetrics"]>>;
+  readonly evidence: Awaited<ReturnType<PrismaRoiEvaluationRepository["detailEvidence"]>>;
+  readonly validations: Awaited<ReturnType<PrismaRoiEvaluationRepository["detailValidations"]>>;
+}
 export interface PreparedRoiPersistencePlan {
   readonly snapshotId: string;
   readonly scenarioRows: Prisma.RoiScenarioCreateManyInput[];
@@ -322,6 +332,30 @@ export class PrismaRoiEvaluationRepository {
       evidence,
       validations,
     };
+  }
+  detailScenarios(organizationId: string, id: string) {
+    return this.db.roiScenario.findMany({
+      where: { organizationId, snapshotId: id },
+      orderBy: { type: "asc" },
+    });
+  }
+  detailEvaluations(organizationId: string, id: string) {
+    return this.db.roiEvaluation.findMany({ where: { organizationId, snapshotId: id } });
+  }
+  detailAssumptions(organizationId: string, id: string) {
+    return this.db.roiScenarioAssumption.findMany({ where: { organizationId, snapshotId: id } });
+  }
+  detailContributions(organizationId: string, id: string) {
+    return this.db.roiContribution.findMany({ where: { organizationId, snapshotId: id } });
+  }
+  detailMetrics(organizationId: string, id: string) {
+    return this.db.roiMetric.findMany({ where: { organizationId, snapshotId: id } });
+  }
+  detailEvidence(organizationId: string, id: string) {
+    return this.db.roiEvidence.findMany({ where: { organizationId, snapshotId: id } });
+  }
+  detailValidations(organizationId: string, id: string) {
+    return this.db.roiValidation.findMany({ where: { organizationId, snapshotId: id } });
   }
   async list(
     organizationId: string,
