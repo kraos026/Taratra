@@ -393,7 +393,10 @@ class CanonicalCertification {
     );
     const id = idFrom(built) ?? (await latestId("automation_specifications", "company_id"));
     assertUuid(id, "Automation specification");
-    await this.validatePublish("automation-specifications", "automation_specifications", id);
+    const lockVersion = lockFrom(built) ?? (await lockVersionFor("automation_specifications", id));
+    await this.validatePublish("automation-specifications", "automation_specifications", id, {
+      initialLockVersion: lockVersion,
+    });
     await expectStatus("automation_specifications", id, "published");
     this.results.automationSpecificationId = id;
     this.logStage("Automation Specification", id);
@@ -419,13 +422,15 @@ class CanonicalCertification {
     this.logStage("Executive Result", "READY");
   }
 
-  async validatePublish(routeSegment, table, id) {
-    let lockVersion = await lockVersionFor(table, id);
+  async validatePublish(routeSegment, table, id, options = {}) {
+    let lockVersion = options.initialLockVersion ?? (await lockVersionFor(table, id));
+    assertLockVersion(lockVersion, `${routeSegment} validate`);
     await api(this.page, `/api/${routeSegment}/${id}/validate`, {
       method: "POST",
       body: { lockVersion },
     });
     lockVersion = await lockVersionFor(table, id);
+    assertLockVersion(lockVersion, `${routeSegment} publish`);
     await api(this.page, `/api/${routeSegment}/${id}/publish`, {
       method: "POST",
       body: { lockVersion },
@@ -677,6 +682,11 @@ function lockFrom(value) {
     if (Number.isInteger(value[key]?.lockVersion)) return value[key].lockVersion;
   }
   return null;
+}
+
+function assertLockVersion(value, label) {
+  if (!Number.isInteger(value) || value <= 0)
+    throw new Error(`${label} requires a positive integer lockVersion`);
 }
 
 async function latestId(table, companyColumn) {
