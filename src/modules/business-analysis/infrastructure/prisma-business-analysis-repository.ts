@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import type {
@@ -201,9 +202,13 @@ export class PrismaBusinessAnalysisRepository {
         createdBy: userId,
       },
     });
-    for (const finding of result.findings) {
-      const created = await this.db.businessFinding.create({
-        data: {
+    const findingIds = new Map(
+      result.findings.map((finding) => [finding.identifier, randomUUID()]),
+    );
+    if (result.findings.length)
+      await this.db.businessFinding.createMany({
+        data: result.findings.map((finding) => ({
+          id: findingIds.get(finding.identifier)!,
           organizationId,
           analysisSnapshotId: analysis.id,
           ruleId: finding.rule.id,
@@ -220,21 +225,21 @@ export class PrismaBusinessAnalysisRepository {
           confidencePercentage: finding.confidence,
           businessImpact: finding.businessImpact,
           riskPoints: finding.riskPoints,
-        },
+        })),
       });
-      if (finding.evidenceFactIds.length)
-        await this.db.findingEvidence.createMany({
-          data: finding.evidenceFactIds.map((knowledgeFactId) => ({
-            organizationId,
-            analysisSnapshotId: analysis.id,
-            findingId: created.id,
-            knowledgeFactId,
-            evidenceType: "enterprise_knowledge_fact",
-            explanation: `Rule ${finding.rule.code} v${finding.rule.version}`,
-            valueJson: finding.evidence as Prisma.InputJsonValue,
-          })),
-        });
-    }
+
+    const evidence = result.findings.flatMap((finding) =>
+      finding.evidenceFactIds.map((knowledgeFactId) => ({
+        organizationId,
+        analysisSnapshotId: analysis.id,
+        findingId: findingIds.get(finding.identifier)!,
+        knowledgeFactId,
+        evidenceType: "enterprise_knowledge_fact",
+        explanation: `Rule ${finding.rule.code} v${finding.rule.version}`,
+        valueJson: finding.evidence as Prisma.InputJsonValue,
+      })),
+    );
+    if (evidence.length) await this.db.findingEvidence.createMany({ data: evidence });
     if (result.scores.length)
       await this.db.businessScore.createMany({
         data: result.scores.map((score) => ({

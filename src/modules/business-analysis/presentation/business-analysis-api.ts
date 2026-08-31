@@ -13,8 +13,11 @@ export async function withBusinessAnalysisService<T>(
   const userId = data?.claims?.sub;
   if (error || !userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
   try {
-    return await withAuthenticatedDatabase(userId, (db) =>
-      operation(new BusinessAnalysisService(new PrismaBusinessAnalysisRepository(db), userId)),
+    return await withAuthenticatedDatabase(
+      userId,
+      (db) =>
+        operation(new BusinessAnalysisService(new PrismaBusinessAnalysisRepository(db), userId)),
+      { timeout: 10_000, maxWait: 5_000 },
     );
   } catch (caught) {
     if (caught instanceof BusinessAnalysisError)
