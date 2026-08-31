@@ -7,14 +7,13 @@ import { RoiEvaluationService } from "./roi-service";
 function repositoryWithUnknownValidation() {
   return {
     context: vi.fn().mockResolvedValue({ organizationId: "organization", role: "owner" }),
-    detail: vi.fn().mockResolvedValue({
-      validations: [
-        { code: "unknown_assumption", severity: "error", message: "Missing assumptions" },
-      ],
-      scenarios: [],
-      evaluations: [],
-      metrics: [],
-      evidence: [],
+    detail: vi.fn(),
+    transitionReadiness: vi.fn().mockResolvedValue({
+      snapshot: { id: "roi", status: "draft" },
+      validationErrorCount: 1,
+      scenarioCount: 0,
+      evaluationCount: 0,
+      evaluationsTraceable: false,
     }),
     transition: vi.fn(),
   } as unknown as PrismaRoiEvaluationRepository;
@@ -25,6 +24,8 @@ describe("ROI incomplete publication safety", () => {
     const repository = repositoryWithUnknownValidation();
     const service = new RoiEvaluationService(repository, "owner");
     await expect(service.validate("roi", 1)).rejects.toBeInstanceOf(RoiValidationError);
+    expect(repository.detail).not.toHaveBeenCalled();
+    expect(repository.transitionReadiness).toHaveBeenCalledWith("organization", "roi");
     expect(repository.transition).not.toHaveBeenCalled();
   });
 
@@ -32,7 +33,32 @@ describe("ROI incomplete publication safety", () => {
     const repository = repositoryWithUnknownValidation();
     const service = new RoiEvaluationService(repository, "owner");
     await expect(service.publish("roi", 1)).rejects.toBeInstanceOf(RoiValidationError);
+    expect(repository.detail).not.toHaveBeenCalled();
+    expect(repository.transitionReadiness).toHaveBeenCalledWith("organization", "roi");
     expect(repository.transition).not.toHaveBeenCalled();
+  });
+
+  it("publishes using minimal readiness instead of hydrating full ROI detail", async () => {
+    const repository = {
+      context: vi.fn().mockResolvedValue({ organizationId: "organization", role: "owner" }),
+      detail: vi.fn(),
+      transitionReadiness: vi.fn().mockResolvedValue({
+        snapshot: { id: "roi", status: "validated" },
+        validationErrorCount: 0,
+        scenarioCount: 3,
+        evaluationCount: 12,
+        evaluationsTraceable: true,
+      }),
+      transition: vi.fn().mockResolvedValue({ id: "roi", status: "published" }),
+    } as unknown as PrismaRoiEvaluationRepository;
+
+    await expect(new RoiEvaluationService(repository, "owner").publish("roi", 2)).resolves.toEqual({
+      id: "roi",
+      status: "published",
+    });
+
+    expect(repository.detail).not.toHaveBeenCalled();
+    expect(repository.transition).toHaveBeenCalledWith("organization", "roi", 2, "published");
   });
 });
 

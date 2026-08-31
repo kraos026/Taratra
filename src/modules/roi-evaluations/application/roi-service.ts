@@ -190,25 +190,21 @@ export class RoiEvaluationService {
   async validate(id: string, lockVersion: number) {
     const context = await this.context();
     this.editor(context.role);
-    const detail = await this.repo.detail(context.organizationId, id);
-    if (!detail) throw new RoiNotFoundError();
-    if (detail.validations.some((item) => item.severity === "error"))
+    const readiness = await this.repo.transitionReadiness(context.organizationId, id);
+    if (!readiness) throw new RoiNotFoundError();
+    if (readiness.validationErrorCount > 0)
       throw new RoiValidationError("Blocking ROI validation errors remain");
     return this.repo.transition(context.organizationId, id, lockVersion, "validated");
   }
   async publish(id: string, lockVersion: number) {
     const context = await this.context();
     if (!["owner", "admin"].includes(context.role)) throw new RoiForbiddenError();
-    const detail = await this.repo.detail(context.organizationId, id);
-    if (!detail) throw new RoiNotFoundError();
+    const readiness = await this.repo.transitionReadiness(context.organizationId, id);
+    if (!readiness) throw new RoiNotFoundError();
     if (
-      detail.validations.some((item) => item.severity === "error") ||
-      detail.scenarios.length !== 3 ||
-      detail.evaluations.some(
-        (item) =>
-          detail.metrics.filter((metric) => metric.evaluationId === item.id).length !== 13 ||
-          !detail.evidence.some((evidence) => evidence.evaluationId === item.id),
-      )
+      readiness.validationErrorCount > 0 ||
+      readiness.scenarioCount !== 3 ||
+      !readiness.evaluationsTraceable
     )
       throw new RoiValidationError("ROI traceability is incomplete");
     return this.repo.transition(context.organizationId, id, lockVersion, "published");

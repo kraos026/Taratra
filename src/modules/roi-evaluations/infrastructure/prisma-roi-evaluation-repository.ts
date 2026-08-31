@@ -357,6 +357,48 @@ export class PrismaRoiEvaluationRepository {
   detailValidations(organizationId: string, id: string) {
     return this.db.roiValidation.findMany({ where: { organizationId, snapshotId: id } });
   }
+  async transitionReadiness(organizationId: string, id: string) {
+    const snapshot = await this.snapshot(organizationId, id);
+    if (!snapshot) return null;
+    const [validationErrorCount, scenarioCount, evaluations, metricCounts, evidenceCounts] =
+      await Promise.all([
+        this.db.roiValidation.count({
+          where: { organizationId, snapshotId: id, severity: "error" },
+        }),
+        this.db.roiScenario.count({ where: { organizationId, snapshotId: id } }),
+        this.db.roiEvaluation.findMany({
+          where: { organizationId, snapshotId: id },
+          select: { id: true },
+        }),
+        this.db.roiMetric.groupBy({
+          by: ["evaluationId"],
+          where: { organizationId, snapshotId: id },
+          _count: { _all: true },
+        }),
+        this.db.roiEvidence.groupBy({
+          by: ["evaluationId"],
+          where: { organizationId, snapshotId: id },
+          _count: { _all: true },
+        }),
+      ]);
+    const metricsByEvaluation = new Map(
+      metricCounts.map((item) => [item.evaluationId, item._count._all]),
+    );
+    const evidenceByEvaluation = new Map(
+      evidenceCounts.map((item) => [item.evaluationId, item._count._all]),
+    );
+    return {
+      snapshot,
+      validationErrorCount,
+      scenarioCount,
+      evaluationCount: evaluations.length,
+      evaluationsTraceable: evaluations.every(
+        (item) =>
+          (metricsByEvaluation.get(item.id) ?? 0) === 13 &&
+          (evidenceByEvaluation.get(item.id) ?? 0) > 0,
+      ),
+    };
+  }
   async list(
     organizationId: string,
     companyId: string,
