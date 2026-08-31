@@ -2,11 +2,11 @@ import { Badge } from "@/components/ui/badge";
 import type { CompanyStatus } from "../domain/company";
 
 const labels: Record<CompanyStatus, string> = {
-  prospect: "Prospect",
-  contacted: "Contacté",
+  prospect: "Dossier à compléter",
+  contacted: "Dossier en préparation",
   audit_scheduled: "Audit planifié",
   audit_in_progress: "Audit en cours",
-  client: "Client",
+  client: "Entreprise pilote",
   archived: "Archivé",
 };
 

@@ -6,12 +6,12 @@ import { AutomationAuditView } from "./automation-audit-hub";
 describe("AutomationAuditView", () => {
   it("renders the real current stage, completed stages and primary action", () => {
     const html = render(model());
-    expect(html).toContain("Automation Audit");
-    expect(html).toContain("Company Information");
-    expect(html).toContain("Complete");
-    expect(html).toContain("Interview");
-    expect(html).toContain("Continue the interview");
-    expect(html).toContain("1 of 9 stages complete");
+    expect(html).toContain("Audit");
+    expect(html).toContain("Compréhension");
+    expect(html).toContain("En cours");
+    expect(html).toContain("Continuer l’entretien");
+    expect(html).toContain("1 / 9 étapes terminées");
+    expect(html).toContain("7 étapes lisibles côté métier");
   });
 
   it("links Discovery and Interview actions to their canonical screens", () => {
@@ -39,7 +39,7 @@ describe("AutomationAuditView", () => {
       blockingReason: "Select a process",
     };
     const html = render(ambiguous);
-    expect(html).toContain("No process has been selected automatically");
+    expect(html).toContain("Aucun processus n’est sélectionné automatiquement");
     expect(html).toContain("/process-maps/real-candidate-a");
     expect(html).toContain("/process-maps/real-candidate-b");
   });
@@ -52,7 +52,7 @@ describe("AutomationAuditView", () => {
     restricted.stages[1]!.availableActions = [];
     const html = render(restricted);
     expect(html).toContain("This role has read-only access");
-    expect(html).not.toContain("Continue the interview</button>");
+    expect(html).not.toContain("Continuer l’entretien</button>");
   });
 
   it("renders understandable blocked guidance", () => {
@@ -62,8 +62,8 @@ describe("AutomationAuditView", () => {
       blockingReason: "Complete and validate the Interview first",
     });
     blocked.stages[1]!.status = "BLOCKED";
-    expect(render(blocked)).toContain("Complete and validate the Interview first");
-    expect(render(blocked)).toContain("Waiting for a prerequisite");
+    expect(render(blocked)).toContain("Terminez et validez l’entretien avant de continuer.");
+    expect(render(blocked)).toContain("Informations requises");
   });
 
   it("renders the completed audit experience and real recommendation link", () => {
@@ -78,7 +78,7 @@ describe("AutomationAuditView", () => {
       availableActions: [],
       blockingReason: null,
     };
-    expect(render(completed)).toContain("Automation Audit Complete");
+    expect(render(completed)).toContain("Audit Optivos terminé");
     expect(render(completed)).toContain("/companies/company-id/automation-audit/results");
   });
 
