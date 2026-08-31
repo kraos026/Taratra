@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
+import { randomUUID } from "crypto";
 import type {
   AiCapabilityInput,
   AiDetectionRuleInput,
@@ -246,9 +247,12 @@ export class PrismaAiOpportunityRepository {
         createdBy: userId,
       },
     });
-    for (const item of result.opportunities) {
-      const opportunity = await this.db.aiOpportunity.create({
-        data: {
+    const opportunityIds = new Map<string, string>();
+    for (const item of result.opportunities) opportunityIds.set(item.identifier, randomUUID());
+    if (result.opportunities.length) {
+      await this.db.aiOpportunity.createMany({
+        data: result.opportunities.map((item) => ({
+          id: opportunityIds.get(item.identifier)!,
           organizationId,
           snapshotId: snapshot.id,
           detectionRuleId: item.rule.id,
@@ -267,53 +271,58 @@ export class PrismaAiOpportunityRepository {
           affectedProcessIds: item.processIds,
           affectedDepartmentIds: item.departmentIds,
           affectedSystemIds: item.systemIds,
-        },
-      });
-      await this.db.aiOpportunityCapability.createMany({
-        data: item.capabilities.map((capability) => ({
-          organizationId,
-          snapshotId: snapshot.id,
-          opportunityId: opportunity.id,
-          capabilityId: capability.id,
         })),
       });
-      const evidenceRows = item.findings.flatMap((finding) =>
+    }
+    const capabilityRows = result.opportunities.flatMap((item) =>
+      item.capabilities.map((capability) => ({
+        organizationId,
+        snapshotId: snapshot.id,
+        opportunityId: opportunityIds.get(item.identifier)!,
+        capabilityId: capability.id,
+      })),
+    );
+    if (capabilityRows.length)
+      await this.db.aiOpportunityCapability.createMany({ data: capabilityRows });
+    const evidenceRows = result.opportunities.flatMap((item) =>
+      item.findings.flatMap((finding) =>
         item.evidenceFacts
           .filter((fact) => finding.factIds.includes(fact.id))
           .map((fact) => ({
             organizationId,
             snapshotId: snapshot.id,
-            opportunityId: opportunity.id,
+            opportunityId: opportunityIds.get(item.identifier)!,
             businessFindingId: finding.id,
             knowledgeFactId: fact.id,
             explanation: `Rule ${item.rule.code} v${item.rule.version}`,
             evidenceJson: { finding: finding.identifier, fact: fact.key } as Prisma.InputJsonValue,
           })),
-      );
-      if (evidenceRows.length)
-        await this.db.aiOpportunityEvidence.createMany({ data: evidenceRows });
-      await this.db.aiOpportunityScore.createMany({
-        data: item.scores.map((score) => ({
-          organizationId,
-          snapshotId: snapshot.id,
-          opportunityId: opportunity.id,
-          scoreDefinitionId: score.definition.id,
-          score: score.score,
-          calculationJson: score.calculation as Prisma.InputJsonValue,
-        })),
-      });
-      if (item.prerequisites.length)
-        await this.db.aiOpportunityPrerequisite.createMany({
-          data: item.prerequisites.map((p) => ({
-            organizationId,
-            snapshotId: snapshot.id,
-            opportunityId: opportunity.id,
-            code: p.code,
-            description: p.description,
-            satisfied: p.satisfied,
-          })),
-        });
-    }
+      ),
+    );
+    if (evidenceRows.length) await this.db.aiOpportunityEvidence.createMany({ data: evidenceRows });
+    const scoreRows = result.opportunities.flatMap((item) =>
+      item.scores.map((score) => ({
+        organizationId,
+        snapshotId: snapshot.id,
+        opportunityId: opportunityIds.get(item.identifier)!,
+        scoreDefinitionId: score.definition.id,
+        score: score.score,
+        calculationJson: score.calculation as Prisma.InputJsonValue,
+      })),
+    );
+    if (scoreRows.length) await this.db.aiOpportunityScore.createMany({ data: scoreRows });
+    const prerequisiteRows = result.opportunities.flatMap((item) =>
+      item.prerequisites.map((p) => ({
+        organizationId,
+        snapshotId: snapshot.id,
+        opportunityId: opportunityIds.get(item.identifier)!,
+        code: p.code,
+        description: p.description,
+        satisfied: p.satisfied,
+      })),
+    );
+    if (prerequisiteRows.length)
+      await this.db.aiOpportunityPrerequisite.createMany({ data: prerequisiteRows });
     await this.db.aiOpportunityValidation.createMany({
       data: result.validations.map((validation) => ({
         organizationId,
