@@ -12,8 +12,10 @@ export async function withProcessMapService<T>(
   const userId = data?.claims?.sub;
   if (error || !userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
   try {
-    return await withAuthenticatedDatabase(userId, (db) =>
-      operation(new ProcessMapService(new PrismaProcessMapRepository(db), userId)),
+    return await withAuthenticatedDatabase(
+      userId,
+      (db) => operation(new ProcessMapService(new PrismaProcessMapRepository(db), userId)),
+      { timeout: 10_000, maxWait: 5_000 },
     );
   } catch (caught) {
     if (caught instanceof ProcessMapError)

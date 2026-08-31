@@ -1,3 +1,4 @@
+import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import type { ProcessBuild, ProcessPatternInput } from "../domain/process-mapping-engine";
@@ -142,10 +143,11 @@ export class PrismaProcessMapRepository {
         createdBy: userId,
       },
     });
-    const ids = new Map<string, string>();
-    for (const node of build.nodes) {
-      const created = await this.db.processMapNode.create({
-        data: {
+    const ids = new Map(build.nodes.map((node) => [node.key, randomUUID()]));
+    if (build.nodes.length)
+      await this.db.processMapNode.createMany({
+        data: build.nodes.map((node) => ({
+          id: ids.get(node.key)!,
           organizationId,
           processMapId: map.id,
           nodeKey: node.key,
@@ -161,10 +163,8 @@ export class PrismaProcessMapRepository {
           frequency: node.frequency,
           executionMode: node.executionMode,
           attributesJson: (node.attributes ?? {}) as Prisma.InputJsonValue,
-        },
+        })),
       });
-      ids.set(node.key, created.id);
-    }
     if (build.edges.length)
       await this.db.processMapEdge.createMany({
         data: build.edges.map((edge) => ({
