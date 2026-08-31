@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
+import { randomUUID } from "crypto";
 import { AutomationOpportunityConflictError } from "../application/automation-opportunity-errors";
 import type {
   AutomationConnector,
@@ -285,9 +286,12 @@ export class PrismaAutomationOpportunityRepository {
         createdBy: userId,
       },
     });
-    for (const item of result.opportunities) {
-      const opportunity = await this.db.automationOpportunity.create({
-        data: {
+    const opportunityIds = new Map<string, string>();
+    for (const item of result.opportunities) opportunityIds.set(item.identifier, randomUUID());
+    if (result.opportunities.length) {
+      await this.db.automationOpportunity.createMany({
+        data: result.opportunities.map((item) => ({
+          id: opportunityIds.get(item.identifier)!,
           organizationId,
           snapshotId: snapshot.id,
           detectionRuleId: item.rule.id,
@@ -310,56 +314,62 @@ export class PrismaAutomationOpportunityRepository {
           affectedProcessIds: item.processIds,
           affectedDepartmentIds: item.departmentIds,
           affectedSystemIds: item.systemIds,
-        },
+        })),
       });
-      await this.db.automationOpportunityConnector.createMany({
-        data: item.connectors
-          .filter((link) => link.connector)
-          .map((link) => ({
-            organizationId,
-            snapshotId: snapshot.id,
-            opportunityId: opportunity.id,
-            connectorId: link.connector!.id,
-            available: link.available,
-            evidenceJson: { deterministicMatch: link.available },
-          })),
-      });
-      if (item.aiLinks.length)
-        await this.db.automationOpportunityAiLink.createMany({
-          data: item.aiLinks.map((link) => ({
-            organizationId,
-            snapshotId: snapshot.id,
-            aiOpportunitySnapshotId: input.aiSnapshotId,
-            opportunityId: opportunity.id,
-            aiOpportunityId: link.id,
-          })),
-        });
-      const evidence = item.findings.flatMap((finding) =>
+    }
+    const connectorRows = result.opportunities.flatMap((item) =>
+      item.connectors
+        .filter((link) => link.connector)
+        .map((link) => ({
+          organizationId,
+          snapshotId: snapshot.id,
+          opportunityId: opportunityIds.get(item.identifier)!,
+          connectorId: link.connector!.id,
+          available: link.available,
+          evidenceJson: { deterministicMatch: link.available },
+        })),
+    );
+    if (connectorRows.length)
+      await this.db.automationOpportunityConnector.createMany({ data: connectorRows });
+    const aiLinkRows = result.opportunities.flatMap((item) =>
+      item.aiLinks.map((link) => ({
+        organizationId,
+        snapshotId: snapshot.id,
+        aiOpportunitySnapshotId: input.aiSnapshotId,
+        opportunityId: opportunityIds.get(item.identifier)!,
+        aiOpportunityId: link.id,
+      })),
+    );
+    if (aiLinkRows.length)
+      await this.db.automationOpportunityAiLink.createMany({ data: aiLinkRows });
+    const evidenceRows = result.opportunities.flatMap((item) =>
+      item.findings.flatMap((finding) =>
         item.evidence
           .filter((fact) => finding.factIds.includes(fact.id))
           .map((fact) => ({
             organizationId,
             snapshotId: snapshot.id,
-            opportunityId: opportunity.id,
+            opportunityId: opportunityIds.get(item.identifier)!,
             businessFindingId: finding.id,
             knowledgeFactId: fact.id,
             explanation: `Rule ${item.rule.code} v${item.rule.version}`,
             evidenceJson: { fact: fact.key },
           })),
-      );
-      if (evidence.length)
-        await this.db.automationOpportunityEvidence.createMany({ data: evidence });
-      await this.db.automationOpportunityScore.createMany({
-        data: item.scores.map((score) => ({
-          organizationId,
-          snapshotId: snapshot.id,
-          opportunityId: opportunity.id,
-          scoreDefinitionId: score.definition.id,
-          score: score.score,
-          calculationJson: score.calculation as Prisma.InputJsonValue,
-        })),
-      });
-    }
+      ),
+    );
+    if (evidenceRows.length)
+      await this.db.automationOpportunityEvidence.createMany({ data: evidenceRows });
+    const scoreRows = result.opportunities.flatMap((item) =>
+      item.scores.map((score) => ({
+        organizationId,
+        snapshotId: snapshot.id,
+        opportunityId: opportunityIds.get(item.identifier)!,
+        scoreDefinitionId: score.definition.id,
+        score: score.score,
+        calculationJson: score.calculation as Prisma.InputJsonValue,
+      })),
+    );
+    if (scoreRows.length) await this.db.automationOpportunityScore.createMany({ data: scoreRows });
     await this.db.automationOpportunityValidation.createMany({
       data: result.validations.map((item) => ({
         organizationId,
