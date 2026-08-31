@@ -22,8 +22,10 @@ describe("ExecutiveRoadmap", () => {
         ]}
       />,
     );
-    expect(html).toContain("Executive Roadmap");
-    expect(html).toContain("quick_wins");
-    expect(html).toContain("phase_1");
+    expect(html).toContain("Plan d’action Optivos");
+    expect(html).toContain("Feuille de route exécutive");
+    expect(html).toContain("Top 3 à traiter en premier");
+    expect(html).toContain("Priorité immédiate");
+    expect(html).toContain("Conditions / prérequis");
   });
 });

@@ -15,7 +15,7 @@ describe("Executive Result", () => {
     expect(html).toContain("/process-maps/process-map");
     expect(html).toContain("/roi/roi");
     expect(html).toContain("/recommendations/recommendations");
-    expect(html).toContain("not guaranteed savings");
+    expect(html).toContain("gains garantis");
   });
 
   it("renders unavailable ROI as unavailable rather than zero", () => {
@@ -23,7 +23,7 @@ describe("Executive Result", () => {
     value.roi!.evaluations[0]!.annualBenefit = null;
     value.roi!.evaluations[0]!.roi = null;
     const html = renderToStaticMarkup(<ExecutiveResultView result={value} />);
-    expect(html).toContain("Unavailable");
+    expect(html).toContain("Données complémentaires requises");
     expect(html).not.toContain("0.00 EUR");
   });
 
@@ -31,7 +31,7 @@ describe("Executive Result", () => {
     const value = result();
     value.complete = false;
     const html = renderToStaticMarkup(<ExecutiveResultView result={value} />);
-    expect(html).toContain("not complete yet");
+    expect(html).toContain("Résultats Optivos non disponibles");
     expect(html).not.toContain("Published recommendation");
     expect(html).toContain("/companies/company/automation-audit");
   });

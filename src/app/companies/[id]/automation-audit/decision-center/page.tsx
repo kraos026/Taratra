@@ -5,6 +5,8 @@ import { PatronDecisionCenterService } from "@/modules/company-intake/applicatio
 import { PrismaPatronDecisionCenterReadModel } from "@/modules/company-intake/infrastructure/prisma-patron-decision-center-read-model";
 import { PatronDecisionCenterView } from "@/modules/company-intake/presentation/patron-decision-center-view";
 
+const DOWNSTREAM_READ_TRANSACTION_OPTIONS = { timeout: 10_000 };
+
 export default async function DecisionCenterPage({
   params,
 }: {
@@ -16,11 +18,14 @@ export default async function DecisionCenterPage({
   const userId = data?.claims?.sub;
   if (!userId) notFound();
 
-  const center = await withAuthenticatedDatabase(userId, (db) =>
-    new PatronDecisionCenterService(new PrismaPatronDecisionCenterReadModel(db)).get({
-      userId,
-      companyId: id,
-    }),
+  const center = await withAuthenticatedDatabase(
+    userId,
+    (db) =>
+      new PatronDecisionCenterService(new PrismaPatronDecisionCenterReadModel(db)).get({
+        userId,
+        companyId: id,
+      }),
+    DOWNSTREAM_READ_TRANSACTION_OPTIONS,
   );
 
   return <PatronDecisionCenterView center={center} />;

@@ -1,177 +1,342 @@
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
+import type { ReactNode } from "react";
+import {
+  AlertTriangle,
+  ArrowRight,
+  CheckCircle2,
+  CircleDollarSign,
+  ShieldCheck,
+} from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import type { ExecutiveAuditResult } from "../application/executive-result-model";
 
-export function ExecutiveResultView({ result }: { result: ExecutiveAuditResult }) {
+export function ExecutiveResultView({ result }: { readonly result: ExecutiveAuditResult }) {
   const hub = `/companies/${result.company.id}/automation-audit`;
   if (!result.complete)
     return (
-      <main className="mx-auto max-w-4xl space-y-5 p-6">
-        <h1 className="text-3xl font-semibold">Automation Audit Results</h1>
-        <Card>
-          <CardContent className="space-y-4 py-8">
-            <h2 className="text-xl font-semibold">Your Automation Audit is not complete yet.</h2>
-            <p className="text-muted-foreground">
-              Complete the current audit step before viewing final conclusions.
-            </p>
-            <Link className={cn(buttonVariants())} href={hub}>
-              Continue the audit
-            </Link>
-          </CardContent>
-        </Card>
+      <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-50">
+        <section className="mx-auto max-w-4xl rounded-[2rem] border border-amber-400/30 bg-amber-500/10 p-8">
+          <AlertTriangle className="text-amber-200" />
+          <h1 className="mt-4 text-3xl font-bold">Résultats Optivos non disponibles</h1>
+          <p className="mt-3 text-slate-300">
+            L’audit doit être complété avant d’afficher les conclusions finales. Optivos ne fabrique
+            pas de décision sans résultat validé.
+          </p>
+          <Link className={cn(buttonVariants(), "mt-6")} href={hub}>
+            Continuer l’audit
+          </Link>
+        </section>
       </main>
     );
+
   return (
-    <main className="mx-auto max-w-6xl space-y-8 p-4 sm:p-6">
-      <header>
-        <p className="text-muted-foreground text-sm">Automation Audit Results</p>
-        <h1 className="text-3xl font-semibold">{result.company.name}</h1>
-        <p className="text-muted-foreground mt-2">
-          Decision support based only on your published audit evidence.
-        </p>
-      </header>
-      <section aria-labelledby="overview">
-        <h2 id="overview" className="mb-3 text-2xl font-semibold">
-          Executive overview
-        </h2>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          {Object.entries(result.overview).map(([label, value]) => (
-            <Card key={label}>
-              <CardContent className="py-5">
-                <p className="text-muted-foreground capitalize">{label}</p>
-                <p className="text-3xl font-semibold">{value}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-      <section aria-labelledby="opportunities">
-        <h2 id="opportunities" className="mb-3 text-2xl font-semibold">
-          Priority opportunities
-        </h2>
-        <div className="grid gap-4 md:grid-cols-2">
-          {result.opportunities.map((item) => (
-            <Card key={item.id}>
-              <CardHeader>
-                <CardTitle>{item.title}</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                <p>{item.problem}</p>
-                <p className="text-muted-foreground text-sm">
-                  Automation readiness: {item.readiness}% · Confidence: {item.confidence}%
-                </p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-      <section aria-labelledby="roi">
-        <h2 id="roi" className="mb-3 text-2xl font-semibold">
-          Expected impact
-        </h2>
-        <p className="text-muted-foreground mb-3">
-          Published estimates in {result.roi?.currency}; these are not guaranteed savings.
-        </p>
-        <div className="grid gap-4 md:grid-cols-2">
-          {result.roi?.evaluations.map((item) => (
-            <Card key={item.id}>
-              <CardHeader>
-                <CardTitle>{item.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <dl className="grid grid-cols-3 gap-3">
-                  <Metric
-                    label="Annual benefit"
-                    value={item.annualBenefit}
-                    suffix={result.roi!.currency}
-                  />
-                  <Metric label="ROI" value={item.roi} special={item.roiSpecialValue} suffix="%" />
-                  <Metric label="Payback" value={item.payback} suffix="months" />
-                </dl>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-      <section aria-labelledby="plan">
-        <h2 id="plan" className="mb-3 text-2xl font-semibold">
-          Recommended action plan
-        </h2>
-        <div className="space-y-4">
-          {result.recommendations.map((item) => (
-            <Card key={item.id}>
-              <CardHeader>
-                <div className="flex flex-wrap items-center gap-2">
-                  <CardTitle>{item.title}</CardTitle>
-                  <Badge>{item.priority}</Badge>
-                  <Badge className="bg-neutral-100 text-neutral-700">{item.phase}</Badge>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <p className="font-medium">{item.action}</p>
-                <p className="text-muted-foreground mt-1">{item.description}</p>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      </section>
-      <section aria-labelledby="evidence">
-        <h2 id="evidence" className="mb-3 text-2xl font-semibold">
-          How these conclusions were reached
-        </h2>
-        <Card>
-          <CardContent className="space-y-2 py-5">
-            <p>
-              Based on the published process “{result.process?.name}”, its business analysis,
-              automation opportunities, ROI assumptions supplied by your team, and the published
-              action plan.
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link
-                className={cn(buttonVariants({ variant: "outline" }))}
-                href={`/process-maps/${result.provenance?.processMapId}`}
-              >
-                Review process
-              </Link>
-              <Link
-                className={cn(buttonVariants({ variant: "outline" }))}
-                href={`/roi/${result.provenance?.roiId}`}
-              >
-                Review ROI
-              </Link>
-              <Link
-                className={cn(buttonVariants())}
-                href={`/recommendations/${result.provenance?.recommendationPortfolioId}`}
-              >
-                Open action plan
-              </Link>
+    <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50 sm:px-6">
+      <div className="mx-auto max-w-7xl space-y-7">
+        <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/70 p-6 sm:p-8">
+          <p className="text-xs font-bold tracking-[0.28em] text-blue-300 uppercase">
+            Résultats Optivos · optivos.vip
+          </p>
+          <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <h1 className="font-['Manrope'] text-3xl font-extrabold sm:text-5xl">
+                Votre audit Optivos est terminé
+              </h1>
+              <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
+                Synthèse finale pour {brandText(result.company.name)}, fondée uniquement sur les
+                preuves, le ROI et le plan d’action validés.
+              </p>
             </div>
-          </CardContent>
-        </Card>
-      </section>
+            <Link
+              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25"
+              href={`/companies/${result.company.id}/automation-audit/decision-center`}
+            >
+              Ouvrir le centre de décision <ArrowRight size={17} />
+            </Link>
+          </div>
+        </header>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          <HeroCard
+            icon={<CheckCircle2 />}
+            label="Actions prioritaires"
+            value={String(result.recommendations.slice(0, 3).length)}
+            text="Top décisions à lire en premier"
+          />
+          <HeroCard
+            icon={<CircleDollarSign />}
+            label="État économique"
+            value={result.roi ? "Publié" : "À compléter"}
+            text={result.roi ? `Devise ${result.roi.currency}` : "Aucun chiffre inventé"}
+          />
+          <HeroCard
+            icon={<ShieldCheck />}
+            label="Contrôle humain"
+            value="Visible"
+            text="Risques et validations restent explicites"
+          />
+        </section>
+
+        <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
+          <div className="space-y-6">
+            <Panel title="Top 3 décisions">
+              <div className="grid gap-4 lg:grid-cols-3">
+                {result.recommendations.slice(0, 3).map((item, index) => (
+                  <article
+                    key={item.id}
+                    className="rounded-3xl border border-white/10 bg-slate-950/70 p-4"
+                  >
+                    <p className="text-xs font-bold tracking-[0.18em] text-blue-300 uppercase">
+                      #{index + 1} · {item.priority}
+                    </p>
+                    <h3 className="mt-2 text-lg font-bold">{brandText(item.title)}</h3>
+                    <p className="mt-3 text-sm font-semibold text-blue-100">
+                      {brandText(item.action)}
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">
+                      {brandText(item.description)}
+                    </p>
+                    <p className="mt-3 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">
+                      Phase : {item.phase}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </Panel>
+
+            <Panel title="Risques principaux">
+              <div className="grid gap-4 md:grid-cols-2">
+                {result.findings.slice(0, 4).map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-3xl border border-white/10 bg-slate-950/60 p-4"
+                  >
+                    <h3 className="font-bold">{brandText(item.title)}</h3>
+                    <p className="mt-2 text-sm text-slate-300">{brandText(item.impact)}</p>
+                    <p className="mt-3 rounded-full bg-amber-500/10 px-3 py-1 text-xs text-amber-100">
+                      Sévérité : {item.severity}
+                    </p>
+                  </article>
+                ))}
+                {!result.findings.length && (
+                  <EmptyState text="Aucun risque principal publié dans le résultat final." />
+                )}
+              </div>
+            </Panel>
+
+            <Panel title="Opportunités retenues">
+              <div className="grid gap-4 md:grid-cols-2">
+                {result.opportunities.slice(0, 3).map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-3xl border border-white/10 bg-slate-950/60 p-4"
+                  >
+                    <h3 className="font-bold">{brandText(item.title)}</h3>
+                    <p className="mt-2 text-sm text-slate-300">{brandText(item.problem)}</p>
+                    <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
+                      <State label="Maturité" value={`${item.readiness}%`} />
+                      <State label="Confiance" value={`${item.confidence}%`} />
+                    </div>
+                  </article>
+                ))}
+                {!result.opportunities.length && (
+                  <EmptyState text="Aucune opportunité publiée dans le résultat final." />
+                )}
+              </div>
+            </Panel>
+
+            <Panel title="Plan d’action recommandé">
+              <div className="space-y-3">
+                {result.recommendations.map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-3xl border border-white/10 bg-slate-950/60 p-4"
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-bold">{brandText(item.title)}</h3>
+                      <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs text-blue-100">
+                        {item.priority}
+                      </span>
+                      <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">
+                        {item.phase}
+                      </span>
+                    </div>
+                    <p className="mt-2 text-sm text-blue-100">{brandText(item.action)}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-300">
+                      {brandText(item.description)}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            </Panel>
+          </div>
+
+          <aside className="space-y-6">
+            <Panel title="Impact attendu">
+              <p className="mb-4 text-sm text-slate-300">
+                Estimations publiées en {result.roi?.currency ?? "devise non disponible"}; ce ne
+                sont pas des gains garantis.
+              </p>
+              <div className="space-y-3">
+                {result.roi?.evaluations.map((item) => (
+                  <article
+                    key={item.id}
+                    className="rounded-3xl border border-white/10 bg-slate-950/60 p-4"
+                  >
+                    <h3 className="font-bold">{brandText(item.title)}</h3>
+                    <dl className="mt-3 grid gap-2">
+                      <Metric
+                        label="Bénéfice annuel"
+                        value={item.annualBenefit}
+                        suffix={result.roi!.currency}
+                      />
+                      <Metric
+                        label="ROI"
+                        value={item.roi}
+                        special={item.roiSpecialValue}
+                        suffix="%"
+                      />
+                      <Metric label="Retour" value={item.payback} suffix="mois" />
+                    </dl>
+                  </article>
+                )) ?? <EmptyState text="ROI non disponible. Aucune valeur n’est inventée." />}
+              </div>
+            </Panel>
+
+            <Panel title="Prochaine étape">
+              <p className="text-sm leading-6 text-slate-300">
+                Ouvrez le centre de décision pour examiner les détails, puis validez le plan ou
+                complétez les données manquantes selon l’état publié.
+              </p>
+              <Link
+                className={cn(buttonVariants(), "mt-4")}
+                href={`/companies/${result.company.id}/automation-audit/decision-center`}
+              >
+                Ouvrir le centre de décision
+              </Link>
+            </Panel>
+
+            <Panel title="Pourquoi ces conclusions ?">
+              <p className="text-sm leading-6 text-slate-300">
+                Fondé sur le processus validé “{brandText(result.process?.name ?? "non disponible")}
+                ”, son analyse métier, les opportunités d’automatisation, les hypothèses ROI et le
+                plan d’action validé.
+              </p>
+              <div className="mt-4 flex flex-col gap-3">
+                {result.provenance?.processMapId && (
+                  <Link
+                    className={cn(buttonVariants({ variant: "outline" }))}
+                    href={`/process-maps/${result.provenance.processMapId}`}
+                  >
+                    Revoir le processus
+                  </Link>
+                )}
+                {result.provenance?.roiId && (
+                  <Link
+                    className={cn(buttonVariants({ variant: "outline" }))}
+                    href={`/roi/${result.provenance.roiId}`}
+                  >
+                    Revoir le ROI
+                  </Link>
+                )}
+                {result.provenance?.recommendationPortfolioId && (
+                  <Link
+                    className={cn(buttonVariants())}
+                    href={`/recommendations/${result.provenance.recommendationPortfolioId}`}
+                  >
+                    Ouvrir le plan d’action
+                  </Link>
+                )}
+              </div>
+            </Panel>
+
+            <Panel title="Feedback pilote">
+              <p className="text-sm leading-6 text-slate-300">
+                Emplacement préparé pour la prochaine phase : compréhension, pertinence, crédibilité
+                ROI, clarté du prochain pas, expérience d’audit, volonté de payer et prix.
+              </p>
+              <p className="mt-3 rounded-2xl border border-dashed border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-400">
+                Aucun stockage feedback n’est activé dans cette mission.
+              </p>
+            </Panel>
+          </aside>
+        </section>
+      </div>
     </main>
   );
 }
+
+function Panel({ title, children }: { readonly title: string; readonly children: ReactNode }) {
+  return (
+    <section className="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5">
+      <h2 className="text-2xl font-bold">{title}</h2>
+      <div className="mt-4">{children}</div>
+    </section>
+  );
+}
+
+function HeroCard({
+  icon,
+  label,
+  value,
+  text,
+}: {
+  readonly icon: ReactNode;
+  readonly label: string;
+  readonly value: string;
+  readonly text: string;
+}) {
+  return (
+    <article className="rounded-[1.5rem] border border-white/10 bg-slate-900/80 p-5">
+      <div className="flex items-center gap-2 text-blue-200">
+        {icon}
+        <p className="text-xs font-bold tracking-[0.16em] uppercase">{label}</p>
+      </div>
+      <p className="mt-3 text-3xl font-bold">{value}</p>
+      <p className="mt-1 text-sm text-slate-400">{text}</p>
+    </article>
+  );
+}
+
+function State({ label, value }: { readonly label: string; readonly value: string }) {
+  return (
+    <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-3">
+      <p className="text-xs text-slate-400">{label}</p>
+      <p className="mt-1 font-semibold">{value}</p>
+    </div>
+  );
+}
+
 function Metric({
   label,
   value,
   suffix,
   special,
 }: {
-  label: string;
-  value: number | null;
-  suffix: string;
-  special?: string | null;
+  readonly label: string;
+  readonly value: number | null;
+  readonly suffix: string;
+  readonly special?: string | null;
 }) {
   return (
-    <div>
-      <dt className="text-muted-foreground text-sm">{label}</dt>
-      <dd className="font-semibold">
-        {special ?? (value === null ? "Unavailable" : `${value.toFixed(2)} ${suffix}`)}
-      </dd>
-    </div>
+    <State
+      label={label}
+      value={
+        special ??
+        (value === null ? "Données complémentaires requises" : `${value.toFixed(2)} ${suffix}`)
+      }
+    />
   );
+}
+
+function EmptyState({ text }: { readonly text: string }) {
+  return (
+    <p className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/70 p-4 text-sm text-slate-400">
+      {text}
+    </p>
+  );
+}
+
+function brandText(value: string): string {
+  return value.replaceAll("AutomateX", "Optivos").replaceAll("AUTOMATEX", "OPTIVOS");
 }

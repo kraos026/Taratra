@@ -4,14 +4,19 @@ import { createClient } from "@/infrastructure/supabase/server";
 import { ExecutiveResultService } from "@/modules/executive-results/application/executive-result-service";
 import { PrismaExecutiveResultRepository } from "@/modules/executive-results/infrastructure/prisma-executive-result-repository";
 import { ExecutiveResultView } from "@/modules/executive-results/presentation/executive-result-view";
+
+const DOWNSTREAM_READ_TRANSACTION_OPTIONS = { timeout: 10_000 };
+
 export default async function ResultsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
   if (!userId) notFound();
-  const result = await withAuthenticatedDatabase(userId, (db) =>
-    new ExecutiveResultService(new PrismaExecutiveResultRepository(db), userId).get(id),
+  const result = await withAuthenticatedDatabase(
+    userId,
+    (db) => new ExecutiveResultService(new PrismaExecutiveResultRepository(db), userId).get(id),
+    DOWNSTREAM_READ_TRANSACTION_OPTIONS,
   );
   if (!result) notFound();
   return <ExecutiveResultView result={result} />;

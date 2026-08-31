@@ -34,8 +34,9 @@ describe("RoiExplorer", () => {
         ]}
       />,
     );
-    expect(html).toContain("ROI Explorer");
+    expect(html).toContain("ROI Optivos");
+    expect(html).toContain("Évaluation économique");
     expect(html).toContain("Invoice ROI");
-    expect(html).toContain("5000.00 EUR");
+    expect(html).toContain("5 000 EUR");
   });
 });

@@ -18,18 +18,18 @@ describe("PatronDecisionCenterView", () => {
     expect(html).toContain("Stale approval master data");
     expect(html).toContain("Mandatory exception approval");
     expect(html).toContain("Manual reconciliation");
-    expect(html).toContain("Economically justified");
+    expect(html).toContain("Justifié économiquement");
     expect(html).toContain("Approval threshold remains uncertain");
     expect(html).toContain("Remediate stale ERP approval data");
-    expect(html).toContain("What we know");
-    expect(html).toContain("What we believe");
-    expect(html).toContain("What we don&#x27;t know");
-    expect(html).toContain("Why?");
-    expect(html).toContain("Ask AutomateX");
-    expect(html).toContain("Your question");
-    expect(html).toContain("What evidence supports this?");
-    expect(html).toContain("What would change this decision?");
-    expect(html).toContain("What would change this decision?");
+    expect(html).toContain("Ce qui est connu");
+    expect(html).toContain("Ce qui est supposé");
+    expect(html).toContain("Ce qui manque");
+    expect(html).toContain("Pourquoi ?");
+    expect(html).toContain("Ask Optivos");
+    expect(html).toContain("Votre question");
+    expect(html).toContain("Quelles preuves soutiennent cette décision ?");
+    expect(html).toContain("Quelles données manquent encore ?");
+    expect(html).toContain("Que ne faut-il pas automatiser pour l’instant ?");
     expect(html).not.toContain("BrainIntegrationPipeline");
     expect(html).not.toContain("InformationGapDetector");
     expect(html).not.toContain("ClaimType");
@@ -40,8 +40,8 @@ describe("PatronDecisionCenterView", () => {
     const html = renderToStaticMarkup(
       <PatronDecisionCenterView center={PatronDecisionCenterPresenter.build(northstarView())} />,
     );
-    expect(html).toContain("Break-even");
-    expect(html).toContain("Not yet available");
+    expect(html).toContain("Seuil de rentabilité");
+    expect(html).toContain("Données complémentaires requises");
     expect(html).not.toContain(">0 EUR<");
   });
 
@@ -51,8 +51,8 @@ describe("PatronDecisionCenterView", () => {
     );
     expect(html).toContain("<details");
     expect(html).toContain("<summary");
-    expect(html).toContain("Supporting evidence");
-    expect(html).toContain("Unknowns and contradictions");
+    expect(html).toContain("Preuves utilisées");
+    expect(html).toContain("Incertitudes et contradictions");
   });
 
   it("renders production-published executive results without the unavailable fallback", () => {

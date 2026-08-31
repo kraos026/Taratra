@@ -229,7 +229,7 @@ export function RoiAssumptionsForm({
       applyDetail(detail, setRoi, setCurrency, setAssumptions);
       setMessage(
         unknown.length
-          ? "ROI estimate incomplete. Some assumptions still need to be confirmed before AutomateX can calculate and publish the complete financial ROI."
+          ? "Données complémentaires requises. Certaines hypothèses doivent rester visibles avant qu’Optivos puisse publier un ROI complet."
           : "Assumptions saved. Continue with the next audit action when you are ready.",
       );
     } catch (caught) {
@@ -273,12 +273,20 @@ export function RoiAssumptionsForm({
   return (
     <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
       <header className="space-y-2">
-        <p className="text-muted-foreground text-sm">Automation Audit · ROI</p>
-        <h1 className="text-3xl font-semibold">Your ROI assumptions</h1>
+        <p className="text-muted-foreground text-sm">Audit Optivos · ROI</p>
+        <h1 className="text-3xl font-semibold">Vos hypothèses ROI</h1>
         <p className="text-muted-foreground max-w-3xl">
-          AutomateX calculations are estimates based on the assumptions you provide. They are not
-          guaranteed savings.
+          Les calculs Optivos sont des estimations fondées sur les hypothèses et preuves que vous
+          fournissez. Ils ne sont pas des gains garantis.
         </p>
+        <div className="grid gap-2 text-sm sm:grid-cols-2">
+          <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900">
+            CALCULATED / ESTIMATED : affiché uniquement quand les données publiées le permettent.
+          </p>
+          <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
+            INSUFFICIENT_EVIDENCE / STRATEGIC_NON_QUANTIFIED : données complémentaires requises.
+          </p>
+        </div>
       </header>
 
       {message && (
@@ -351,17 +359,17 @@ export function RoiAssumptionsForm({
         {unknown.length > 0 && (
           <Card>
             <CardHeader>
-              <CardTitle>ROI estimate incomplete</CardTitle>
+              <CardTitle>Données complémentaires requises</CardTitle>
             </CardHeader>
             <CardContent>
-              <p>These assumptions are still unknown:</p>
+              <p>Ces hypothèses restent inconnues :</p>
               <ul className="mt-2 list-disc pl-5">
                 {unknown.map((field) => (
                   <li key={field.code}>{field.label}</li>
                 ))}
               </ul>
               <p className="text-muted-foreground mt-3 text-sm">
-                Unavailable calculations are not shown as zero.
+                Les calculs indisponibles ne sont jamais affichés comme zéro.
               </p>
             </CardContent>
           </Card>
