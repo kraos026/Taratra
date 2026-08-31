@@ -1,5 +1,6 @@
 import { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
+import { randomUUID } from "crypto";
 import { RecommendationPortfolioConflictError } from "../application/recommendation-errors";
 import type {
   Category,
@@ -86,6 +87,9 @@ export class PrismaRecommendationPortfolioRepository {
       roiStatus: roi.status,
       automationSnapshotId: automation.id,
       automationStatus: automation.status,
+      aiSnapshotId: roi.aiOpportunitySnapshotId,
+      analysisId: roi.businessAnalysisId,
+      processMapId: roi.processMapId,
       aiStatus: ai.status,
       analysisStatus: analysis.status,
       processStatus: process.status,
@@ -239,17 +243,15 @@ export class PrismaRecommendationPortfolioRepository {
       where: { organizationId, roiSnapshotId: input.roiSnapshotId },
       orderBy: { versionNumber: "desc" },
     });
-    const roi = await this.roiSnapshot(organizationId, input.roiSnapshotId);
-    if (!roi) throw new Error("ROI source unavailable");
     const snapshot = await this.db.recommendationPortfolioSnapshot.create({
       data: {
         organizationId,
         companyId,
         roiSnapshotId: input.roiSnapshotId,
         automationOpportunitySnapshotId: input.automationSnapshotId,
-        aiOpportunitySnapshotId: roi.aiOpportunitySnapshotId,
-        businessAnalysisId: roi.businessAnalysisId,
-        processMapId: roi.processMapId,
+        aiOpportunitySnapshotId: input.aiSnapshotId,
+        businessAnalysisId: input.analysisId,
+        processMapId: input.processMapId,
         knowledgeSnapshotId: input.knowledgeSnapshotId,
         previousVersionId,
         versionNumber: (latestSnapshot?.versionNumber ?? 0) + 1,
@@ -262,9 +264,11 @@ export class PrismaRecommendationPortfolioRepository {
       },
     });
     const ids = new Map<string, string>();
-    for (const item of result.recommendations) {
-      const row = await this.db.transformationRecommendation.create({
-        data: {
+    for (const item of result.recommendations) ids.set(item.identifier, randomUUID());
+    if (result.recommendations.length) {
+      await this.db.transformationRecommendation.createMany({
+        data: result.recommendations.map((item) => ({
+          id: ids.get(item.identifier)!,
           organizationId,
           snapshotId: snapshot.id,
           ruleId: item.rule.id,
@@ -296,46 +300,53 @@ export class PrismaRecommendationPortfolioRepository {
           affectedProcessIds: item.candidate.processIds,
           affectedDepartmentIds: item.candidate.departmentIds,
           affectedSystemIds: item.candidate.systemIds,
-        },
-      });
-      ids.set(item.identifier, row.id);
-      await this.db.transformationRecommendationContribution.createMany({
-        data: item.contributions.map((c) => ({
-          organizationId,
-          snapshotId: snapshot.id,
-          recommendationId: row.id,
-          ...c,
-          calculationJson: { formula: item.priorityDefinition.formula } as Prisma.InputJsonValue,
         })),
       });
-      if (item.candidate.evidence.length)
-        await this.db.transformationRecommendationEvidence.createMany({
-          data: item.candidate.evidence.map((e) => ({
+    }
+    const contributionRows = result.recommendations.flatMap((item) =>
+      item.contributions.map((c) => ({
+        organizationId,
+        snapshotId: snapshot.id,
+        recommendationId: ids.get(item.identifier)!,
+        ...c,
+        calculationJson: { formula: item.priorityDefinition.formula } as Prisma.InputJsonValue,
+      })),
+    );
+    if (contributionRows.length)
+      await this.db.transformationRecommendationContribution.createMany({
+        data: contributionRows,
+      });
+    const evidenceRows = result.recommendations.flatMap((item) =>
+      item.candidate.evidence.map((e) => ({
+        organizationId,
+        snapshotId: snapshot.id,
+        recommendationId: ids.get(item.identifier)!,
+        roiEvidenceId: e.id,
+        businessFindingId: e.businessFindingId,
+        knowledgeFactId: e.knowledgeFactId,
+        explanation: "Referenced published ROI evidence",
+      })),
+    );
+    if (evidenceRows.length)
+      await this.db.transformationRecommendationEvidence.createMany({ data: evidenceRows });
+    const dependencyRows = result.recommendations.flatMap((item) =>
+      item.dependencyIdentifiers.flatMap((dependency) => {
+        const recommendationId = ids.get(item.identifier);
+        const dependsOnId = ids.get(dependency);
+        if (!recommendationId || !dependsOnId) return [];
+        return [
+          {
             organizationId,
             snapshotId: snapshot.id,
-            recommendationId: row.id,
-            roiEvidenceId: e.id,
-            businessFindingId: e.businessFindingId,
-            knowledgeFactId: e.knowledgeFactId,
-            explanation: "Referenced published ROI evidence",
-          })),
-        });
-    }
-    for (const item of result.recommendations)
-      for (const dependency of item.dependencyIdentifiers) {
-        const recommendationId = ids.get(item.identifier),
-          dependsOnId = ids.get(dependency);
-        if (recommendationId && dependsOnId)
-          await this.db.transformationRecommendationDependency.create({
-            data: {
-              organizationId,
-              snapshotId: snapshot.id,
-              recommendationId,
-              dependsOnId,
-              reason: `Rule ${item.rule.code} dependency`,
-            },
-          });
-      }
+            recommendationId,
+            dependsOnId,
+            reason: `Rule ${item.rule.code} dependency`,
+          },
+        ];
+      }),
+    );
+    if (dependencyRows.length)
+      await this.db.transformationRecommendationDependency.createMany({ data: dependencyRows });
     await this.db.recommendationPortfolioValidation.createMany({
       data: result.validations.map((item) => ({
         organizationId,
@@ -344,6 +355,46 @@ export class PrismaRecommendationPortfolioRepository {
       })),
     });
     return snapshot;
+  }
+  async transitionReadiness(organizationId: string, id: string) {
+    const snapshot = await this.snapshot(organizationId, id);
+    if (!snapshot) return null;
+    const [validationErrorCount, recommendations, contributionCounts, evidenceCounts] =
+      await Promise.all([
+        this.db.recommendationPortfolioValidation.count({
+          where: { organizationId, snapshotId: id, severity: "error" },
+        }),
+        this.db.transformationRecommendation.findMany({
+          where: { organizationId, snapshotId: id },
+          select: { id: true },
+        }),
+        this.db.transformationRecommendationContribution.groupBy({
+          by: ["recommendationId"],
+          where: { organizationId, snapshotId: id },
+          _count: { _all: true },
+        }),
+        this.db.transformationRecommendationEvidence.groupBy({
+          by: ["recommendationId"],
+          where: { organizationId, snapshotId: id },
+          _count: { _all: true },
+        }),
+      ]);
+    const contributionsByRecommendation = new Map(
+      contributionCounts.map((item) => [item.recommendationId, item._count._all]),
+    );
+    const evidenceByRecommendation = new Map(
+      evidenceCounts.map((item) => [item.recommendationId, item._count._all]),
+    );
+    return {
+      snapshot,
+      validationErrorCount,
+      recommendationCount: recommendations.length,
+      recommendationsTraceable: recommendations.every(
+        (item) =>
+          (contributionsByRecommendation.get(item.id) ?? 0) === 6 &&
+          (evidenceByRecommendation.get(item.id) ?? 0) > 0,
+      ),
+    };
   }
   async transition(
     organizationId: string,

@@ -78,9 +78,9 @@ export class RecommendationPortfolioService {
   async validate(id: string, lockVersion: number) {
     const context = await this.context();
     this.editor(context.role);
-    const detail = await this.repo.detail(context.organizationId, id);
-    if (!detail) throw new RecommendationPortfolioNotFoundError();
-    if (detail.validations.some((item) => item.severity === "error"))
+    const readiness = await this.repo.transitionReadiness(context.organizationId, id);
+    if (!readiness) throw new RecommendationPortfolioNotFoundError();
+    if (readiness.validationErrorCount > 0)
       throw new RecommendationPortfolioValidationError("Blocking validation errors remain");
     return this.repo.transition(context.organizationId, id, lockVersion, "validated");
   }
@@ -88,15 +88,12 @@ export class RecommendationPortfolioService {
     const context = await this.context();
     if (!["owner", "admin"].includes(context.role))
       throw new RecommendationPortfolioForbiddenError();
-    const detail = await this.repo.detail(context.organizationId, id);
-    if (!detail) throw new RecommendationPortfolioNotFoundError();
+    const readiness = await this.repo.transitionReadiness(context.organizationId, id);
+    if (!readiness) throw new RecommendationPortfolioNotFoundError();
     if (
-      detail.validations.some((item) => item.severity === "error") ||
-      detail.recommendations.some(
-        (item) =>
-          !detail.evidence.some((e) => e.recommendationId === item.id) ||
-          detail.contributions.filter((c) => c.recommendationId === item.id).length !== 6,
-      )
+      readiness.validationErrorCount > 0 ||
+      !readiness.recommendationsTraceable ||
+      readiness.recommendationCount === 0
     )
       throw new RecommendationPortfolioValidationError("Portfolio traceability incomplete");
     return this.repo.transition(context.organizationId, id, lockVersion, "published");

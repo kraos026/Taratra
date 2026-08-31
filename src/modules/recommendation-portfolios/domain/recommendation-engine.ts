@@ -62,6 +62,9 @@ export interface RecommendationInput {
   roiStatus: string;
   automationSnapshotId: string;
   automationStatus: string;
+  aiSnapshotId: string;
+  analysisId: string;
+  processMapId: string;
   aiStatus: string;
   analysisStatus: string;
   processStatus: string;
