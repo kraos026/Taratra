@@ -73,6 +73,10 @@ function initials(name: string): string {
     .join("");
 }
 
+function dashboardCompanyLabel(index: number): string {
+  return `Dossier entreprise ${index + 1}`;
+}
+
 export function InteractiveDashboard() {
   const router = useRouter();
   const [companies, setCompanies] = useState<PagePayload<Company>>();
@@ -130,23 +134,23 @@ export function InteractiveDashboard() {
           </span>
         </Link>
         <nav aria-label="Navigation principale">
-          <p className="nav-label">PILOTE OPTIVOS</p>
+          <p className="nav-label">ESPACE OPTIVOS</p>
           {navigation.map(([Icon, label, href]) => (
             <Link className={href === "/" ? "nav-item active" : "nav-item"} href={href} key={label}>
               <Icon size={19} />
               <span>{label}</span>
-              {label === "Audit" && activeAudits !== undefined && <b>{activeAudits}</b>}
+              {label === "Audit" && activeAudits !== undefined && activeAudits === 1 && <b>1</b>}
             </Link>
           ))}
         </nav>
-        <div className="upgrade" aria-label="Cadre du pilote">
+        <div className="upgrade" aria-label="Cadre Optivos">
           <span>
             <Sparkles size={17} />
           </span>
-          <strong>Pilote Optivos</strong>
-          <p>Audit privé sur optivos.vip, fondé sur vos données et vos preuves publiées.</p>
-          <button type="button" disabled title="Activation commerciale après validation pilote">
-            Pilot only
+          <strong>Espace Optivos</strong>
+          <p>Audit privé sur optivos.vip, fondé sur vos réponses et vos preuves publiées.</p>
+          <button type="button" disabled title="Activation commerciale après validation">
+            Préparé
           </button>
         </div>
         <div className="profile">
@@ -184,17 +188,15 @@ export function InteractiveDashboard() {
             <div>
               <p className="eyebrow">TABLEAU DE BORD</p>
               <h1>Bienvenue dans Optivos</h1>
-              <p>
-                Votre cockpit pilote pour décider quoi automatiser, quoi corriger et quoi éviter.
-              </p>
+              <p>Votre cockpit pour décider quoi automatiser, quoi corriger et quoi éviter.</p>
             </div>
             <button
               className="outline"
               type="button"
               disabled
-              title="Le journal d’activité reste masqué pendant le pilote"
+              title="Le journal d’activité reste masqué pendant cette phase"
             >
-              Feedback pilote · Préparé
+              Feedback · Préparé
             </button>
           </div>
 
@@ -211,8 +213,8 @@ export function InteractiveDashboard() {
               </div>
               <div>
                 <p>Mon entreprise</p>
-                <strong>{companies?.total ?? "—"}</strong>
-                <small>Données réelles</small>
+                <strong>{companies?.items.length ? "Prêt" : "—"}</strong>
+                <small>Dossier sécurisé</small>
               </div>
             </article>
             <article>
@@ -220,9 +222,9 @@ export function InteractiveDashboard() {
                 <CircleGauge />
               </div>
               <div>
-                <p>Audits actifs</p>
-                <strong>{activeAudits ?? "—"}</strong>
-                <small>{audits ? `${audits.total} au total` : "Chargement…"}</small>
+                <p>Audit</p>
+                <strong>{activeAudits ? "En cours" : "—"}</strong>
+                <small>{audits ? "Depuis vos dossiers accessibles" : "Chargement…"}</small>
               </div>
             </article>
             <article>
@@ -252,7 +254,7 @@ export function InteractiveDashboard() {
               <div className="panel-head">
                 <div>
                   <h2>Mon entreprise</h2>
-                  <p>Dossiers récents de votre organisation pilote</p>
+                  <p>Dossiers récents de votre espace sécurisé</p>
                 </div>
                 <Link href={dashboardRoutes.companies}>
                   Ouvrir <ArrowRight size={15} />
@@ -260,12 +262,12 @@ export function InteractiveDashboard() {
               </div>
               <div className="company-list">
                 {companies && companies.items.length === 0 && (
-                  <p className="empty-state">Aucune entreprise. Créez votre dossier pilote.</p>
+                  <p className="empty-state">Aucune entreprise. Créez votre premier dossier.</p>
                 )}
                 {!companies && !error && <p className="empty-state">Chargement…</p>}
-                {companies?.items.map((company) => {
+                {companies?.items.map((company, index) => {
                   const advancedAudit = advancedAudits.get(company.id);
-                  const companyName = brandText(company.name);
+                  const companyName = dashboardCompanyLabel(index);
                   return (
                     <div className="company" key={company.id}>
                       <div className="company-logo violet">{initials(companyName)}</div>
@@ -291,7 +293,7 @@ export function InteractiveDashboard() {
                       <Link
                         className="company-open"
                         href={`/companies/${company.id}/automation-audit`}
-                        aria-label={`Ouvrir l'audit avancé de ${companyName}`}
+                        aria-label={`Ouvrir l'audit avancé du ${companyName}`}
                       >
                         <ChevronRight />
                       </Link>
@@ -344,7 +346,7 @@ export function InteractiveDashboard() {
                 <button
                   type="button"
                   disabled
-                  title="Exécution opérationnelle masquée pendant le pilote"
+                  title="Exécution opérationnelle masquée pendant cette phase"
                 >
                   •••
                 </button>
@@ -364,8 +366,8 @@ export function InteractiveDashboard() {
               </div>
               <div>
                 <span>PRÊT À COMMENCER ?</span>
-                <h2>Lancez votre audit pilote Optivos</h2>
-                <p>Sélectionnez votre entreprise pour suivre le parcours canonique complet.</p>
+                <h2>Lancez votre audit Optivos</h2>
+                <p>Sélectionnez votre entreprise pour avancer jusqu’aux résultats.</p>
               </div>
               <Link className="cta-link" href={dashboardRoutes.companies}>
                 Ouvrir mon entreprise <ArrowRight size={17} />
@@ -374,14 +376,10 @@ export function InteractiveDashboard() {
           </div>
           <footer>
             <span>Optivos · Fondations sécurisées</span>
-            <span>Aucune donnée métier n’est simulée sur ce tableau de bord.</span>
+            <span>Les décisions apparaissent après publication de l’audit.</span>
           </footer>
         </div>
       </section>
     </main>
   );
-}
-
-function brandText(value: string): string {
-  return value.replaceAll("AutomateX", "Optivos").replaceAll("AUTOMATEX", "OPTIVOS");
 }

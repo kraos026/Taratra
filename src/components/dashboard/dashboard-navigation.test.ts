@@ -63,8 +63,22 @@ describe("dashboard interactions", () => {
       join(process.cwd(), "src/components/dashboard/interactive-dashboard.tsx"),
       "utf8",
     );
-    expect(dashboard).toContain("Le journal d’activité reste masqué pendant le pilote");
+    expect(dashboard).toContain("Le journal d’activité reste masqué pendant cette phase");
     expect(dashboard).toContain("Filtrage temporel bientôt disponible");
-    expect(dashboard).toContain("Activation commerciale après validation pilote");
+    expect(dashboard).toContain("Activation commerciale après validation");
+  });
+
+  it("keeps dashboard and recommendations language customer-facing", () => {
+    const files = [
+      "src/components/dashboard/interactive-dashboard.tsx",
+      "src/components/dashboard/feature-directory-page.tsx",
+      "src/app/recommendations/page.tsx",
+    ];
+    const offenders = files.filter((file) =>
+      /tenant-scoped|Sélectionnez une entreprise|Pilot only|Feedback pilote|organisation pilote|dossier pilote/i.test(
+        readFileSync(join(process.cwd(), file), "utf8"),
+      ),
+    );
+    expect(offenders).toEqual([]);
   });
 });

@@ -439,10 +439,10 @@ button:disabled {
   margin: 0;
 }
 .outline {
-  background: white;
-  border: 1px solid var(--line);
+  background: rgb(15 23 42 / 0.82);
+  border: 1px solid var(--opt-border);
   padding: 10px 13px;
-  color: #616977;
+  color: #cbd5e1;
 }
 .stats {
   display: grid;
@@ -451,8 +451,8 @@ button:disabled {
   margin-bottom: 17px;
 }
 .stats article {
-  background: #fff;
-  border: 1px solid var(--line);
+  background: linear-gradient(145deg, rgb(15 23 42 / 0.84), rgb(8 15 29 / 0.94));
+  border: 1px solid var(--opt-border);
   border-radius: 13px;
   padding: 17px;
   display: flex;
@@ -487,15 +487,16 @@ button:disabled {
 }
 .stats p {
   font-size: 11px;
-  color: #818895;
+  color: #cbd5e1;
   margin: 0 0 3px;
 }
 .stats strong {
   font: 800 22px Manrope;
+  color: #f8fafc;
 }
 .stats small {
   display: block;
-  color: #9299a4;
+  color: #94a3b8;
   font-size: 9px;
   margin-top: 3px;
 }
@@ -508,8 +509,8 @@ button:disabled {
   gap: 17px;
 }
 .panel {
-  background: white;
-  border: 1px solid var(--line);
+  background: linear-gradient(145deg, rgb(15 23 42 / 0.84), rgb(8 15 29 / 0.94));
+  border: 1px solid var(--opt-border);
   border-radius: 13px;
   padding: 20px;
 }
@@ -521,10 +522,11 @@ button:disabled {
 .panel-head h2 {
   font: 700 15px Manrope;
   margin: 0 0 4px;
+  color: #f8fafc;
 }
 .panel-head p {
   font-size: 10px;
-  color: #9097a3;
+  color: #94a3b8;
   margin: 0;
 }
 .panel-head a,
@@ -548,7 +550,7 @@ button:disabled {
   align-items: center;
   gap: 11px;
   padding: 12px 0;
-  border-top: 1px solid #f0f1f4;
+  border-top: 1px solid var(--opt-border);
 }
 .company-logo {
   width: 35px;
@@ -560,8 +562,8 @@ button:disabled {
   font-weight: 800;
 }
 .company-logo.violet {
-  background: #eee9ff;
-  color: #7052ec;
+  background: rgb(59 130 246 / 0.16);
+  color: #bfdbfe;
 }
 .company-logo.orange {
   background: #fff0e4;
@@ -577,10 +579,11 @@ button:disabled {
 }
 .company-name strong {
   font-size: 11px;
+  color: #f8fafc;
 }
 .company-name small {
   font-size: 9px;
-  color: #989faa;
+  color: #94a3b8;
   margin-top: 3px;
 }
 .badge {
@@ -624,7 +627,7 @@ button:disabled {
 }
 .progress {
   height: 4px;
-  background: #eceef2;
+  background: rgb(148 163 184 / 0.18);
   border-radius: 5px;
   margin-top: 5px;
   overflow: hidden;
@@ -670,7 +673,7 @@ button:disabled {
   content: "";
   position: absolute;
   inset: 10px;
-  background: white;
+  background: #0f172a;
   border-radius: 50%;
 }
 .ring.unavailable {
@@ -681,6 +684,7 @@ button:disabled {
 }
 .ring strong {
   font: 800 26px Manrope;
+  color: #f8fafc;
 }
 .ring span {
   font-size: 10px;
@@ -703,10 +707,11 @@ button:disabled {
 .score-copy h3 {
   font: 700 14px Manrope;
   margin: 8px 0 4px;
+  color: #f8fafc;
 }
 .score-copy p {
   font-size: 10px;
-  color: #8b929f;
+  color: #cbd5e1;
   line-height: 1.4;
   margin: 0 0 10px;
 }
@@ -845,7 +850,7 @@ button:disabled {
   text-decoration: none;
 }
 .empty-state {
-  color: #8b929f;
+  color: #cbd5e1;
   font-size: 11px;
   padding: 24px 0 8px;
 }
@@ -892,6 +897,7 @@ footer {
   .nav-item b,
   .upgrade,
   .profile div:nth-child(2),
+  .profile form,
   .profile > span {
     display: none;
   }

@@ -71,7 +71,7 @@ function statusLabel(value: string): string {
     contacted: "Dossier en préparation",
     audit_scheduled: "Audit planifié",
     audit_in_progress: "Audit en cours",
-    client: "Entreprise pilote",
+    client: "Entreprise active",
     archived: "Archivée",
   };
   return labels[value] ?? value.replaceAll("_", " ");
@@ -131,14 +131,14 @@ export function CompaniesList() {
         <div className="flex flex-col gap-6 xl:flex-row xl:items-end xl:justify-between">
           <div>
             <p className="flex items-center gap-2 text-xs font-bold tracking-[0.28em] text-blue-300 uppercase">
-              <Sparkles size={15} /> Espace pilote
+              <Sparkles size={15} /> Espace Optivos
             </p>
             <h1 className="mt-3 font-['Manrope'] text-3xl font-extrabold tracking-tight sm:text-5xl">
               Mon entreprise
             </h1>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
               Un point d’entrée simple pour lancer l’audit, suivre l’avancement et consulter les
-              décisions publiées. Aucun filtre commercial ni donnée fictive n’est affiché ici.
+              décisions publiées. L’interface reste centrée sur les preuves disponibles.
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
@@ -160,7 +160,7 @@ export function CompaniesList() {
 
       {hasHiddenFilters && (
         <section className="rounded-3xl border border-amber-400/25 bg-amber-500/10 p-4 text-sm text-amber-100">
-          <p className="font-semibold">Filtres hérités ignorés pour la vue pilote.</p>
+          <p className="font-semibold">Filtres non applicables ignorés.</p>
           <p className="mt-1 text-amber-100/80">
             La navigation normale vers Mon entreprise affiche les dossiers de votre organisation
             sans recherche restrictive ni e-mail injecté.
@@ -175,7 +175,9 @@ export function CompaniesList() {
         </section>
       )}
 
-      {loading && <PilotState title="Chargement…" text="Nous récupérons vos données réelles." />}
+      {loading && (
+        <PilotState title="Chargement…" text="Nous récupérons votre espace entreprise." />
+      )}
 
       {error && (
         <PilotState
@@ -267,7 +269,7 @@ export function CompaniesList() {
                     <PilotMetric
                       icon={<Building2 size={18} />}
                       label="Données"
-                      value="Réelles uniquement"
+                      value="Preuves publiées"
                     />
                   </div>
                 </article>
@@ -280,8 +282,8 @@ export function CompaniesList() {
             </p>
             <h2 className="mt-3 text-xl font-bold text-white">Avancer dans l’audit Optivos</h2>
             <p className="mt-3 text-sm leading-6 text-slate-300">
-              Le parcours pilote suit les preuves publiées : compréhension, processus, analyse,
-              opportunités, ROI, plan d’action puis résultats exécutifs.
+              Le parcours suit les preuves publiées : compréhension, processus, analyse,
+              opportunités, ROI, plan d’action puis résultats.
             </p>
             {primaryCompany && (
               <Link
