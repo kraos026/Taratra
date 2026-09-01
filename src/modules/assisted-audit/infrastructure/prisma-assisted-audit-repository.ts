@@ -183,14 +183,23 @@ export class PrismaAssistedAuditRepository implements AssistedAuditRepositoryPor
       `discovery:${discovery.id}:${discovery.version}`,
       `interview:${interview.id}:${interview.version}`,
     ]);
+    const sources = snapshots.length
+      ? await this.db.knowledgeSource.findMany({
+          where: { organizationId, snapshotId: { in: snapshots.map((snapshot) => snapshot.id) } },
+          select: { snapshotId: true, sourceType: true, sourceId: true, sourceVersion: true },
+        })
+      : [];
+    const sourcesBySnapshot = new Map<string, typeof sources>();
+    for (const source of sources) {
+      const existing = sourcesBySnapshot.get(source.snapshotId) ?? [];
+      existing.push(source);
+      sourcesBySnapshot.set(source.snapshotId, existing);
+    }
     for (const snapshot of snapshots) {
-      const sources = await this.db.knowledgeSource.findMany({
-        where: { organizationId, snapshotId: snapshot.id },
-        select: { sourceType: true, sourceId: true, sourceVersion: true },
-      });
+      const snapshotSources = sourcesBySnapshot.get(snapshot.id) ?? [];
       if (
-        sources.length === expected.size &&
-        sources.every((source) =>
+        snapshotSources.length === expected.size &&
+        snapshotSources.every((source) =>
           expected.has(`${source.sourceType}:${source.sourceId}:${source.sourceVersion}`),
         )
       )

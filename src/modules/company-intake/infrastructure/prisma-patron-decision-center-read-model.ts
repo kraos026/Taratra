@@ -15,16 +15,16 @@ export class PrismaPatronDecisionCenterReadModel implements PatronDecisionCenter
     readonly userId: string;
     readonly companyId: string;
   }): Promise<ExecutiveDecisionView | null> {
-    const membership = await this.db.organizationMember.findFirst({
-      where: { userId: input.userId },
-      select: { organizationId: true },
-    });
+    const [membership, result] = await Promise.all([
+      this.db.organizationMember.findFirst({
+        where: { userId: input.userId },
+        select: { organizationId: true },
+      }),
+      new ExecutiveResultService(new PrismaExecutiveResultRepository(this.db), input.userId).get(
+        input.companyId,
+      ),
+    ]);
     if (!membership) return null;
-
-    const result = await new ExecutiveResultService(
-      new PrismaExecutiveResultRepository(this.db),
-      input.userId,
-    ).get(input.companyId);
     if (!result || result.company.id !== input.companyId) return null;
 
     const projection = this.builder.build({

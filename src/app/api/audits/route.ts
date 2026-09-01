@@ -1,10 +1,17 @@
 import { auditCreateSchema, auditListSchema } from "@/modules/audits/application/audit-schemas";
 import { auditValidationError, withAuditService } from "@/modules/audits/presentation/audit-api";
 import { apiSuccess } from "@/shared/presentation/api-response";
+
+const AUDIT_LIST_READ_TRANSACTION_OPTIONS = { timeout: 10_000 };
+
 export async function GET(r: Request) {
   const q = auditListSchema.safeParse(Object.fromEntries(new URL(r.url).searchParams));
   if (!q.success) return auditValidationError("Invalid audit filters");
-  return withAuditService("audits.list", (s) => s.list(q.data).then(apiSuccess));
+  return withAuditService(
+    "audits.list",
+    (s) => s.list(q.data).then(apiSuccess),
+    AUDIT_LIST_READ_TRANSACTION_OPTIONS,
+  );
 }
 export async function POST(r: Request) {
   const input = auditCreateSchema.safeParse(await r.json().catch(() => null));

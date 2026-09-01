@@ -46,8 +46,8 @@ describe("PrismaAssistedAuditRepository", () => {
       { id: "stale", version: 4, status: "ready", createdAt: new Date() },
     ]);
     db.knowledgeSource.findMany.mockResolvedValue([
-      { sourceType: "discovery", sourceId: "discovery", sourceVersion: 1 },
-      { sourceType: "interview", sourceId: "interview", sourceVersion: 3 },
+      { snapshotId: "stale", sourceType: "discovery", sourceId: "discovery", sourceVersion: 1 },
+      { snapshotId: "stale", sourceType: "interview", sourceId: "interview", sourceVersion: 3 },
     ]);
     const result = await new PrismaAssistedAuditRepository(asDb(db)).read("user", "company");
     expect(result?.knowledge).toBeNull();
@@ -62,8 +62,18 @@ describe("PrismaAssistedAuditRepository", () => {
       { id: "knowledge", version: 1, status: "ready", createdAt: new Date() },
     ]);
     db.knowledgeSource.findMany.mockResolvedValue([
-      { sourceType: "discovery", sourceId: "discovery", sourceVersion: 2 },
-      { sourceType: "interview", sourceId: "interview", sourceVersion: 3 },
+      {
+        snapshotId: "knowledge",
+        sourceType: "discovery",
+        sourceId: "discovery",
+        sourceVersion: 2,
+      },
+      {
+        snapshotId: "knowledge",
+        sourceType: "interview",
+        sourceId: "interview",
+        sourceVersion: 3,
+      },
     ]);
     db.processMap.findMany.mockResolvedValue([
       versioned("process-map", "published", { processPatternId: "pattern" }),
@@ -97,6 +107,12 @@ describe("PrismaAssistedAuditRepository", () => {
     );
     expect(db.recommendationPortfolioSnapshot.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ roiSnapshotId: "roi" }) }),
+    );
+    expect(db.knowledgeSource.findMany).toHaveBeenCalledTimes(1);
+    expect(db.knowledgeSource.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ snapshotId: { in: ["knowledge"] } }),
+      }),
     );
   });
 });

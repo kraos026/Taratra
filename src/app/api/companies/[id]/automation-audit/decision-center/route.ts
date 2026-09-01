@@ -4,6 +4,8 @@ import { PatronDecisionCenterService } from "@/modules/company-intake/applicatio
 import { PrismaPatronDecisionCenterReadModel } from "@/modules/company-intake/infrastructure/prisma-patron-decision-center-read-model";
 import { apiError, apiSuccess } from "@/shared/presentation/api-response";
 
+const DOWNSTREAM_READ_TRANSACTION_OPTIONS = { timeout: 10_000 };
+
 export async function GET(_: Request, { params }: { readonly params: Promise<{ id: string }> }) {
   const { id } = await params;
   const supabase = await createClient();
@@ -11,11 +13,14 @@ export async function GET(_: Request, { params }: { readonly params: Promise<{ i
   const userId = data?.claims?.sub;
   if (error || !userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
 
-  const decisionCenter = await withAuthenticatedDatabase(userId, (db) =>
-    new PatronDecisionCenterService(new PrismaPatronDecisionCenterReadModel(db)).get({
-      userId,
-      companyId: id,
-    }),
+  const decisionCenter = await withAuthenticatedDatabase(
+    userId,
+    (db) =>
+      new PatronDecisionCenterService(new PrismaPatronDecisionCenterReadModel(db)).get({
+        userId,
+        companyId: id,
+      }),
+    DOWNSTREAM_READ_TRANSACTION_OPTIONS,
   );
 
   return apiSuccess({

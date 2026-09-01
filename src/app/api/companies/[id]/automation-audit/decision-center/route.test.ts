@@ -61,7 +61,9 @@ describe("GET /api/companies/:id/automation-audit/decision-center", () => {
         decisionCenter: { source: "EXECUTIVE_DECISION_VIEW", status: "READY" },
       },
     });
-    expect(withAuthenticatedDatabase).toHaveBeenCalledWith("user-a", expect.any(Function));
+    expect(withAuthenticatedDatabase).toHaveBeenCalledWith("user-a", expect.any(Function), {
+      timeout: 10_000,
+    });
     expect(serviceGet).toHaveBeenCalledWith({ userId: "user-a", companyId: "company-a" });
   });
 });

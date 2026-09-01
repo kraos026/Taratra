@@ -1,5 +1,8 @@
 import { createClient } from "@/infrastructure/supabase/server";
-import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
+import {
+  type AuthenticatedDatabaseTransactionOptions,
+  withAuthenticatedDatabase,
+} from "@/infrastructure/database/with-authenticated-database";
 import { apiError } from "@/shared/presentation/api-response";
 import { logError, logInfo } from "@/shared/infrastructure/logger";
 import { AuditError } from "../domain/audit-errors";
@@ -10,6 +13,7 @@ const DATA_LAYER_DIAGNOSTIC_MARKER = "AUTOMATEX_DIAG_39709BD";
 export async function withAuditService<Result>(
   action: string,
   operation: (service: AuditService, userId: string) => Promise<Result>,
+  transactionOptions?: AuthenticatedDatabaseTransactionOptions,
 ): Promise<Result | Response> {
   const supabase = await createClient();
   logInfo({ action, diagnosticMarker: DATA_LAYER_DIAGNOSTIC_MARKER, stage: "audits.auth.start" });
@@ -26,8 +30,10 @@ export async function withAuditService<Result>(
     return apiError("UNAUTHENTICATED", "Authentication required", 401);
   }
   try {
-    const result = await withAuthenticatedDatabase(userId, (db) =>
-      operation(new AuditService(new PrismaAuditRepository(db), userId), userId),
+    const result = await withAuthenticatedDatabase(
+      userId,
+      (db) => operation(new AuditService(new PrismaAuditRepository(db), userId), userId),
+      transactionOptions,
     );
     logInfo({ action, userId });
     return result;
