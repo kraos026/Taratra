@@ -48,7 +48,7 @@ export default function SignUpPage() {
     <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
       <Card className="w-full max-w-md">
         <CardHeader>
-          <CardTitle>Créer votre compte AutomateX</CardTitle>
+          <CardTitle>Créer votre compte Optivos</CardTitle>
           <CardDescription>Votre organisation sera créée à l’étape suivante.</CardDescription>
         </CardHeader>
         <CardContent>

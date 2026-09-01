@@ -8,9 +8,9 @@ import { Textarea } from "@/components/ui/textarea";
 const steps = ["company", "business", "organization", "software", "processes", "review"] as const;
 const labels = {
   company: "Entreprise",
-  business: "Business",
+  business: "Activité",
   organization: "Organisation",
-  software: "Logiciels",
+  software: "Outils",
   processes: "Processus",
   review: "Révision",
 };
@@ -109,39 +109,54 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
   if (busy && !session) return <WizardSkeleton />;
   if (!session)
     return (
-      <div role="status" className="mx-auto max-w-4xl space-y-4 rounded-xl border p-6">
-        <p>{message}</p>
-        <Button disabled={busy} onClick={startDiscovery}>
-          Démarrer la Discovery
+      <div role="status" className="opt-empty mx-auto max-w-4xl space-y-4 p-6">
+        <p>{message || "Aucune découverte active pour cette entreprise."}</p>
+        <Button className="opt-primary" disabled={busy} onClick={startDiscovery}>
+          Démarrer la découverte
         </Button>
       </div>
     );
   const readOnly = session.status === "validated";
   return (
-    <div className="mx-auto max-w-4xl space-y-6">
-      <header>
-        <p className="text-sm font-semibold text-violet-600">ENTERPRISE DISCOVERY</p>
-        <h1 className="text-3xl font-bold">Comprendre l’entreprise</h1>
-        <p className="text-neutral-500">Une étape à la fois. Vous pouvez reprendre plus tard.</p>
+    <div className="opt-container space-y-6">
+      <header className="opt-hero">
+        <p className="opt-eyebrow">Découverte guidée · {index + 1}/6</p>
+        <h1 className="opt-title mt-3">Comprendre votre entreprise</h1>
+        <p className="opt-copy mt-4 max-w-3xl">
+          Une section à la fois pour comprendre votre activité, vos outils et les processus à
+          améliorer. Vous pouvez sauvegarder et reprendre plus tard.
+        </p>
       </header>
-      <nav aria-label="Étapes Discovery" className="grid grid-cols-3 gap-2 md:grid-cols-6">
+      <nav aria-label="Étapes de découverte" className="grid grid-cols-2 gap-3 md:grid-cols-6">
         {steps.map((s, i) => (
           <button
             key={s}
             disabled={i > index + 1}
             onClick={() => setStep(s)}
-            className={`rounded-lg border p-3 text-xs ${s === step ? "border-violet-600 bg-violet-50 text-violet-700 dark:bg-violet-950" : ""}`}
+            className={`rounded-2xl border p-3 text-left text-xs transition ${
+              s === step
+                ? "border-blue-400/50 bg-blue-500/15 text-blue-100"
+                : "border-white/10 bg-slate-900/70 text-slate-400 hover:bg-white/5"
+            }`}
           >
-            <span className="block font-bold">{i + 1}</span>
+            <span className="mb-2 grid size-7 place-items-center rounded-full bg-white/10 font-bold">
+              {i + 1}
+            </span>
             {labels[s]}
           </button>
         ))}
       </nav>
-      <div className="h-2 overflow-hidden rounded bg-neutral-200">
-        <div className="h-full bg-violet-600 transition-all" style={{ width: `${progress}%` }} />
+      <div className="h-2 overflow-hidden rounded-full bg-white/10">
+        <div
+          className="h-full rounded-full bg-gradient-to-r from-blue-500 to-violet-500 transition-all"
+          style={{ width: `${progress}%` }}
+        />
       </div>
-      <Card>
-        <CardHeader>
+      <Card className="border-white/10 bg-slate-900/80 text-slate-50 shadow-2xl shadow-slate-950/20">
+        <CardHeader className="border-b border-white/10">
+          <p className="text-xs font-bold tracking-[0.2em] text-slate-500 uppercase">
+            Question principale
+          </p>
           <CardTitle>{labels[step]}</CardTitle>
         </CardHeader>
         <CardContent>
@@ -154,17 +169,25 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
         </span>
         <div className="flex gap-3">
           {index > 0 && (
-            <Button variant="outline" onClick={() => setStep(steps[index - 1])}>
+            <Button
+              className="opt-secondary"
+              variant="outline"
+              onClick={() => setStep(steps[index - 1])}
+            >
               Précédent
             </Button>
           )}
           {index < steps.length - 1 ? (
-            <Button disabled={busy || readOnly} onClick={() => save(steps[index + 1])}>
+            <Button
+              className="opt-primary"
+              disabled={busy || readOnly}
+              onClick={() => save(steps[index + 1])}
+            >
               Enregistrer et continuer
             </Button>
           ) : (
-            <Button disabled={busy || readOnly} onClick={validate}>
-              Valider la Discovery
+            <Button className="opt-primary" disabled={busy || readOnly} onClick={validate}>
+              Valider et continuer vers l’interview
             </Button>
           )}
         </div>
@@ -187,12 +210,15 @@ function Field({
 }) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={name}>{label}</Label>
+      <Label className="text-slate-200" htmlFor={name}>
+        {label}
+      </Label>
       <Input
         id={name}
         type={type}
         value={draft[name] ?? ""}
         onChange={(e) => setDraft({ ...draft, [name]: e.target.value })}
+        className="opt-input border-white/10 bg-slate-950/60"
       />
     </div>
   );
@@ -214,12 +240,14 @@ function SelectField({
 }) {
   return (
     <div className="space-y-2">
-      <Label htmlFor={name}>{label}</Label>
+      <Label className="text-slate-200" htmlFor={name}>
+        {label}
+      </Label>
       <select
         id={name}
         value={draft[name] ?? fallback}
         onChange={(event) => setDraft({ ...draft, [name]: event.target.value })}
-        className="bg-background h-10 w-full rounded-md border px-3"
+        className="opt-select h-11 px-3"
       >
         {options.map((option) => (
           <option key={option.value} value={option.value}>
@@ -391,9 +419,9 @@ function StepFields({
   return (
     <div className="space-y-4">
       <h3 className="font-semibold">Prêt pour validation</h3>
-      <p className="text-sm text-neutral-500">
-        Les données sont structurées et réutilisables par les futurs moteurs Interview, Process
-        Mapping et Intelligence.
+      <p className="text-sm text-slate-300">
+        Vérifiez le résumé avant de continuer. Les informations seront utilisées pour préparer les
+        prochaines questions et l’analyse de votre audit.
       </p>
       <label className="flex items-center gap-3">
         <input
@@ -401,7 +429,7 @@ function StepFields({
           checked={draft.confirmed === "true"}
           onChange={(e) => setDraft({ ...draft, confirmed: String(e.target.checked) })}
         />
-        Je confirme l’exactitude des informations.
+        Je confirme que ces informations sont suffisamment justes pour continuer.
       </label>
     </div>
   );
@@ -514,7 +542,7 @@ function WizardSkeleton() {
   return (
     <div role="status" aria-label="Chargement de Discovery" className="mx-auto max-w-4xl space-y-4">
       {[1, 2, 3].map((x) => (
-        <div key={x} className="h-28 animate-pulse rounded-xl bg-neutral-200 dark:bg-neutral-800" />
+        <div key={x} className="h-28 animate-pulse rounded-3xl bg-slate-900/80" />
       ))}
     </div>
   );

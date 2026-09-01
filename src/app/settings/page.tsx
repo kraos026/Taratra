@@ -2,7 +2,7 @@ import Link from "next/link";
 export default function SettingsPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-5 p-8">
-      <p className="text-sm font-semibold text-violet-600">AutomateX</p>
+      <p className="text-sm font-semibold text-violet-600">Optivos</p>
       <h1 className="text-3xl font-bold">Paramètres</h1>
       <div className="rounded-xl border bg-white p-6">
         <h2 className="font-semibold">Bientôt disponible</h2>

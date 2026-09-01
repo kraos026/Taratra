@@ -4,6 +4,8 @@ import { createClient } from "@/infrastructure/supabase/server";
 import { PrismaAutomationOpportunityRepository } from "@/modules/automation-opportunities/infrastructure/prisma-automation-opportunity-repository";
 import { AutomationOpportunitiesExplorer } from "@/modules/automation-opportunities/presentation/automation-opportunities-explorer";
 
+const DOWNSTREAM_READ_TRANSACTION_OPTIONS = { timeout: 10_000 };
+
 export default async function AutomationOpportunitiesPage({
   params,
 }: {
@@ -21,6 +23,7 @@ export default async function AutomationOpportunitiesPage({
       const context = await repo.context(userId);
       return context ? repo.detail(context.organizationId, id) : null;
     },
+    DOWNSTREAM_READ_TRANSACTION_OPTIONS,
   );
   if (!detail) notFound();
   return (

@@ -14,10 +14,8 @@ import {
   LayoutDashboard,
   Lightbulb,
   Search,
-  Settings,
   Sparkles,
   Target,
-  Users,
 } from "lucide-react";
 import { dashboardRoutes, dashboardSearchRoute } from "./dashboard-navigation";
 
@@ -46,11 +44,12 @@ type AdvancedAudit = {
 
 const navigation = [
   [LayoutDashboard, "Vue d’ensemble", dashboardRoutes.overview],
-  [Building2, "Entreprises", dashboardRoutes.companies],
-  [Users, "CRM", dashboardRoutes.crm],
-  [CircleGauge, "Audits", dashboardRoutes.audits],
-  [Lightbulb, "Recommandations", dashboardRoutes.recommendations],
-  [FileText, "Rapports", dashboardRoutes.reports],
+  [Building2, "Mon entreprise", dashboardRoutes.companies],
+  [CircleGauge, "Audit", dashboardRoutes.audit],
+  [Lightbulb, "Opportunités", dashboardRoutes.opportunities],
+  [BarChart3, "ROI", dashboardRoutes.roi],
+  [FileText, "Plan d’action", dashboardRoutes.actionPlan],
+  [Target, "Résultats", dashboardRoutes.results],
 ] as const;
 
 async function loadPage<T>(url: string): Promise<PagePayload<T>> {
@@ -122,45 +121,36 @@ export function InteractiveDashboard() {
   return (
     <main className="app-shell">
       <aside className="sidebar">
-        <Link className="brand" href={dashboardRoutes.overview} aria-label="Accueil AutomateX">
+        <Link className="brand" href={dashboardRoutes.overview} aria-label="Accueil Optivos">
           <span className="brand-mark">
             <Sparkles size={19} />
           </span>
           <span>
-            Automate<span>X</span>
+            Opti<span>vos</span>
           </span>
         </Link>
         <nav aria-label="Navigation principale">
-          <p className="nav-label">ESPACE DE TRAVAIL</p>
+          <p className="nav-label">PILOTE OPTIVOS</p>
           {navigation.map(([Icon, label, href]) => (
             <Link className={href === "/" ? "nav-item active" : "nav-item"} href={href} key={label}>
               <Icon size={19} />
               <span>{label}</span>
-              {label === "Audits" && activeAudits !== undefined && <b>{activeAudits}</b>}
+              {label === "Audit" && activeAudits !== undefined && <b>{activeAudits}</b>}
             </Link>
           ))}
-          <p className="nav-label second">GESTION</p>
-          <Link className="nav-item" href={dashboardRoutes.knowledge}>
-            <BarChart3 size={19} />
-            <span>Base de connaissances</span>
-          </Link>
-          <Link className="nav-item" href={dashboardRoutes.settings}>
-            <Settings size={19} />
-            <span>Paramètres</span>
-          </Link>
         </nav>
-        <div className="upgrade">
+        <div className="upgrade" aria-label="Cadre du pilote">
           <span>
             <Sparkles size={17} />
           </span>
-          <strong>AutomateX Pro</strong>
-          <p>L’offre Pro n’est pas encore disponible à la souscription.</p>
-          <button type="button" disabled title="Bientôt disponible">
-            Bientôt disponible
+          <strong>Pilote Optivos</strong>
+          <p>Audit privé sur optivos.vip, fondé sur vos données et vos preuves publiées.</p>
+          <button type="button" disabled title="Activation commerciale après validation pilote">
+            Pilot only
           </button>
         </div>
         <div className="profile">
-          <div className="avatar">AX</div>
+          <div className="avatar">OV</div>
           <div>
             <strong>Compte connecté</strong>
             <small>Espace sécurisé</small>
@@ -180,12 +170,12 @@ export function InteractiveDashboard() {
               Rechercher
             </button>
           </form>
-          <Link className="help" href={dashboardRoutes.settings} aria-label="Aide et paramètres">
+          <Link className="help" href="https://optivos.vip" aria-label="Aide Optivos">
             ?
           </Link>
           <Link className="primary" href={dashboardRoutes.companies}>
             <Sparkles size={17} />
-            Nouvel audit d&apos;automatisation
+            Lancer un audit Optivos
           </Link>
         </header>
 
@@ -193,16 +183,18 @@ export function InteractiveDashboard() {
           <div className="heading">
             <div>
               <p className="eyebrow">TABLEAU DE BORD</p>
-              <h1>Bienvenue dans AutomateX</h1>
-              <p>Vos données sont chargées depuis votre organisation sécurisée.</p>
+              <h1>Bienvenue dans Optivos</h1>
+              <p>
+                Votre cockpit pilote pour décider quoi automatiser, quoi corriger et quoi éviter.
+              </p>
             </div>
             <button
               className="outline"
               type="button"
               disabled
-              title="Journal d’activité bientôt disponible"
+              title="Le journal d’activité reste masqué pendant le pilote"
             >
-              Voir mon activité · Bientôt disponible
+              Feedback pilote · Préparé
             </button>
           </div>
 
@@ -218,7 +210,7 @@ export function InteractiveDashboard() {
                 <Building2 />
               </div>
               <div>
-                <p>Entreprises</p>
+                <p>Mon entreprise</p>
                 <strong>{companies?.total ?? "—"}</strong>
                 <small>Données réelles</small>
               </div>
@@ -240,7 +232,7 @@ export function InteractiveDashboard() {
               <div>
                 <p>Opportunités</p>
                 <strong>—</strong>
-                <small>Consultez une entreprise</small>
+                <small>Depuis l’audit publié</small>
               </div>
             </article>
             <article>
@@ -250,7 +242,7 @@ export function InteractiveDashboard() {
               <div>
                 <p>Heures économisables</p>
                 <strong>—</strong>
-                <small>Calcul non disponible globalement</small>
+                <small>Données complémentaires requises</small>
               </div>
             </article>
           </div>
@@ -259,25 +251,26 @@ export function InteractiveDashboard() {
             <section className="panel companies">
               <div className="panel-head">
                 <div>
-                  <h2>Entreprises récentes</h2>
-                  <p>Dernières entreprises de votre organisation</p>
+                  <h2>Mon entreprise</h2>
+                  <p>Dossiers récents de votre organisation pilote</p>
                 </div>
                 <Link href={dashboardRoutes.companies}>
-                  Voir toutes <ArrowRight size={15} />
+                  Ouvrir <ArrowRight size={15} />
                 </Link>
               </div>
               <div className="company-list">
                 {companies && companies.items.length === 0 && (
-                  <p className="empty-state">Aucune entreprise. Ajoutez votre premier client.</p>
+                  <p className="empty-state">Aucune entreprise. Créez votre dossier pilote.</p>
                 )}
                 {!companies && !error && <p className="empty-state">Chargement…</p>}
                 {companies?.items.map((company) => {
                   const advancedAudit = advancedAudits.get(company.id);
+                  const companyName = brandText(company.name);
                   return (
                     <div className="company" key={company.id}>
-                      <div className="company-logo violet">{initials(company.name)}</div>
+                      <div className="company-logo violet">{initials(companyName)}</div>
                       <div className="company-name">
-                        <strong>{company.name}</strong>
+                        <strong>{companyName}</strong>
                         <small>{company.sectorId ?? "Secteur non renseigné"}</small>
                       </div>
                       <div className={`badge ${advancedAudit ? "running" : "todo"}`}>
@@ -298,7 +291,7 @@ export function InteractiveDashboard() {
                       <Link
                         className="company-open"
                         href={`/companies/${company.id}/automation-audit`}
-                        aria-label={`Ouvrir l'audit avancé de ${company.name}`}
+                        aria-label={`Ouvrir l'audit avancé de ${companyName}`}
                       >
                         <ChevronRight />
                       </Link>
@@ -333,10 +326,9 @@ export function InteractiveDashboard() {
                 <div className="score-copy">
                   <h3>Aucune moyenne globale calculée</h3>
                   <p>
-                    AutomateX n’invente pas de score. Ouvrez un audit réel pour consulter son
-                    analyse.
+                    Optivos n’invente pas de score. Ouvrez un audit réel pour consulter son analyse.
                   </p>
-                  <Link href={dashboardRoutes.audits}>
+                  <Link href={dashboardRoutes.companies}>
                     Voir l’analyse <ArrowRight size={14} />
                   </Link>
                 </div>
@@ -346,14 +338,24 @@ export function InteractiveDashboard() {
             <section className="panel activity">
               <div className="panel-head">
                 <div>
-                  <h2>Activité récente</h2>
-                  <p>Le journal d’activité global n’est pas encore disponible</p>
+                  <h2>États de décision</h2>
+                  <p>Optivos distingue décision, preuve manquante et contrôle humain</p>
                 </div>
-                <button type="button" disabled title="Bientôt disponible">
+                <button
+                  type="button"
+                  disabled
+                  title="Exécution opérationnelle masquée pendant le pilote"
+                >
                   •••
                 </button>
               </div>
-              <p className="empty-state">Bientôt disponible</p>
+              <div className="grid gap-2 text-sm text-neutral-600">
+                <p className="empty-state">Automatiser maintenant · après résultat publié</p>
+                <p className="empty-state">Corriger avant d’automatiser · après analyse</p>
+                <p className="empty-state">
+                  Données complémentaires requises · visible dans le ROI
+                </p>
+              </div>
             </section>
 
             <section className="cta">
@@ -362,20 +364,24 @@ export function InteractiveDashboard() {
               </div>
               <div>
                 <span>PRÊT À COMMENCER ?</span>
-                <h2>Lancez votre prochain audit d&apos;automatisation</h2>
-                <p>Sélectionnez une entreprise pour ouvrir son parcours d&apos;analyse avancé.</p>
+                <h2>Lancez votre audit pilote Optivos</h2>
+                <p>Sélectionnez votre entreprise pour suivre le parcours canonique complet.</p>
               </div>
               <Link className="cta-link" href={dashboardRoutes.companies}>
-                Choisir une entreprise <ArrowRight size={17} />
+                Ouvrir mon entreprise <ArrowRight size={17} />
               </Link>
             </section>
           </div>
           <footer>
-            <span>AutomateX · Fondations sécurisées</span>
+            <span>Optivos · Fondations sécurisées</span>
             <span>Aucune donnée métier n’est simulée sur ce tableau de bord.</span>
           </footer>
         </div>
       </section>
     </main>
   );
+}
+
+function brandText(value: string): string {
+  return value.replaceAll("AutomateX", "Optivos").replaceAll("AUTOMATEX", "OPTIVOS");
 }

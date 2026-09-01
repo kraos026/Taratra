@@ -17,8 +17,8 @@ export function AuthShell({
     <main className="flex min-h-screen items-center justify-center bg-[#050914] px-4 py-10 text-slate-100">
       <div className="w-full max-w-md space-y-6">
         <div className="text-center">
-          <p className="text-sm font-semibold tracking-[0.22em] text-blue-400">AUTOMATEX</p>
-          <p className="mt-2 text-sm text-slate-400">Enterprise Automation Intelligence</p>
+          <p className="text-sm font-semibold tracking-[0.22em] text-blue-400">OPTIVOS</p>
+          <p className="mt-2 text-sm text-slate-400">Audit et intelligence d’automatisation</p>
         </div>
         <Card className="border-slate-800 bg-slate-950 text-slate-100 shadow-2xl shadow-blue-950/20">
           <CardHeader>

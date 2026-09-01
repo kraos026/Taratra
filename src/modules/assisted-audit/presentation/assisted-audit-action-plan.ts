@@ -18,7 +18,7 @@ export type AuditActionPresentation =
 const copy: Record<AssistedAuditAction, { label: string; description: string }> = {
   START_DISCOVERY: {
     label: "Start company discovery",
-    description: "Tell AutomateX how your company is organized and operates.",
+    description: "Tell Optivos how your company is organized and operates.",
   },
   CONTINUE_DISCOVERY: {
     label: "Continue company discovery",
@@ -50,7 +50,7 @@ const copy: Record<AssistedAuditAction, { label: string; description: string }> 
   },
   SELECT_PROCESS_MAP: {
     label: "Choose a process",
-    description: "Choose the process you want AutomateX to analyze first.",
+    description: "Choose the process you want Optivos to analyze first.",
   },
   VALIDATE_PROCESS_MAP: {
     label: "Confirm the process map",

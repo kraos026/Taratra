@@ -45,8 +45,8 @@ export default function LoginPage() {
 
   return (
     <AuthShell
-      title="Connexion AutomateX"
-      description="Connectez-vous avec votre compte existant."
+      title="Connexion Optivos"
+      description="Connectez-vous à votre espace pilote sécurisé."
       footer={{ href: "/signup", label: "Créer un compte" }}
     >
       <form className="space-y-4" method="post" onSubmit={(event) => void submit(event)}>
@@ -68,7 +68,7 @@ export default function LoginPage() {
         />
         <div className="text-right">
           <Link className="text-sm text-blue-400 hover:text-blue-300" href="/signup">
-            Nouveau sur AutomateX ?
+            Nouveau sur Optivos ?
           </Link>
         </div>
         <Button

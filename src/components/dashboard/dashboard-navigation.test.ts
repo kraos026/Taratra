@@ -19,13 +19,12 @@ describe("dashboard interactions", () => {
     expect(dashboardRoutes).toEqual({
       overview: "/",
       companies: "/companies",
-      crm: "/companies?view=crm",
-      audits: "/audits",
-      recommendations: "/recommendations",
-      reports: "/reports",
-      knowledge: "/questionnaires",
-      settings: "/settings",
-      newAudit: "/audits/new",
+      audit: "/companies",
+      opportunities: "/recommendations",
+      roi: "/companies",
+      actionPlan: "/recommendations",
+      results: "/companies",
+      newAudit: "/companies",
     });
     expect(Object.values(dashboardRoutes)).not.toContain("#");
   });
@@ -55,7 +54,7 @@ describe("dashboard interactions", () => {
     );
     expect(dashboard).toContain("href={dashboardRoutes.companies}");
     expect(dashboard).toContain("/automation-audit");
-    expect(dashboard).toContain("href={dashboardRoutes.audits}");
+    expect(dashboard).toContain("dashboardRoutes.opportunities");
     expect(dashboard).toContain("onSubmit={search}");
   });
 
@@ -64,8 +63,8 @@ describe("dashboard interactions", () => {
       join(process.cwd(), "src/components/dashboard/interactive-dashboard.tsx"),
       "utf8",
     );
-    expect(dashboard).toContain("Journal d’activité bientôt disponible");
+    expect(dashboard).toContain("Le journal d’activité reste masqué pendant le pilote");
     expect(dashboard).toContain("Filtrage temporel bientôt disponible");
-    expect(dashboard).toContain("L’offre Pro n’est pas encore disponible");
+    expect(dashboard).toContain("Activation commerciale après validation pilote");
   });
 });

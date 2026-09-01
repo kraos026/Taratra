@@ -40,11 +40,11 @@ export function AuditList() {
     <div className="mx-auto max-w-6xl space-y-6 p-6">
       <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold text-violet-600">AutomateX</p>
+          <p className="text-sm font-semibold text-violet-600">Optivos</p>
           <h1 className="text-3xl font-bold">Audits</h1>
           <p className="text-sm text-neutral-500">Audits réels de votre organisation.</p>
         </div>
-        <Link className={buttonVariants()} href="/audits/new">
+        <Link className={buttonVariants()} href="/companies">
           <Plus size={17} /> Nouvel audit
         </Link>
       </div>

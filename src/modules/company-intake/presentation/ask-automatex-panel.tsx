@@ -17,7 +17,7 @@ export function AskAutomateXPanel({ center }: { readonly center: PatronDecisionC
   if (center.status === "UNAVAILABLE")
     return (
       <p className="rounded-lg border border-dashed border-slate-700 bg-slate-950/50 p-3 text-sm text-slate-400">
-        Ask AutomateX becomes available after an ExecutiveDecisionView is published.
+        Ask Optivos devient disponible après publication du résultat exécutif.
       </p>
     );
 
@@ -49,7 +49,7 @@ export function AskAutomateXPanel({ center }: { readonly center: PatronDecisionC
       setPreviousIntent(payload.data.intent);
       setQuestion("");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Ask AutomateX is unavailable.");
+      setError(caught instanceof Error ? caught.message : "Ask Optivos is unavailable.");
     } finally {
       setLoading(false);
     }
@@ -65,13 +65,13 @@ export function AskAutomateXPanel({ center }: { readonly center: PatronDecisionC
         }}
       >
         <label className="text-sm font-medium text-slate-200" htmlFor="ask-automatex-question">
-          Your question
+          Votre question
         </label>
         <Textarea
           id="ask-automatex-question"
           value={question}
           onChange={(event) => setQuestion(event.target.value)}
-          placeholder="Example: Why shouldn't we automate this control?"
+          placeholder="Exemple : pourquoi ne faut-il pas encore automatiser ce contrôle ?"
           className="border-blue-900/60 bg-slate-950/80 text-slate-50 placeholder:text-slate-500"
         />
         <Button
@@ -79,7 +79,7 @@ export function AskAutomateXPanel({ center }: { readonly center: PatronDecisionC
           disabled={loading || !question.trim()}
           className="w-fit bg-blue-600 hover:bg-blue-500"
         >
-          {loading ? "Asking..." : "Ask AutomateX"}
+          {loading ? "Analyse..." : "Ask Optivos"}
         </Button>
       </form>
 
@@ -124,24 +124,28 @@ function AskAnswer({ answer }: { readonly answer: AskAutomateXResponse }) {
           </span>
         ) : null}
       </div>
-      <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-slate-100">{answer.answer}</p>
+      <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-slate-100">
+        {brandText(answer.answer)}
+      </p>
       {answer.unknowns.length || answer.contradictions.length ? (
         <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
-          <p className="text-sm font-semibold text-amber-100">Uncertainty remains visible</p>
+          <p className="text-sm font-semibold text-amber-100">
+            Incertitudes et contradictions restent visibles
+          </p>
           <ul className="mt-2 space-y-1 text-sm text-amber-50">
             {[...answer.unknowns, ...answer.contradictions].map((item) => (
-              <li key={item}>{item}</li>
+              <li key={item}>{brandText(item)}</li>
             ))}
           </ul>
         </div>
       ) : null}
       {answer.supportingEvidence.length ? (
         <details className="mt-4 rounded-lg border border-slate-800 bg-slate-900/80 p-3">
-          <summary className="cursor-pointer font-semibold text-blue-200">View evidence</summary>
+          <summary className="cursor-pointer font-semibold text-blue-200">Voir les preuves</summary>
           <ul className="mt-2 space-y-2 text-sm text-slate-300">
             {answer.supportingEvidence.map((evidence) => (
               <li key={`${evidence.label}:${evidence.supports}`}>
-                {evidence.label} — {evidence.supports}
+                {brandText(evidence.label)} — {brandText(evidence.supports)}
               </li>
             ))}
           </ul>
@@ -151,16 +155,22 @@ function AskAnswer({ answer }: { readonly answer: AskAutomateXResponse }) {
   );
 }
 
+function brandText(value: string): string {
+  return value.replaceAll("AutomateX", "Optivos").replaceAll("AUTOMATEX", "OPTIVOS");
+}
+
 function suggestedAskQuestions(center: PatronDecisionCenter): readonly string[] {
   const questions = [
-    "Why is this the top problem?",
-    "What evidence supports this?",
-    "What is still uncertain?",
-    "What should we fix first?",
-    "What would change this decision?",
-    center.doNotAutomate.length ? "Why should we not automate this?" : "What can we automate?",
-    "What other options exist?",
-    "Is this economically justified?",
+    "Que faut-il automatiser en premier ?",
+    "Pourquoi cette priorité ?",
+    "Quelles preuves soutiennent cette décision ?",
+    "Quelles données manquent encore ?",
+    "Que ne faut-il pas automatiser pour l’instant ?",
+    center.doNotAutomate.length
+      ? "Pourquoi cette automatisation est-elle déconseillée ?"
+      : "Quelles options sont prêtes ?",
+    "Quels risques ou contrôles humains comptent ?",
+    "Le ROI est-il suffisamment justifié ?",
   ];
   return Object.freeze(questions.slice(0, 6));
 }
