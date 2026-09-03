@@ -17,6 +17,13 @@ import {
   Sparkles,
   Target,
 } from "lucide-react";
+import type { AssistedAuditReadModel } from "@/modules/assisted-audit/application/assisted-audit-model";
+import {
+  currentJourneyLabel,
+  customerJourneyRoutes,
+  customerStatusLabel,
+  journeyProgress,
+} from "@/modules/assisted-audit/presentation/canonical-journey";
 import { dashboardRoutes, dashboardSearchRoute } from "./dashboard-navigation";
 
 type Company = {
@@ -35,22 +42,6 @@ type Audit = {
 };
 
 type PagePayload<T> = { items: T[]; total: number };
-
-type AdvancedAudit = {
-  currentStage: string;
-  overallStatus: string;
-  nextAction: string | null;
-};
-
-const navigation = [
-  [LayoutDashboard, "Vue d’ensemble", dashboardRoutes.overview],
-  [Building2, "Mon entreprise", dashboardRoutes.companies],
-  [CircleGauge, "Audit", dashboardRoutes.audit],
-  [Lightbulb, "Opportunités", dashboardRoutes.opportunities],
-  [BarChart3, "ROI", dashboardRoutes.roi],
-  [FileText, "Plan d’action", dashboardRoutes.actionPlan],
-  [Target, "Résultats", dashboardRoutes.results],
-] as const;
 
 async function loadPage<T>(url: string): Promise<PagePayload<T>> {
   const response = await fetch(url, { cache: "no-store" });
@@ -73,15 +64,13 @@ function initials(name: string): string {
     .join("");
 }
 
-function dashboardCompanyLabel(index: number): string {
-  return `Dossier entreprise ${index + 1}`;
-}
-
 export function InteractiveDashboard() {
   const router = useRouter();
   const [companies, setCompanies] = useState<PagePayload<Company>>();
   const [audits, setAudits] = useState<PagePayload<Audit>>();
-  const [advancedAudits, setAdvancedAudits] = useState<Map<string, AdvancedAudit>>(new Map());
+  const [advancedAudits, setAdvancedAudits] = useState<Map<string, AssistedAuditReadModel>>(
+    new Map(),
+  );
   const [error, setError] = useState<string>();
 
   useEffect(() => {
@@ -97,14 +86,16 @@ export function InteractiveDashboard() {
             const response = await fetch(`/api/companies/${company.id}/automation-audit`, {
               cache: "no-store",
             });
-            const payload = (await response.json()) as { data?: AdvancedAudit };
+            const payload = (await response.json()) as { data?: AssistedAuditReadModel };
             return [company.id, response.ok ? payload.data : undefined] as const;
           }),
         );
       })
       .then((rows) => {
         setAdvancedAudits(
-          new Map(rows.filter((row): row is readonly [string, AdvancedAudit] => Boolean(row[1]))),
+          new Map(
+            rows.filter((row): row is readonly [string, AssistedAuditReadModel] => Boolean(row[1])),
+          ),
         );
       })
       .catch((reason: unknown) =>
@@ -115,6 +106,26 @@ export function InteractiveDashboard() {
   const activeAudits = audits?.items.filter((audit) =>
     ["draft", "in_progress", "completed"].includes(audit.status),
   ).length;
+  const activeCompany = companies?.items[0];
+  const activeModel = activeCompany ? advancedAudits.get(activeCompany.id) : undefined;
+  const activeRoutes = activeCompany
+    ? customerJourneyRoutes(activeCompany.id, activeModel)
+    : {
+        audit: dashboardRoutes.companies,
+        opportunities: dashboardRoutes.companies,
+        roi: dashboardRoutes.companies,
+        actionPlan: dashboardRoutes.companies,
+        results: dashboardRoutes.companies,
+      };
+  const navigation = [
+    [LayoutDashboard, "Vue d’ensemble", dashboardRoutes.overview],
+    [Building2, "Mon entreprise", dashboardRoutes.companies],
+    [CircleGauge, "Audit", activeRoutes.audit],
+    [Lightbulb, "Opportunités", activeRoutes.opportunities],
+    [BarChart3, "ROI", activeRoutes.roi],
+    [FileText, "Plan d’action", activeRoutes.actionPlan],
+    [Target, "Résultats", activeRoutes.results],
+  ] as const;
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -265,9 +276,9 @@ export function InteractiveDashboard() {
                   <p className="empty-state">Aucune entreprise. Créez votre premier dossier.</p>
                 )}
                 {!companies && !error && <p className="empty-state">Chargement…</p>}
-                {companies?.items.map((company, index) => {
+                {companies?.items.map((company) => {
                   const advancedAudit = advancedAudits.get(company.id);
-                  const companyName = dashboardCompanyLabel(index);
+                  const companyName = company.name;
                   return (
                     <div className="company" key={company.id}>
                       <div className="company-logo violet">{initials(companyName)}</div>
@@ -278,16 +289,20 @@ export function InteractiveDashboard() {
                       <div className={`badge ${advancedAudit ? "running" : "todo"}`}>
                         <i />
                         {advancedAudit
-                          ? advancedAudit.overallStatus.replaceAll("_", " ")
-                          : "Audit avancé à démarrer"}
+                          ? customerStatusLabel(advancedAudit.overallStatus)
+                          : "Audit à démarrer"}
                       </div>
                       <div className="progress-wrap">
                         <div>
-                          <span>Parcours avancé</span>
-                          <b>{advancedAudit?.currentStage.replaceAll("_", " ") ?? "Discovery"}</b>
+                          <span>Parcours Optivos</span>
+                          <b>{advancedAudit ? currentJourneyLabel(advancedAudit) : "À démarrer"}</b>
                         </div>
                         <div className="progress">
-                          <i style={{ width: advancedAudit ? "100%" : "0%" }} />
+                          <i
+                            style={{
+                              width: `${advancedAudit ? journeyProgress(advancedAudit) : 0}%`,
+                            }}
+                          />
                         </div>
                       </div>
                       <Link

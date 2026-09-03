@@ -10,8 +10,8 @@ describe("AutomationAuditView", () => {
     expect(html).toContain("Compréhension");
     expect(html).toContain("En cours");
     expect(html).toContain("Continuer l’entretien");
-    expect(html).toContain("1 / 9 étapes terminées");
-    expect(html).toContain("7 étapes lisibles côté métier");
+    expect(html).toContain("Progression validée, sans estimation");
+    expect(html).toContain("De la compréhension à la décision");
   });
 
   it("links Discovery and Interview actions to their canonical screens", () => {

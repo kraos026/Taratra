@@ -6,7 +6,7 @@ const labels: Record<CompanyStatus, string> = {
   contacted: "Dossier en préparation",
   audit_scheduled: "Audit planifié",
   audit_in_progress: "Audit en cours",
-  client: "Entreprise pilote",
+  client: "Dossier actif",
   archived: "Archivé",
 };
 

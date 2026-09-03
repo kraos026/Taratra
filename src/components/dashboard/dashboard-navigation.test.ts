@@ -54,7 +54,8 @@ describe("dashboard interactions", () => {
     );
     expect(dashboard).toContain("href={dashboardRoutes.companies}");
     expect(dashboard).toContain("/automation-audit");
-    expect(dashboard).toContain("dashboardRoutes.opportunities");
+    expect(dashboard).toContain("customerJourneyRoutes");
+    expect(dashboard).toContain("activeRoutes.opportunities");
     expect(dashboard).toContain("onSubmit={search}");
   });
 
@@ -80,5 +81,28 @@ describe("dashboard interactions", () => {
       ),
     );
     expect(offenders).toEqual([]);
+  });
+
+  it("keeps the recommendation bridge aligned with the engine sequence", () => {
+    const bridge = readFileSync(
+      join(process.cwd(), "src/components/dashboard/feature-directory-page.tsx"),
+      "utf8",
+    );
+    const journey = readFileSync(
+      join(process.cwd(), "src/modules/assisted-audit/presentation/canonical-journey.ts"),
+      "utf8",
+    );
+    expect(bridge).toContain("Parcours moteur");
+    expect(bridge).toContain("buildCustomerJourney");
+    expect(journey).toContain("DISCOVERY");
+    expect(journey).toContain("INTERVIEW");
+    expect(journey).toContain("KNOWLEDGE");
+    expect(journey).toContain("PROCESS_MAP");
+    expect(journey).toContain("BUSINESS_ANALYSIS");
+    expect(journey).toContain("AI_OPPORTUNITIES");
+    expect(journey).toContain("AUTOMATION_OPPORTUNITIES");
+    expect(journey).toContain("ROI");
+    expect(journey).toContain("RECOMMENDATIONS");
+    expect(journey).toContain("COMPLETED");
   });
 });

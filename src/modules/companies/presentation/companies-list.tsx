@@ -149,10 +149,6 @@ export function CompaniesList() {
               >
                 Continuer l’audit <ArrowRight size={17} />
               </Link>
-            ) : result?.permissions.canWrite ? (
-              <Button onClick={() => router.push("/companies/new")}>
-                <Plus size={17} /> Créer mon entreprise
-              </Button>
             ) : null}
           </div>
         </div>
@@ -194,8 +190,8 @@ export function CompaniesList() {
 
       {!loading && !error && result?.items.length === 0 && (
         <PilotState
-          title="Bienvenue sur Optivos"
-          text="Commencez par décrire votre entreprise pour lancer votre premier audit."
+          title="Préparons votre première décision"
+          text="Renseignez le contexte essentiel de votre entreprise. Optivos vous guidera ensuite, étape par étape, jusqu’aux recommandations et au plan d’action."
           action={
             result.permissions.canWrite ? (
               <Button onClick={() => router.push("/companies/new")}>

@@ -14,12 +14,12 @@ import type { CompanyView } from "./company-view";
 const creationFields = [
   ["name", "Nom de l’entreprise", true, "text"],
   ["sectorId", "Secteur", false, "text"],
-  ["employeeCount", "Nombre d’employés", false, "number"],
-  ["country", "Pays", false, "text"],
 ] as const;
 
 const editFields = [
   ...creationFields,
+  ["employeeCount", "Nombre d’employés", false, "number"],
+  ["country", "Pays", false, "text"],
   ["primaryContactName", "Contact principal", false, "text"],
   ["primaryContactRole", "Fonction du contact", false, "text"],
   ["phone", "Téléphone", false, "text"],
@@ -28,6 +28,14 @@ const editFields = [
   ["address", "Adresse", false, "text"],
   ["city", "Ville", false, "text"],
 ] as const;
+
+const sizeLabels: Record<(typeof companySizes)[number], string> = {
+  micro: "Microentreprise",
+  small: "Petite entreprise",
+  medium: "Moyenne entreprise",
+  large: "Grande entreprise",
+  enterprise: "Grande organisation",
+};
 
 export function CompanyForm({ company }: { company?: CompanyView }) {
   const router = useRouter();
@@ -68,16 +76,18 @@ export function CompanyForm({ company }: { company?: CompanyView }) {
   }
 
   return (
-    <Card className="overflow-hidden border-white/10 bg-slate-900/80 text-slate-50 shadow-2xl shadow-slate-950/30">
-      <CardHeader className="border-b border-white/10 bg-gradient-to-br from-slate-900 to-blue-950/40 p-6 sm:p-8">
-        <p className="opt-eyebrow">{company ? "Dossier entreprise" : "Onboarding Optivos"}</p>
+    <Card className="mx-auto max-w-5xl overflow-hidden border-white/10 bg-slate-900/80 text-slate-50 shadow-2xl shadow-slate-950/30">
+      <CardHeader className="border-b border-white/10 bg-gradient-to-br from-slate-900 to-blue-950/40 p-6 sm:p-7">
+        <p className="opt-eyebrow">
+          {company ? "Dossier entreprise" : "Première étape · 2 minutes"}
+        </p>
         <CardTitle className="mt-2 font-['Manrope'] text-3xl font-extrabold">
           {company ? "Modifier l’entreprise" : "Créer mon entreprise"}
         </CardTitle>
         <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
           {company
             ? "Ajustez les informations utiles à votre audit."
-            : "Quelques informations suffisent pour ouvrir le dossier. Le détail métier viendra ensuite dans Discovery."}
+            : "Deux informations suffisent pour ouvrir votre espace. Les questions métier viendront ensuite, une étape à la fois."}
         </p>
       </CardHeader>
       <CardContent className="p-6 sm:p-8">
@@ -99,24 +109,26 @@ export function CompanyForm({ company }: { company?: CompanyView }) {
                 />
               </div>
             ))}
-            <div>
-              <Label className="text-slate-200" htmlFor="companySize">
-                Taille
-              </Label>
-              <select
-                id="companySize"
-                name="companySize"
-                defaultValue={company?.companySize ?? ""}
-                className="opt-select mt-2 h-11 px-3 text-sm"
-              >
-                <option value="">Non renseignée</option>
-                {companySizes.map((size) => (
-                  <option key={size} value={size}>
-                    {size}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {company ? (
+              <div>
+                <Label className="text-slate-200" htmlFor="companySize">
+                  Taille
+                </Label>
+                <select
+                  id="companySize"
+                  name="companySize"
+                  defaultValue={company.companySize ?? ""}
+                  className="opt-select mt-2 h-11 px-3 text-sm"
+                >
+                  <option value="">Non renseignée</option>
+                  {companySizes.map((size) => (
+                    <option key={size} value={size}>
+                      {sizeLabels[size]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             {company ? (
               <div>
                 <Label className="text-slate-200" htmlFor="status">
@@ -140,15 +152,19 @@ export function CompanyForm({ company }: { company?: CompanyView }) {
             )}
             <div className="md:col-span-2">
               <Label className="text-slate-200" htmlFor="description">
-                Que fait votre entreprise ?
+                En une phrase, que fait votre entreprise ?{" "}
+                <span className="text-slate-500">(facultatif)</span>
               </Label>
               <Textarea
-                className="opt-textarea mt-2 min-h-28 border-white/10 bg-slate-950/60"
+                className="opt-textarea mt-2 min-h-32 resize-y border-white/10 bg-slate-950/60 p-4 leading-6 text-slate-50"
                 id="description"
                 name="description"
                 defaultValue={company?.description ?? ""}
-                placeholder="Ex. services B2B, opérations internes, équipes concernées…"
+                placeholder="Ex. Nous gérons un hôtel de 20 chambres et accueillons principalement des voyageurs d’affaires."
               />
+              <p className="mt-2 text-xs text-slate-500">
+                Pas besoin d’être exhaustif : vous préciserez le fonctionnement pendant l’audit.
+              </p>
             </div>
             {company ? (
               <div className="md:col-span-2">
@@ -182,7 +198,7 @@ export function CompanyForm({ company }: { company?: CompanyView }) {
               Annuler
             </Button>
             <Button className="opt-primary" type="submit" disabled={pending}>
-              {pending ? "Enregistrement…" : company ? "Enregistrer" : "Continuer"}
+              {pending ? "Création…" : company ? "Enregistrer" : "Créer mon espace et continuer"}
             </Button>
           </div>
         </form>

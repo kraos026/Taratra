@@ -1,4 +1,7 @@
+"use client";
+
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   BarChart3,
   Building2,
@@ -20,6 +23,30 @@ const pilotNavigation = [
 ] as const;
 
 export default function CompaniesLayout({ children }: { children: React.ReactNode }) {
+  const pathname = usePathname();
+  const companyId = pathname.match(/^\/companies\/([^/]+)/)?.[1];
+
+  function navigationHref(label: (typeof pilotNavigation)[number][1], fallback: string): string {
+    if (!companyId) return fallback;
+    if (label === "Mon entreprise") return `/companies/${companyId}`;
+    if (label === "Audit") return `/companies/${companyId}/automation-audit`;
+    if (label === "Résultats") return `/companies/${companyId}/automation-audit/results`;
+    if (label === "Opportunités" || label === "ROI" || label === "Plan d’action")
+      return `/companies/${companyId}/automation-audit`;
+    return fallback;
+  }
+
+  function isActive(label: (typeof pilotNavigation)[number][1]): boolean {
+    if (/\/results/.test(pathname)) return label === "Résultats";
+    if (/\/recommendations\//.test(pathname)) return label === "Plan d’action";
+    if (/\/roi\//.test(pathname)) return label === "ROI";
+    if (/\/automation-opportunities|\/ai-opportunities/.test(pathname))
+      return label === "Opportunités";
+    if (/\/automation-audit|\/discovery|\/interview|\/process-maps/.test(pathname))
+      return label === "Audit";
+    return label === "Mon entreprise";
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-50">
       <aside className="fixed inset-y-0 left-0 z-10 hidden w-72 border-r border-white/10 bg-slate-950/95 px-5 py-6 lg:flex lg:flex-col">
@@ -29,16 +56,16 @@ export default function CompaniesLayout({ children }: { children: React.ReactNod
           </span>
           Optivos
         </Link>
-        <nav className="mt-10 space-y-1" aria-label="Navigation pilote">
+        <nav className="mt-10 space-y-1" aria-label="Navigation principale">
           <p className="px-3 text-xs font-bold tracking-[0.22em] text-slate-500 uppercase">
-            Pilote
+            Espace de travail
           </p>
           {pilotNavigation.map(([Icon, label, href]) => (
             <Link
               key={label}
-              href={href}
+              href={navigationHref(label, href)}
               className={`flex items-center gap-3 rounded-2xl px-3 py-3 text-sm transition ${
-                label === "Mon entreprise"
+                isActive(label)
                   ? "bg-blue-500/15 text-blue-100 ring-1 ring-blue-400/30"
                   : "text-slate-400 hover:bg-white/5 hover:text-slate-100"
               }`}
@@ -49,9 +76,9 @@ export default function CompaniesLayout({ children }: { children: React.ReactNod
           ))}
         </nav>
         <div className="mt-auto rounded-3xl border border-blue-400/20 bg-blue-500/10 p-4 text-sm text-slate-300">
-          <p className="font-semibold text-blue-100">Audit privé Optivos</p>
+          <p className="font-semibold text-blue-100">Décisions fondées sur les preuves</p>
           <p className="mt-2 text-xs leading-5">
-            Toutes les vues pilote restent fondées sur les données publiées de votre entreprise.
+            Optivos distingue les faits, les estimations et les informations encore nécessaires.
           </p>
         </div>
       </aside>

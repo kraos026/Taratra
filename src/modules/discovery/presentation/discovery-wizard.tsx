@@ -14,6 +14,14 @@ const labels = {
   processes: "Processus",
   review: "Révision",
 };
+const guidance = {
+  company: "Le contexte de base utilisé pour adapter toute l’analyse.",
+  business: "Votre modèle d’activité, vos priorités et vos difficultés actuelles.",
+  organization: "Les équipes et rôles directement concernés par les processus.",
+  software: "Les outils réellement utilisés aujourd’hui, même s’ils sont simples.",
+  processes: "Le travail récurrent qui consomme du temps ou génère des erreurs.",
+  review: "Un dernier contrôle avant de préparer l’entretien opérationnel.",
+} satisfies Record<Step, string>;
 type Step = (typeof steps)[number];
 type Session = {
   id: string;
@@ -43,7 +51,7 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
           setStep(s.currentStep);
           setDraft(readAnswers(s));
         } else {
-          setMessage("Aucune découverte active. Démarrez une nouvelle Discovery si nécessaire.");
+          setMessage("Votre parcours de compréhension est prêt à démarrer.");
         }
         setBusy(false);
       })
@@ -85,7 +93,7 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
     });
     setMessage(
       response.ok
-        ? "Discovery validée et prête pour les futurs moteurs."
+        ? "Compréhension validée. Vous pouvez poursuivre vers l’entretien."
         : "Complétez toutes les étapes avant validation.",
     );
   }
@@ -109,8 +117,21 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
   if (busy && !session) return <WizardSkeleton />;
   if (!session)
     return (
-      <div role="status" className="opt-empty mx-auto max-w-4xl space-y-4 p-6">
-        <p>{message || "Aucune découverte active pour cette entreprise."}</p>
+      <div
+        role="status"
+        className="opt-empty mx-auto max-w-3xl space-y-5 rounded-3xl border border-white/10 bg-slate-900/70 p-7"
+      >
+        <p className="opt-eyebrow">Compréhension · environ 10 minutes</p>
+        <h1 className="font-['Manrope'] text-3xl font-extrabold text-white">
+          Posons les bases de votre audit
+        </h1>
+        <p className="max-w-2xl text-sm leading-6 text-slate-300">
+          Six courtes sections permettent à Optivos de comprendre votre activité, vos outils et vos
+          processus. Vos réponses restent modifiables avant validation.
+        </p>
+        <p className="text-sm text-slate-400">
+          {message || "Votre parcours de compréhension est prêt à démarrer."}
+        </p>
         <Button className="opt-primary" disabled={busy} onClick={startDiscovery}>
           Démarrer la découverte
         </Button>
@@ -118,25 +139,36 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
     );
   const readOnly = session.status === "validated";
   return (
-    <div className="opt-container space-y-6">
-      <header className="opt-hero">
-        <p className="opt-eyebrow">Découverte guidée · {index + 1}/6</p>
-        <h1 className="opt-title mt-3">Comprendre votre entreprise</h1>
-        <p className="opt-copy mt-4 max-w-3xl">
-          Une section à la fois pour comprendre votre activité, vos outils et les processus à
-          améliorer. Vous pouvez sauvegarder et reprendre plus tard.
-        </p>
+    <div className="opt-container space-y-5">
+      <header className="rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-slate-900 to-blue-950/50 p-5 sm:p-7">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-end">
+          <div>
+            <p className="opt-eyebrow">Compréhension guidée · section {index + 1} sur 6</p>
+            <h1 className="mt-2 font-['Manrope'] text-3xl font-extrabold tracking-tight text-white sm:text-4xl">
+              Comprendre votre entreprise
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
+              Répondez simplement avec ce que vous savez. Vous pouvez enregistrer et reprendre plus
+              tard.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
+            <strong className="block text-white">Étape {index + 1} sur 6</strong>
+            Environ {Math.max(2, (steps.length - index) * 2)} min restantes
+          </div>
+        </div>
       </header>
-      <nav aria-label="Étapes de découverte" className="grid grid-cols-2 gap-3 md:grid-cols-6">
+      <nav
+        aria-label="Étapes de compréhension"
+        className="flex overflow-x-auto rounded-2xl border border-white/10 bg-slate-900/70"
+      >
         {steps.map((s, i) => (
           <button
             key={s}
             disabled={i > index + 1}
             onClick={() => setStep(s)}
-            className={`rounded-2xl border p-3 text-left text-xs transition ${
-              s === step
-                ? "border-blue-400/50 bg-blue-500/15 text-blue-100"
-                : "border-white/10 bg-slate-900/70 text-slate-400 hover:bg-white/5"
+            className={`min-w-36 flex-1 border-r border-white/10 p-3 text-left text-xs transition last:border-r-0 ${
+              s === step ? "bg-blue-500/15 text-blue-100" : "text-slate-400 hover:bg-white/5"
             }`}
           >
             <span className="mb-2 grid size-7 place-items-center rounded-full bg-white/10 font-bold">
@@ -153,19 +185,23 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
         />
       </div>
       <Card className="border-white/10 bg-slate-900/80 text-slate-50 shadow-2xl shadow-slate-950/20">
-        <CardHeader className="border-b border-white/10">
+        <CardHeader className="border-b border-white/10 p-5 sm:p-6">
           <p className="text-xs font-bold tracking-[0.2em] text-slate-500 uppercase">
-            Question principale
+            Section {index + 1} · informations utiles à l’analyse
           </p>
           <CardTitle>{labels[step]}</CardTitle>
+          <p className="mt-1 text-sm leading-6 text-slate-400">{guidance[step]}</p>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-5 sm:p-6">
           <StepFields step={step} draft={draft} setDraft={setDraft} />
         </CardContent>
       </Card>
-      <footer className="flex items-center justify-between">
-        <span aria-live="polite" className="text-sm text-neutral-500">
-          {message}
+      <footer className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/95 p-3 shadow-2xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
+        <span aria-live="polite" className="text-sm text-slate-400">
+          {message ||
+            (readOnly
+              ? "Parcours validé · consultation seule"
+              : "Vos réponses restent modifiables")}
         </span>
         <div className="flex gap-3">
           {index > 0 && (
@@ -198,12 +234,16 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
 function Field({
   name,
   label,
+  placeholder,
+  hint,
   draft,
   setDraft,
   type = "text",
 }: {
   name: string;
   label: string;
+  placeholder?: string;
+  hint?: string;
   draft: Draft;
   setDraft: (v: Draft) => void;
   type?: string;
@@ -219,7 +259,9 @@ function Field({
         value={draft[name] ?? ""}
         onChange={(e) => setDraft({ ...draft, [name]: e.target.value })}
         className="opt-input border-white/10 bg-slate-950/60"
+        placeholder={placeholder}
       />
+      {hint ? <p className="text-xs leading-5 text-slate-500">{hint}</p> : null}
     </div>
   );
 }
@@ -270,90 +312,146 @@ function StepFields({
   if (step === "company")
     return (
       <div className="grid gap-5 md:grid-cols-2">
-        <Field name="industry" label="Secteur" draft={draft} setDraft={setDraft} />
-        <Field name="countryCode" label="Pays (ISO, ex. FR)" draft={draft} setDraft={setDraft} />
+        <Field
+          name="industry"
+          label="Dans quel secteur travaillez-vous ?"
+          placeholder="Ex. Hôtellerie, conseil, commerce…"
+          draft={draft}
+          setDraft={setDraft}
+        />
+        <Field
+          name="countryCode"
+          label="Dans quel pays opérez-vous ?"
+          placeholder="Ex. FR, MG, BE…"
+          draft={draft}
+          setDraft={setDraft}
+        />
         <Field
           name="employeeCount"
-          label="Effectif"
+          label="Combien de personnes travaillent dans l’entreprise ?"
           type="number"
           draft={draft}
           setDraft={setDraft}
         />
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="description">Activité de l’entreprise</Label>
+          <Label htmlFor="description">Que faites-vous concrètement au quotidien ?</Label>
           <Textarea
             id="description"
             value={draft.description ?? ""}
             onChange={(e) => setDraft({ ...draft, description: e.target.value })}
+            className="opt-textarea min-h-32 resize-y border-white/10 bg-slate-950/60 p-4 leading-6 text-slate-50"
+            placeholder="Décrivez vos clients, vos services et le fonctionnement quotidien de l’entreprise…"
           />
         </div>
       </div>
     );
   if (step === "business")
     return (
-      <div className="grid gap-5 md:grid-cols-2">
-        <Field name="businessModel" label="Business model" draft={draft} setDraft={setDraft} />
-        <Field name="growthStage" label="Phase de croissance" draft={draft} setDraft={setDraft} />
-        <Field
-          name="revenueAmount"
-          label="Chiffre d’affaires"
-          type="number"
-          draft={draft}
-          setDraft={setDraft}
-        />
-        <Field name="revenueCurrency" label="Devise" draft={draft} setDraft={setDraft} />
-        <Field name="revenueYear" label="Année" type="number" draft={draft} setDraft={setDraft} />
-        <Field
-          name="offerings"
-          label="Produits et services (séparés par virgule)"
-          draft={draft}
-          setDraft={setDraft}
-        />
-        <SelectField
-          name="offeringType"
-          label="Type des offres saisies"
-          draft={draft}
-          setDraft={setDraft}
-          fallback="service"
-          options={[
-            { value: "service", label: "Services" },
-            { value: "product", label: "Produits" },
-          ]}
-        />
-        <Field
-          name="objectives"
-          label="Objectifs (séparés par virgule)"
-          draft={draft}
-          setDraft={setDraft}
-        />
-        <SelectField
-          name="objectivePriority"
-          label="Priorité des objectifs"
-          draft={draft}
-          setDraft={setDraft}
-          fallback="3"
-          options={[1, 2, 3, 4, 5].map((value) => ({
-            value: String(value),
-            label: `${value} / 5`,
-          }))}
-        />
-        <Field
-          name="challenges"
-          label="Challenges (séparés par virgule)"
-          draft={draft}
-          setDraft={setDraft}
-        />
-        <SelectField
-          name="challengeSeverity"
-          label="Sévérité des challenges"
-          draft={draft}
-          setDraft={setDraft}
-          fallback="3"
-          options={[1, 2, 3, 4, 5].map((value) => ({
-            value: String(value),
-            label: `${value} / 5`,
-          }))}
-        />
+      <div className="space-y-7">
+        <fieldset className="grid gap-5 md:grid-cols-2">
+          <legend className="mb-4 text-sm font-bold text-blue-200">Votre activité</legend>
+          <Field
+            name="businessModel"
+            label="Comment votre entreprise gagne-t-elle de l’argent ?"
+            placeholder="Ex. prestations, abonnements, ventes directes…"
+            draft={draft}
+            setDraft={setDraft}
+          />
+          <Field
+            name="growthStage"
+            label="Où en est votre entreprise aujourd’hui ?"
+            placeholder="Ex. lancement, croissance, activité établie…"
+            draft={draft}
+            setDraft={setDraft}
+          />
+          <Field
+            name="offerings"
+            label="Quels produits ou services proposez-vous ?"
+            placeholder="Séparez plusieurs réponses par une virgule"
+            draft={draft}
+            setDraft={setDraft}
+          />
+          <SelectField
+            name="offeringType"
+            label="Type d’offre principal"
+            draft={draft}
+            setDraft={setDraft}
+            fallback="service"
+            options={[
+              { value: "service", label: "Services" },
+              { value: "product", label: "Produits" },
+            ]}
+          />
+        </fieldset>
+        <fieldset className="grid gap-5 rounded-2xl border border-white/10 bg-white/[0.02] p-4 md:grid-cols-2">
+          <legend className="px-2 text-sm font-bold text-blue-200">Vos priorités</legend>
+          <Field
+            name="objectives"
+            label="Que souhaitez-vous améliorer en priorité ?"
+            placeholder="Ex. gagner du temps, réduire les erreurs…"
+            hint="Séparez plusieurs réponses par une virgule."
+            draft={draft}
+            setDraft={setDraft}
+          />
+          <SelectField
+            name="objectivePriority"
+            label="Niveau de priorité"
+            draft={draft}
+            setDraft={setDraft}
+            fallback="3"
+            options={[1, 2, 3, 4, 5].map((value) => ({
+              value: String(value),
+              label: `${value} / 5`,
+            }))}
+          />
+          <Field
+            name="challenges"
+            label="Qu’est-ce qui vous freine aujourd’hui ?"
+            placeholder="Ex. doubles saisies, délais, manque de visibilité…"
+            hint="Séparez plusieurs réponses par une virgule."
+            draft={draft}
+            setDraft={setDraft}
+          />
+          <SelectField
+            name="challengeSeverity"
+            label="Impact de ces difficultés"
+            draft={draft}
+            setDraft={setDraft}
+            fallback="3"
+            options={[1, 2, 3, 4, 5].map((value) => ({
+              value: String(value),
+              label: `${value} / 5`,
+            }))}
+          />
+        </fieldset>
+        <details className="rounded-2xl border border-white/10 bg-slate-950/30 p-4">
+          <summary className="cursor-pointer text-sm font-bold text-slate-200">
+            Ajouter des informations financières{" "}
+            <span className="font-normal text-slate-500">(facultatif)</span>
+          </summary>
+          <div className="mt-5 grid gap-5 md:grid-cols-3">
+            <Field
+              name="revenueAmount"
+              label="Chiffre d’affaires"
+              type="number"
+              draft={draft}
+              setDraft={setDraft}
+            />
+            <Field
+              name="revenueCurrency"
+              label="Devise (EUR, USD…)"
+              draft={draft}
+              setDraft={setDraft}
+            />
+            <Field
+              name="revenueYear"
+              label="Année"
+              type="number"
+              draft={draft}
+              setDraft={setDraft}
+            />
+          </div>
+        </details>
       </div>
     );
   if (step === "organization")
@@ -361,13 +459,17 @@ function StepFields({
       <div className="space-y-5">
         <Field
           name="departments"
-          label="Départements (séparés par virgule)"
+          label="Quelles équipes participent au travail quotidien ?"
+          placeholder="Ex. accueil, finance, opérations, direction…"
+          hint="Séparez plusieurs équipes par une virgule."
           draft={draft}
           setDraft={setDraft}
         />
         <Field
           name="roles"
-          label="Rôles clés (séparés par virgule)"
+          label="Quels sont les rôles clés dans ces équipes ?"
+          placeholder="Ex. réceptionniste, comptable, responsable…"
+          hint="Séparez plusieurs rôles par une virgule."
           draft={draft}
           setDraft={setDraft}
         />
@@ -377,7 +479,9 @@ function StepFields({
     return (
       <Field
         name="software"
-        label="Logiciels utilisés (séparés par virgule)"
+        label="Quels outils utilisez-vous régulièrement ?"
+        placeholder="Ex. Excel, Gmail, logiciel métier…"
+        hint="Incluez aussi les tableurs et outils simples. Séparez-les par une virgule."
         draft={draft}
         setDraft={setDraft}
       />
@@ -404,13 +508,17 @@ function StepFields({
         />
         <Field
           name="processes"
-          label="Processus clés (séparés par virgule)"
+          label="Quelles tâches reviennent le plus souvent ?"
+          placeholder="Ex. traiter les réservations, facturer, répondre aux demandes…"
+          hint="Séparez plusieurs tâches par une virgule."
           draft={draft}
           setDraft={setDraft}
         />
         <Field
           name="painPoints"
-          label="Irritants observés (séparés par virgule)"
+          label="Où perdez-vous le plus de temps ?"
+          placeholder="Ex. recopier des données, attendre une validation…"
+          hint="Décrivez les irritants observés, sans chercher une solution tout de suite."
           draft={draft}
           setDraft={setDraft}
         />

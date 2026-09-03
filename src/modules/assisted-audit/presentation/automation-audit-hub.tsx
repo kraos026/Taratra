@@ -34,6 +34,7 @@ import {
   type AuditActionPresentation,
   type AuditCommandRequest,
 } from "./assisted-audit-action-plan";
+import { buildCustomerJourney, customerStatusLabel, journeyProgress } from "./canonical-journey";
 
 export function AutomationAuditHub({ companyId }: { companyId: string }) {
   const [model, setModel] = useState<AssistedAuditReadModel | null>(null);
@@ -140,33 +141,34 @@ export function AutomationAuditView({
   error: string | null;
   onCommand: (request: AuditCommandRequest) => void;
 }) {
-  const visibleStages = model.stages.filter((stage) => stage.stage !== "COMPLETED");
-  const completed = visibleStages.filter((stage) => stage.status === "COMPLETED").length;
-  const progress = Math.round((completed / Math.max(visibleStages.length, 1)) * 100);
+  const progress = journeyProgress(model);
   const action = presentNextAction(model, companyId);
   const ambiguity = model.stages.find((stage) => stage.status === "AMBIGUOUS");
   const auditComplete = model.currentStage === "COMPLETED";
   const companyName = brandText(model.company.name);
-  const clientSteps = buildClientSteps(model);
+  const clientSteps = buildCustomerJourney(model).map((step) => ({
+    ...step,
+    icon: journeyIcon(step.key),
+  }));
   const activeStep = clientSteps.find((step) => step.status !== "COMPLETED") ?? clientSteps.at(-1);
 
   return (
-    <main className="opt-container space-y-6" aria-labelledby="audit-title">
-      <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/70 p-6 shadow-2xl shadow-blue-950/20 sm:p-8">
+    <main className="opt-container space-y-5" aria-labelledby="audit-title">
+      <header className="rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/70 p-5 shadow-2xl shadow-blue-950/20 sm:p-7">
         <Link
           className="mb-5 inline-flex text-sm text-blue-300 hover:text-blue-100"
           href={`/companies/${companyId}`}
         >
           ← Retour à {companyName}
         </Link>
-        <div className="flex flex-col justify-between gap-6 lg:flex-row lg:items-end">
+        <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-xs font-bold tracking-[0.28em] text-blue-300 uppercase">
               <Sparkles size={15} /> Parcours Optivos
             </p>
             <h1
               id="audit-title"
-              className="font-['Manrope'] text-3xl font-extrabold tracking-tight text-white sm:text-5xl"
+              className="font-['Manrope'] text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
             >
               Audit
             </h1>
@@ -175,17 +177,18 @@ export function AutomationAuditView({
               quoi automatiser, corriger ou différer.
             </p>
           </div>
-          <div className="min-w-56 rounded-3xl border border-white/10 bg-white/[0.04] p-5">
+          <div className="min-w-64 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
             <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
               Progression
             </span>
-            <strong className="mt-2 block text-3xl text-white">{progress}%</strong>
-            <div className="mt-3 h-2 rounded-full bg-slate-800">
+            <div className="mt-1 flex items-end justify-between gap-4">
+              <strong className="block text-3xl text-white">{progress}%</strong>
+              <span className="pb-1 text-xs text-slate-400">{activeStep?.label}</span>
+            </div>
+            <div className="mt-2 h-2 rounded-full bg-slate-800">
               <div className="h-2 rounded-full bg-blue-400" style={{ width: `${progress}%` }} />
             </div>
-            <p className="mt-3 text-xs text-slate-400">
-              {completed} / {visibleStages.length} étapes terminées
-            </p>
+            <p className="mt-2 text-xs text-slate-400">Progression validée, sans estimation</p>
           </div>
         </div>
       </header>
@@ -207,7 +210,7 @@ export function AutomationAuditView({
               id="audit-progress-title"
               className="font-['Manrope'] text-2xl font-bold text-white"
             >
-              7 étapes lisibles côté métier
+              De la compréhension à la décision
             </h2>
           </div>
           {activeStep && (
@@ -216,32 +219,37 @@ export function AutomationAuditView({
             </p>
           )}
         </div>
-        <ol className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+        <ol className="flex overflow-x-auto rounded-2xl border border-white/10 bg-slate-900/60">
           {clientSteps.map((step, index) => (
-            <li key={step.label}>
-              <Card
-                className={cn(
-                  "h-full border-white/10 bg-slate-900/80 text-slate-50",
-                  step.current && "border-blue-400/60 ring-1 ring-blue-400/30",
-                )}
-              >
-                <CardContent className="flex h-full flex-col gap-4 p-5">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="grid size-10 place-items-center rounded-2xl bg-blue-500/15 text-blue-200">
-                      {step.icon}
-                    </div>
-                    <span className="text-xs font-bold text-slate-500">0{index + 1}</span>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold">{step.label}</p>
-                    <p className="mt-2 text-sm leading-5 text-slate-400">{step.description}</p>
-                  </div>
-                  <div className="mt-auto flex items-center gap-2">
+            <li
+              key={step.label}
+              className={cn(
+                "relative min-w-36 flex-1 border-r border-white/10 p-4 last:border-r-0",
+                step.current && "bg-blue-500/12",
+              )}
+              title={step.description}
+            >
+              <div>
+                <div
+                  className={cn(
+                    "grid size-9 shrink-0 place-items-center rounded-xl bg-slate-800 text-slate-400",
+                    step.current && "bg-blue-500 text-white",
+                    step.status === "COMPLETED" && "bg-emerald-500/15 text-emerald-300",
+                  )}
+                >
+                  {step.icon}
+                </div>
+                <div className="mt-3 min-w-0">
+                  <span className="text-[10px] font-bold tracking-widest text-slate-600">
+                    0{index + 1}
+                  </span>
+                  <p className="truncate text-sm font-bold text-white">{step.label}</p>
+                  <div className="mt-1 flex items-center gap-1.5">
                     <StatusIcon status={step.status} />
-                    <StatusText status={step.status} />
+                    <StatusText status={step.status} current={step.current} />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </li>
           ))}
         </ol>
@@ -392,23 +400,22 @@ function brandText(value: string): string {
 
 function StatusIcon({ status }: { status: AssistedAuditStageStatus }) {
   if (status === "COMPLETED")
-    return <CheckCircle2 className="mt-0.5 shrink-0 text-emerald-600" size={20} aria-hidden />;
+    return <CheckCircle2 className="shrink-0 text-emerald-400" size={14} aria-hidden />;
   if (status === "BLOCKED" || status === "AMBIGUOUS")
-    return <AlertTriangle className="mt-0.5 shrink-0 text-amber-600" size={20} aria-hidden />;
-  return <Circle className="mt-0.5 shrink-0 text-violet-600" size={20} aria-hidden />;
+    return <AlertTriangle className="shrink-0 text-amber-400" size={14} aria-hidden />;
+  return <Circle className="shrink-0 text-slate-600" size={13} aria-hidden />;
 }
 
-function StatusText({ status }: { status: AssistedAuditStageStatus }) {
-  const text: Record<AssistedAuditStageStatus, string> = {
-    NOT_STARTED: "À faire",
-    IN_PROGRESS: "En cours",
-    READY_FOR_REVIEW: "À valider",
-    READY_TO_PUBLISH: "Prêt à publier",
-    COMPLETED: "Terminé",
-    BLOCKED: "Informations requises",
-    AMBIGUOUS: "Choix requis",
-  };
-  return <p className="text-sm text-slate-400">{text[status]}</p>;
+function StatusText({
+  status,
+  current = false,
+}: {
+  status: AssistedAuditStageStatus;
+  current?: boolean;
+}) {
+  const label =
+    current && status === "NOT_STARTED" ? "Prêt à démarrer" : customerStatusLabel(status);
+  return <p className="truncate text-xs text-slate-400">{label}</p>;
 }
 
 function AuditHubSkeleton() {
@@ -439,7 +446,7 @@ function AuditHubError({ message, onRetry }: { message: string; onRetry: () => v
         <AlertTriangle className="mx-auto text-red-600" aria-hidden />
         <p>{message}</p>
         <Button variant="outline" onClick={onRetry}>
-          Try again
+          Réessayer
         </Button>
       </CardContent>
     </Card>
@@ -455,89 +462,19 @@ function customerError(status: number, serverMessage?: string): string {
   return "L’audit n’a pas pu être mis à jour. Réessayez.";
 }
 
-type ClientStep = {
-  readonly label: string;
-  readonly description: string;
-  readonly status: AssistedAuditStageStatus;
-  readonly current: boolean;
-  readonly icon: ReactNode;
-};
-
-function buildClientSteps(model: AssistedAuditReadModel): ClientStep[] {
-  const byStage = new Map(model.stages.map((stage) => [stage.stage, stage]));
-  const currentIn = (stages: AssistedAuditReadModel["stages"][number]["stage"][]) =>
-    stages.includes(model.currentStage);
-  const statusFor = (stages: AssistedAuditReadModel["stages"][number]["stage"][]) => {
-    const current = byStage.get(model.currentStage);
-    if (current && stages.includes(model.currentStage)) return current.status;
-    return combineStatuses(stages.map((stage) => byStage.get(stage)?.status ?? "NOT_STARTED"));
-  };
-
-  return [
-    {
-      label: "Compréhension",
-      description: "Décrire l’entreprise et compléter les questions clés.",
-      status: statusFor(["DISCOVERY", "INTERVIEW", "KNOWLEDGE"]),
-      current: currentIn(["DISCOVERY", "INTERVIEW", "KNOWLEDGE"]),
-      icon: <ClipboardCheck size={18} />,
-    },
-    {
-      label: "Processus",
-      description: "Identifier le parcours opérationnel réellement utilisé.",
-      status: statusFor(["PROCESS_MAP"]),
-      current: currentIn(["PROCESS_MAP"]),
-      icon: <MapIcon size={18} />,
-    },
-    {
-      label: "Analyse",
-      description: "Repérer les frictions, risques et causes probables.",
-      status: statusFor(["BUSINESS_ANALYSIS", "AI_OPPORTUNITIES"]),
-      current: currentIn(["BUSINESS_ANALYSIS", "AI_OPPORTUNITIES"]),
-      icon: <BarChart3 size={18} />,
-    },
-    {
-      label: "Opportunités",
-      description: "Prioriser les pistes d’automatisation réalistes.",
-      status: statusFor(["AUTOMATION_OPPORTUNITIES"]),
-      current: currentIn(["AUTOMATION_OPPORTUNITIES"]),
-      icon: <Sparkles size={18} />,
-    },
-    {
-      label: "ROI",
-      description: "Qualifier la valeur lorsque les preuves le permettent.",
-      status: statusFor(["ROI"]),
-      current: currentIn(["ROI"]),
-      icon: <CircleGauge size={18} />,
-    },
-    {
-      label: "Plan d’action",
-      description: "Transformer les recommandations en décisions pilotables.",
-      status: statusFor(["RECOMMENDATIONS"]),
-      current: currentIn(["RECOMMENDATIONS"]),
-      icon: <Target size={18} />,
-    },
-    {
-      label: "Résultats",
-      description: "Consulter la synthèse finale et les prochaines étapes.",
-      status: model.currentStage === "COMPLETED" ? "COMPLETED" : statusFor(["COMPLETED"]),
-      current: model.currentStage === "COMPLETED",
-      icon: <FileText size={18} />,
-    },
-  ];
-}
-
-function combineStatuses(statuses: AssistedAuditStageStatus[]): AssistedAuditStageStatus {
-  if (statuses.some((status) => status === "AMBIGUOUS")) return "AMBIGUOUS";
-  if (statuses.some((status) => status === "BLOCKED")) return "BLOCKED";
-  if (statuses.every((status) => status === "COMPLETED")) return "COMPLETED";
-  if (statuses.some((status) => status === "IN_PROGRESS")) return "IN_PROGRESS";
-  if (statuses.some((status) => status === "READY_FOR_REVIEW")) return "READY_FOR_REVIEW";
-  if (statuses.some((status) => status === "READY_TO_PUBLISH")) return "READY_TO_PUBLISH";
-  return "NOT_STARTED";
+function journeyIcon(key: ReturnType<typeof buildCustomerJourney>[number]["key"]): ReactNode {
+  if (key === "UNDERSTANDING") return <ClipboardCheck size={18} />;
+  if (key === "PROCESS") return <MapIcon size={18} />;
+  if (key === "ANALYSIS") return <BarChart3 size={18} />;
+  if (key === "AUTOMATION") return <Sparkles size={18} />;
+  if (key === "ROI") return <CircleGauge size={18} />;
+  if (key === "PLAN") return <Target size={18} />;
+  return <FileText size={18} />;
 }
 
 function customerActionLabel(label: string): string {
   return label
+    .replaceAll("Start company discovery", "Commencer la compréhension")
     .replaceAll("Continue the interview", "Continuer l’entretien")
     .replaceAll("Start discovery", "Commencer la compréhension")
     .replaceAll("Continue discovery", "Continuer la compréhension")
@@ -545,6 +482,8 @@ function customerActionLabel(label: string): string {
 }
 
 function customerActionDescription(description: string): string {
+  if (/tell optivos how your company is organized and operates/i.test(description))
+    return "Décrivez votre activité, votre organisation et vos processus. Vous pourrez enregistrer et reprendre à tout moment.";
   if (/remaining operational questions/i.test(description))
     return "Répondez aux dernières questions utiles pour poursuivre l’audit.";
   return description
