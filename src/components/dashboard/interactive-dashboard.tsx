@@ -25,6 +25,7 @@ import {
   journeyProgress,
 } from "@/modules/assisted-audit/presentation/canonical-journey";
 import { dashboardRoutes, dashboardSearchRoute } from "./dashboard-navigation";
+import { OptivosLogo } from "@/components/brand/optivos-logo";
 
 type Company = {
   id: string;
@@ -137,12 +138,7 @@ export function InteractiveDashboard() {
     <main className="app-shell">
       <aside className="sidebar">
         <Link className="brand" href={dashboardRoutes.overview} aria-label="Accueil Optivos">
-          <span className="brand-mark">
-            <Sparkles size={19} />
-          </span>
-          <span>
-            Opti<span>vos</span>
-          </span>
+          <OptivosLogo subtitle="Espace de décision" />
         </Link>
         <nav aria-label="Navigation principale">
           <p className="nav-label">ESPACE OPTIVOS</p>
