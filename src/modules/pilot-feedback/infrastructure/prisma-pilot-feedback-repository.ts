@@ -37,16 +37,11 @@ export class PrismaPilotFeedbackRepository implements PilotFeedbackRepository {
   }
 
   async find(userId: string, context: PilotFeedbackContext): Promise<PilotFeedbackView | null> {
-    const row = await this.db.pilotFeedback.findFirst({
-      where: context.auditId
-        ? { userId, auditId: context.auditId, organizationId: context.organizationId }
-        : {
-            userId,
-            companyId: context.companyId,
-            auditId: null,
-            organizationId: context.organizationId,
-          },
-    });
+    const row = context.auditId
+      ? ((await this.db.pilotFeedback.findFirst({
+          where: { userId, auditId: context.auditId, organizationId: context.organizationId },
+        })) ?? (await this.findPreAuditFeedback(userId, context)))
+      : await this.findPreAuditFeedback(userId, context);
     return row ? view(row) : null;
   }
 
@@ -55,17 +50,12 @@ export class PrismaPilotFeedbackRepository implements PilotFeedbackRepository {
     context: PilotFeedbackContext,
     input: PilotFeedbackInput,
   ): Promise<PilotFeedbackView> {
-    const existing = await this.db.pilotFeedback.findFirst({
-      where: context.auditId
-        ? { userId, auditId: context.auditId, organizationId: context.organizationId }
-        : {
-            userId,
-            companyId: context.companyId,
-            auditId: null,
-            organizationId: context.organizationId,
-          },
-      select: { id: true },
-    });
+    const existing = context.auditId
+      ? ((await this.db.pilotFeedback.findFirst({
+          where: { userId, auditId: context.auditId, organizationId: context.organizationId },
+          select: { id: true },
+        })) ?? (await this.findPreAuditFeedback(userId, context, { id: true })))
+      : await this.findPreAuditFeedback(userId, context, { id: true });
     const data = {
       organizationId: context.organizationId,
       companyId: context.companyId,
@@ -87,6 +77,22 @@ export class PrismaPilotFeedbackRepository implements PilotFeedbackRepository {
       ? await this.db.pilotFeedback.update({ where: { id: existing.id }, data })
       : await this.db.pilotFeedback.create({ data });
     return view(row);
+  }
+
+  private findPreAuditFeedback(
+    userId: string,
+    context: PilotFeedbackContext,
+    select?: { id: true },
+  ) {
+    return this.db.pilotFeedback.findFirst({
+      where: {
+        userId,
+        companyId: context.companyId,
+        auditId: null,
+        organizationId: context.organizationId,
+      },
+      ...(select ? { select } : {}),
+    });
   }
 }
 

@@ -71,6 +71,7 @@ const pilotFiles = [
   "tests/e2e/pilot/auth.spec.ts",
   "tests/e2e/pilot/company.spec.ts",
   "tests/e2e/pilot/evidence.spec.ts",
+  "tests/e2e/pilot/feedback.spec.ts",
   "tests/e2e/pilot/idempotency.spec.ts",
   "tests/e2e/pilot/interview.spec.ts",
   "tests/e2e/pilot/zz-decision-center.spec.ts",

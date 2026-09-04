@@ -70,7 +70,7 @@ export class ProductionExecutiveDecisionViewBuilder {
       rootCausesOrHypotheses: freeze(rootCausesFor(result)),
       bottlenecks: freeze(bottlenecksFor(result)),
       criticalIssues: freeze(criticalIssuesFor(result)),
-      whatToFixFirst: freeze(whatToFixFirstFor(result)),
+      whatToFixFirst: freeze(whatToFixFirstFor(cards)),
       whatNotToAutomate: freeze(whatNotToAutomateFor(result)),
       whatCanBeAutomated: freeze(whatCanBeAutomatedFor(result)),
       whatRequiresMoreEvidence: freeze(unknownsFor(result)),
@@ -334,10 +334,21 @@ function criticalIssuesFor(result: ExecutiveAuditResult): readonly string[] {
     .map((item) => item.title);
 }
 
-function whatToFixFirstFor(result: ExecutiveAuditResult): readonly string[] {
-  return result.findings
-    .filter((item) => /critical|high/i.test(item.severity))
+function whatToFixFirstFor(cards: readonly ExecutivePriorityCard[]): readonly string[] {
+  return cards
+    .filter(
+      (item) =>
+        item.id.startsWith("finding:") && item.recommendationState === "FIX_BEFORE_AUTOMATING",
+    )
+    .sort((left, right) => remediationPriority(right.priority) - remediationPriority(left.priority))
     .map((item) => item.title);
+}
+
+function remediationPriority(priority: ExecutivePriorityCard["priority"]): number {
+  if (priority === "CRITICAL") return 4;
+  if (priority === "HIGH") return 3;
+  if (priority === "MEDIUM") return 2;
+  return 1;
 }
 
 function whatNotToAutomateFor(result: ExecutiveAuditResult): readonly string[] {
@@ -482,7 +493,7 @@ function completenessFor(
     why: rootCausesFor(result).length > 0,
     evidence: cards.length > 0 && cards.every((card) => card.evidenceReferences.length > 0),
     uncertainty: true,
-    whatToFix: whatToFixFirstFor(result).length > 0,
+    whatToFix: whatToFixFirstFor(cards).length > 0,
     whatNotToAutomate: whatNotToAutomateFor(result).length > 0,
     whatToAutomate: whatCanBeAutomatedFor(result).length > 0,
     economicStatus: Boolean(economicState),

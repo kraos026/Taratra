@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import pg from "pg";
 import { loginAsTenantA, loginAsTenantB } from "./support/auth";
-import { firstCompanyId } from "./support/company";
+import { createCertificationCompany, firstCompanyId } from "./support/company";
 import { readPilotE2EConfig } from "./support/env";
 
 const config = readPilotE2EConfig(process.env);
@@ -17,6 +17,41 @@ const feedback = {
   priceCurrency: "EUR",
   comment: "Retour local de certification.",
 };
+
+test("pre-audit feedback stays visible and is attached without duplication after audit creation", async ({
+  page,
+}) => {
+  test.skip(!config, "CERTIFICATION ENVIRONMENT NOT CONFIGURED");
+  await loginAsTenantA(page, config!);
+  const companyId = await createCertificationCompany(page, `Optivos Feedback ${Date.now()}`);
+
+  const created = await page.request.post("/api/pilot-feedback", {
+    data: { companyId, ...feedback },
+  });
+  expect(created.status()).toBe(200);
+  const createdBody = (await created.json()) as { data: { id: string; auditId: null } };
+  expect(createdBody.data.auditId).toBeNull();
+
+  const auditId = await insertAudit(companyId);
+  const afterAudit = await page.request.get(`/api/pilot-feedback?companyId=${companyId}`);
+  expect(afterAudit.status()).toBe(200);
+  await expect(afterAudit.json()).resolves.toMatchObject({
+    data: { id: createdBody.data.id, auditId: null },
+  });
+
+  const updated = await page.request.patch("/api/pilot-feedback", {
+    data: { companyId, ...feedback, experienceScore: 4 },
+  });
+  expect(updated.status()).toBe(200);
+  await expect(updated.json()).resolves.toMatchObject({
+    data: { id: createdBody.data.id, auditId, experienceScore: 4 },
+  });
+
+  await page.goto("/", { waitUntil: "domcontentloaded" });
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await expect(page.getByRole("button", { name: /modifier mon avis/i })).toBeVisible();
+  await expect(feedbackCount(companyId)).resolves.toBe(1);
+});
 
 test("Tenant A creates, reads, updates and retries one pilot feedback", async ({ page }) => {
   test.skip(!config, "CERTIFICATION ENVIRONMENT NOT CONFIGURED");
@@ -87,6 +122,37 @@ async function createFreshAudit(companyId: string): Promise<string> {
     );
     expect(inserted.rows[0]?.id).toBeTruthy();
     return inserted.rows[0]!.id;
+  } finally {
+    await database.end();
+  }
+}
+
+async function insertAudit(companyId: string): Promise<string> {
+  const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await database.connect();
+  try {
+    const inserted = await database.query<{ id: string }>(
+      `insert into public.audits(organization_id, company_id, status)
+       select organization_id, id, 'draft' from public.companies where id = $1
+       returning id`,
+      [companyId],
+    );
+    expect(inserted.rows[0]?.id).toBeTruthy();
+    return inserted.rows[0]!.id;
+  } finally {
+    await database.end();
+  }
+}
+
+async function feedbackCount(companyId: string): Promise<number> {
+  const database = new pg.Client({ connectionString: process.env.DATABASE_URL });
+  await database.connect();
+  try {
+    const result = await database.query<{ count: string }>(
+      "select count(*) from public.pilot_feedback where company_id = $1",
+      [companyId],
+    );
+    return Number(result.rows[0]?.count ?? 0);
   } finally {
     await database.end();
   }

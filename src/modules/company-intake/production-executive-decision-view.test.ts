@@ -75,6 +75,79 @@ describe("ProductionExecutiveDecisionViewBuilder", () => {
     expect(center.evidence.supportingSources).toContain("process-map-1");
     expect(center.sourceView).toBe(projection.view);
   });
+
+  it("includes a medium finding when its authoritative decision requires remediation", () => {
+    const base = publishedResult();
+    const projection = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result: {
+        ...base,
+        findings: [{ ...base.findings[0]!, severity: "medium" }],
+      },
+    });
+
+    expect(projection.view?.whatToFixFirst).toEqual(["Invoice approval delay"]);
+    expect(projection.view?.completeness.whatToFix).toBe(true);
+    expect(projection.view?.completeness.status).toBe("YES");
+  });
+
+  it("does not treat a medium opportunity without a fix-before decision as remediation", () => {
+    const base = publishedResult();
+    const projection = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result: {
+        ...base,
+        findings: [],
+        opportunities: [{ ...base.opportunities[0]!, impact: 60 }],
+      },
+    });
+
+    expect(projection.view?.priorityCards).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: "opportunity:opportunity-1",
+          priority: "MEDIUM",
+          recommendationState: "AUTOMATE_NOW",
+        }),
+      ]),
+    );
+    expect(projection.view?.whatToFixFirst).toEqual([]);
+    expect(projection.view?.completeness.whatToFix).toBe(false);
+  });
+
+  it("keeps high and critical findings in remediation priority order", () => {
+    const base = publishedResult();
+    const projection = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result: {
+        ...base,
+        findings: [
+          { ...base.findings[0]!, id: "finding-high", severity: "high", title: "High issue" },
+          {
+            ...base.findings[0]!,
+            id: "finding-critical",
+            severity: "critical",
+            title: "Critical issue",
+          },
+        ],
+      },
+    });
+
+    expect(projection.view?.whatToFixFirst).toEqual(["Critical issue", "High issue"]);
+  });
+
+  it("keeps missing evidence visible and the executive result incomplete", () => {
+    const base = publishedResult();
+    const projection = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result: { ...base, roi: { ...base.roi!, evaluations: [] } },
+    });
+
+    expect(projection.view?.whatRequiresMoreEvidence).toContain(
+      "Published ROI evaluation is unavailable.",
+    );
+    expect(projection.view?.completeness.status).toBe("NO");
+  });
 });
 
 function publishedResult(): ExecutiveAuditResult {
