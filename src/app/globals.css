@@ -923,6 +923,9 @@ footer {
   .heading .outline {
     display: none;
   }
+  .heading .pilot-feedback-trigger {
+    display: inline-flex;
+  }
   .stats {
     grid-template-columns: 1fr;
   }

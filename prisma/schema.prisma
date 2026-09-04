@@ -639,6 +639,32 @@ model Audit {
   @@schema("public")
 }
 
+model PilotFeedback {
+  id                           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  organizationId               String   @map("organization_id") @db.Uuid
+  companyId                    String   @map("company_id") @db.Uuid
+  auditId                      String?  @map("audit_id") @db.Uuid
+  executiveResultId            String?  @map("executive_result_id") @db.Uuid
+  userId                       String   @map("user_id") @db.Uuid
+  contextStatus                String   @map("context_status")
+  understandingScore           Int      @map("understanding_score")
+  recommendationRelevanceScore Int      @map("recommendation_relevance_score")
+  roiCredibilityScore          Int      @map("roi_credibility_score")
+  nextStepClarityScore         Int      @map("next_step_clarity_score")
+  experienceScore              Int      @map("experience_score")
+  willingToPay                 String   @map("willing_to_pay")
+  acceptablePrice              Decimal? @map("acceptable_price") @db.Decimal(12, 2)
+  priceCurrency                String?  @map("price_currency") @db.VarChar(3)
+  comment                      String?  @db.VarChar(2000)
+  createdAt                    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                    DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@index([organizationId, companyId], map: "pilot_feedback_company_idx")
+  @@index([userId, updatedAt(sort: Desc)], map: "pilot_feedback_user_idx")
+  @@map("pilot_feedback")
+  @@schema("public")
+}
+
 model QuestionnaireTemplate {
   id             String                 @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   organizationId String?                @map("organization_id") @db.Uuid

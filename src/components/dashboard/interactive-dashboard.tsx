@@ -26,6 +26,7 @@ import {
 } from "@/modules/assisted-audit/presentation/canonical-journey";
 import { dashboardRoutes, dashboardSearchRoute } from "./dashboard-navigation";
 import { OptivosLogo } from "@/components/brand/optivos-logo";
+import { PilotFeedbackDialog } from "@/modules/pilot-feedback/presentation/pilot-feedback-dialog";
 
 type Company = {
   id: string;
@@ -197,14 +198,7 @@ export function InteractiveDashboard() {
               <h1>Bienvenue dans Optivos</h1>
               <p>Votre cockpit pour décider quoi automatiser, quoi corriger et quoi éviter.</p>
             </div>
-            <button
-              className="outline"
-              type="button"
-              disabled
-              title="Le journal d’activité reste masqué pendant cette phase"
-            >
-              Feedback · Préparé
-            </button>
+            <PilotFeedbackDialog companyId={activeCompany?.id} />
           </div>
 
           {error && (

@@ -64,7 +64,7 @@ describe("dashboard interactions", () => {
       join(process.cwd(), "src/components/dashboard/interactive-dashboard.tsx"),
       "utf8",
     );
-    expect(dashboard).toContain("Le journal d’activité reste masqué pendant cette phase");
+    expect(dashboard).toContain("PilotFeedbackDialog");
     expect(dashboard).toContain("Filtrage temporel bientôt disponible");
     expect(dashboard).toContain("Activation commerciale après validation");
   });
