@@ -15,7 +15,7 @@
     "test:watch": "vitest",
     "benchmark:phase-b-live": "npx tsx scripts/phase-b-live.ts",
     "test:rls": "supabase test db",
-    "db:certification": "node scripts/certification-db-guard.mjs && npx prisma validate && npx prisma generate && npx prisma migrate status && npm run test:rls",
+    "db:certification": "node scripts/check-local-migrations.mjs && npx prisma validate && npx prisma generate && npm run test:rls",
     "test:e2e:pilot": "playwright test tests/e2e/pilot",
     "test:pilot:restart": "node scripts/pilot-restart-check.mjs",
     "test:pilot-certification": "node scripts/run-pilot-certification.mjs",

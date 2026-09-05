@@ -48,6 +48,7 @@ if (process.platform === "win32" && !browser.found) {
 logPresence(env);
 
 runChecked(process.execPath, ["scripts/certification-db-guard.mjs"], env);
+runChecked(process.execPath, ["scripts/check-local-migrations.mjs"], env);
 runChecked(process.execPath, ["scripts/validate-pilot-certification-env.mjs"], env);
 runChecked("npx", ["prisma", "validate"], env);
 runChecked("npx", ["prisma", "generate"], env);
@@ -67,6 +68,7 @@ const pilotFiles = [
   "tests/e2e/pilot/00-tenant-isolation.spec.ts",
   "tests/e2e/pilot/01-stale-state.spec.ts",
   "tests/e2e/pilot/02-discovery.spec.ts",
+  "tests/e2e/pilot/discovery-resilience.spec.ts",
   "tests/e2e/pilot/ask-automatex.spec.ts",
   "tests/e2e/pilot/auth.spec.ts",
   "tests/e2e/pilot/company.spec.ts",

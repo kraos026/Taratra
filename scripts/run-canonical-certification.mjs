@@ -806,6 +806,7 @@ async function main() {
   console.log(`CANONICAL CERTIFICATION RUN ID = ${certificationRunId}`);
 
   runChecked("node", ["scripts/certification-db-guard.mjs"], env);
+  runChecked("node", ["scripts/check-local-migrations.mjs"], env);
   runChecked("npx", ["prisma", "validate"], env);
   runChecked("npx", ["prisma", "generate"], env);
   runChecked("node", ["scripts/ensure-local-certification-identities.mjs"], env);

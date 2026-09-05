@@ -11,7 +11,7 @@ if (envCheck.status !== 0) process.exit(envCheck.status ?? 1);
 const commands = [
   ["npx", ["prisma", "validate"]],
   ["npx", ["prisma", "generate"]],
-  ["npx", ["prisma", "migrate", "status"]],
+  [process.execPath, ["scripts/check-local-migrations.mjs"]],
   ["npm", ["run", "test:rls"]],
   ["npx", ["playwright", "test", "tests/e2e/pilot"]],
 ];
