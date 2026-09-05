@@ -22,7 +22,7 @@ export function AuthShell({
         <div className="flex justify-center">
           <OptivosLogo subtitle="Audit et intelligence d’automatisation" />
         </div>
-        <Card className="overflow-hidden border-white/10 bg-slate-950/75 text-slate-100 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <Card className="overflow-hidden border-white/10 bg-slate-950/75 text-slate-100 shadow-[0_30px_90px_rgba(0,0,0,0.45)] backdrop-blur-xl dark:border-white/10 dark:bg-slate-950/75 [&_input]:border-white/15 [&_input]:bg-slate-900 [&_input]:text-slate-100 [&_label]:text-slate-200">
           <div className="h-px bg-gradient-to-r from-transparent via-blue-400/70 to-transparent" />
           <CardHeader className="space-y-2 px-7 pt-7">
             <CardTitle className="font-['Manrope'] text-2xl tracking-[-0.03em]">{title}</CardTitle>

@@ -3,7 +3,8 @@
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthShell } from "@/modules/auth/presentation/auth-shell";
+import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 
 export default function OnboardingPage() {
@@ -13,54 +14,56 @@ export default function OnboardingPage() {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    if (pending) return;
     setPending(true);
     setError(undefined);
 
     const form = new FormData(event.currentTarget);
-    const response = await fetch("/api/onboarding/organization", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ name: form.get("name") }),
-    });
-
-    setPending(false);
-
-    if (!response.ok) {
-      setError("Impossible de créer l’organisation. Vérifiez le nom ou réessayez.");
-      return;
+    try {
+      const response = await fetch("/api/onboarding/organization", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ name: form.get("name") }),
+      });
+      if (!response.ok) {
+        setError("Impossible de créer votre espace. Vérifiez le nom ou réessayez.");
+        return;
+      }
+      router.push("/");
+      router.refresh();
+    } catch {
+      setError(
+        "Création non confirmée. Vérifiez votre connexion, puis rechargez la page avant de réessayer.",
+      );
+    } finally {
+      setPending(false);
     }
-
-    router.push("/");
-    router.refresh();
   }
 
   return (
-    <main className="flex min-h-screen items-center justify-center bg-neutral-50 px-4">
-      <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Créer votre organisation</CardTitle>
-          <CardDescription>Vous en deviendrez automatiquement propriétaire.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form className="space-y-4" onSubmit={handleSubmit}>
-            <Input
-              name="name"
-              minLength={2}
-              maxLength={120}
-              placeholder="Nom de l’organisation"
-              required
-            />
-            <Button className="w-full" type="submit" disabled={pending}>
-              {pending ? "Création…" : "Accéder au dashboard"}
-            </Button>
-            {error && (
-              <p className="text-sm text-red-600" role="alert">
-                {error}
-              </p>
-            )}
-          </form>
-        </CardContent>
-      </Card>
-    </main>
+    <AuthShell
+      title="Créer votre espace Optivos"
+      description="Votre espace regroupe vos entreprises et leurs audits pour retrouver vos analyses au même endroit."
+    >
+      <form className="space-y-4" onSubmit={handleSubmit}>
+        <Label htmlFor="workspace-name">Nom de votre espace</Label>
+        <Input
+          id="workspace-name"
+          name="name"
+          minLength={2}
+          maxLength={120}
+          placeholder="Ex. le nom de votre entreprise"
+          required
+        />
+        <Button className="w-full bg-blue-600 hover:bg-blue-500" type="submit" disabled={pending}>
+          {pending ? "Création…" : "Créer mon espace"}
+        </Button>
+        {error && (
+          <p className="text-sm text-red-300" role="alert">
+            {error}
+          </p>
+        )}
+      </form>
+    </AuthShell>
   );
 }

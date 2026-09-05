@@ -27,20 +27,23 @@ export default function LoginPage() {
     setMessage(undefined);
 
     const form = new FormData(event.currentTarget);
-    const result = await loginWithPassword(
-      createClient(),
-      String(form.get("email") ?? ""),
-      String(form.get("password") ?? ""),
-    );
-
-    if (!result.success) {
-      setMessage(result.message);
+    try {
+      const result = await loginWithPassword(
+        createClient(),
+        String(form.get("email") ?? ""),
+        String(form.get("password") ?? ""),
+      );
+      if (!result.success) {
+        setMessage(result.message);
+        return;
+      }
+      router.replace("/");
+      router.refresh();
+    } catch {
+      setMessage("Connexion indisponible. Veuillez réessayer.");
+    } finally {
       setPending(false);
-      return;
     }
-
-    router.replace("/");
-    router.refresh();
   }
 
   return (
