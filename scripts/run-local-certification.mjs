@@ -9,6 +9,7 @@ import {
   stopProcessTree,
 } from "./local-certification-support.mjs";
 import { configureSystemChromeForPlaywright } from "./system-chrome.mjs";
+import { discoverPilotTests } from "./pilot-test-files.mjs";
 
 const bootstrapOnly = process.argv.includes("--bootstrap-only");
 let appProcess = null;
@@ -64,20 +65,8 @@ if (bootstrapOnly) {
   process.exit(0);
 }
 
-const pilotFiles = [
-  "tests/e2e/pilot/00-tenant-isolation.spec.ts",
-  "tests/e2e/pilot/01-stale-state.spec.ts",
-  "tests/e2e/pilot/02-discovery.spec.ts",
-  "tests/e2e/pilot/discovery-resilience.spec.ts",
-  "tests/e2e/pilot/ask-automatex.spec.ts",
-  "tests/e2e/pilot/auth.spec.ts",
-  "tests/e2e/pilot/company.spec.ts",
-  "tests/e2e/pilot/evidence.spec.ts",
-  "tests/e2e/pilot/feedback.spec.ts",
-  "tests/e2e/pilot/idempotency.spec.ts",
-  "tests/e2e/pilot/interview.spec.ts",
-  "tests/e2e/pilot/zz-decision-center.spec.ts",
-];
+const pilotFiles = discoverPilotTests();
+if (pilotFiles.length === 0) throw new Error("LOCAL CERTIFICATION: no pilot tests found");
 
 console.log(`LOCAL CERTIFICATION PLAYWRIGHT FILES = ${pilotFiles.length}`);
 for (const file of pilotFiles) {
