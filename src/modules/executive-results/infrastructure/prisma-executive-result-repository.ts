@@ -1,5 +1,6 @@
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import { AssistedAuditService } from "@/modules/assisted-audit/application/assisted-audit-service";
+import { AssistedAuditError } from "@/modules/assisted-audit/application/assisted-audit-errors";
 import { PrismaAssistedAuditRepository } from "@/modules/assisted-audit/infrastructure/prisma-assisted-audit-repository";
 import type {
   ExecutiveAuditResult,
@@ -11,7 +12,10 @@ export class PrismaExecutiveResultRepository implements ExecutiveResultRepositor
   async read(userId: string, companyId: string): Promise<ExecutiveAuditResult | null> {
     const audit = await new AssistedAuditService(new PrismaAssistedAuditRepository(this.db), userId)
       .get(companyId)
-      .catch(() => null);
+      .catch((error: unknown) => {
+        if (error instanceof AssistedAuditError && error.code === "COMPANY_NOT_FOUND") return null;
+        throw error;
+      });
     if (!audit) return null;
     const empty: ExecutiveAuditResult = {
       company: audit.company,

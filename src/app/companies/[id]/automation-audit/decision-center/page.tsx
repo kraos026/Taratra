@@ -4,6 +4,8 @@ import { createClient } from "@/infrastructure/supabase/server";
 import { PatronDecisionCenterService } from "@/modules/company-intake/application/patron-decision-center";
 import { PrismaPatronDecisionCenterReadModel } from "@/modules/company-intake/infrastructure/prisma-patron-decision-center-read-model";
 import { PatronDecisionCenterView } from "@/modules/company-intake/presentation/patron-decision-center-view";
+import { AssistedAuditError } from "@/modules/assisted-audit/application/assisted-audit-errors";
+import { z } from "zod";
 
 const DOWNSTREAM_READ_TRANSACTION_OPTIONS = { timeout: 10_000 };
 
@@ -13,6 +15,7 @@ export default async function DecisionCenterPage({
   readonly params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  if (!z.string().uuid().safeParse(id).success) notFound();
   const supabase = await createClient();
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
@@ -26,7 +29,10 @@ export default async function DecisionCenterPage({
         companyId: id,
       }),
     DOWNSTREAM_READ_TRANSACTION_OPTIONS,
-  );
+  ).catch((error: unknown) => {
+    if (error instanceof AssistedAuditError && error.code === "COMPANY_NOT_FOUND") notFound();
+    throw error;
+  });
 
   return <PatronDecisionCenterView center={center} />;
 }

@@ -3,6 +3,8 @@ import { createClient } from "@/infrastructure/supabase/server";
 import { PatronDecisionCenterService } from "@/modules/company-intake/application/patron-decision-center";
 import { PrismaPatronDecisionCenterReadModel } from "@/modules/company-intake/infrastructure/prisma-patron-decision-center-read-model";
 import { apiError, apiSuccess } from "@/shared/presentation/api-response";
+import { AssistedAuditError } from "@/modules/assisted-audit/application/assisted-audit-errors";
+import { z } from "zod";
 
 const DOWNSTREAM_READ_TRANSACTION_OPTIONS = { timeout: 10_000 };
 
@@ -12,6 +14,8 @@ export async function GET(_: Request, { params }: { readonly params: Promise<{ i
   const { data, error } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
   if (error || !userId) return apiError("UNAUTHENTICATED", "Authentication required", 401);
+  if (!z.string().uuid().safeParse(id).success)
+    return apiError("INVALID_INPUT", "Identifiant invalide", 400);
 
   const decisionCenter = await withAuthenticatedDatabase(
     userId,
@@ -21,7 +25,12 @@ export async function GET(_: Request, { params }: { readonly params: Promise<{ i
         companyId: id,
       }),
     DOWNSTREAM_READ_TRANSACTION_OPTIONS,
-  );
+  ).catch((caught: unknown) => {
+    if (caught instanceof AssistedAuditError)
+      return apiError(caught.code, "Entreprise introuvable", caught.status);
+    throw caught;
+  });
+  if (decisionCenter instanceof Response) return decisionCenter;
 
   return apiSuccess({
     executiveDecisionView: decisionCenter.sourceView,

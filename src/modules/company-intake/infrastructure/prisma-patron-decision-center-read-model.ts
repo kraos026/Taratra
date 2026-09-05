@@ -1,5 +1,6 @@
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import { ExecutiveResultService } from "@/modules/executive-results/application/executive-result-service";
+import { AssistedAuditError } from "@/modules/assisted-audit/application/assisted-audit-errors";
 import { PrismaExecutiveResultRepository } from "@/modules/executive-results/infrastructure/prisma-executive-result-repository";
 import type { ExecutiveDecisionView } from "../application/executive-decision-view";
 import type { PatronDecisionCenterReadModelPort } from "../application/patron-decision-center";
@@ -24,8 +25,8 @@ export class PrismaPatronDecisionCenterReadModel implements PatronDecisionCenter
         input.companyId,
       ),
     ]);
-    if (!membership) return null;
-    if (!result || result.company.id !== input.companyId) return null;
+    if (!membership || !result || result.company.id !== input.companyId)
+      throw new AssistedAuditError("COMPANY_NOT_FOUND", "Entreprise introuvable", 404);
 
     const projection = this.builder.build({
       tenantId: membership.organizationId,
