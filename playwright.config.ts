@@ -1,5 +1,6 @@
 import { defineConfig, devices } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
+import { assertPilotTarget } from "./tests/support/pilot-target-guard";
 
 function loadDotEnvLocal(): void {
   if (!existsSync(".env.local")) return;
@@ -20,15 +21,6 @@ function loadDotEnvLocal(): void {
   }
 }
 
-function isLocalhost(url: string): boolean {
-  const hostname = new URL(url).hostname;
-  return hostname === "localhost" || hostname === "127.0.0.1" || hostname === "::1";
-}
-
-function isVercelPreview(url: string): boolean {
-  return new URL(url).hostname.endsWith(".vercel.app");
-}
-
 loadDotEnvLocal();
 
 const executablePath = process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH;
@@ -43,16 +35,7 @@ const extraHTTPHeaders = vercelBypassSecret
   ? { "x-vercel-protection-bypass": vercelBypassSecret }
   : undefined;
 
-if (!isLocalhost(baseURL)) {
-  if (!isVercelPreview(baseURL) && process.env.AUTOMATEX_E2E_ALLOW_PRODUCTION !== "true")
-    throw new Error(
-      "Playwright E2E refuses non-local, non-Vercel-preview targets unless AUTOMATEX_E2E_ALLOW_PRODUCTION=true.",
-    );
-  if (isVercelPreview(baseURL) && !vercelBypassSecret)
-    throw new Error(
-      "VERCEL_AUTOMATION_BYPASS_SECRET is required for protected Vercel Preview E2E targets.",
-    );
-}
+assertPilotTarget({ ...process.env, AUTOMATEX_E2E_BASE_URL: baseURL });
 
 export default defineConfig({
   testDir: "./tests/e2e/pilot",

@@ -13,6 +13,7 @@ import {
   stopProcessTree,
 } from "./local-certification-support.mjs";
 import { configureSystemChromeForPlaywright } from "./system-chrome.mjs";
+import { assertForeignCompanyDenied, knowledgeCounts } from "./canonical-read-checks.mjs";
 
 const STAGES = [
   "Discovery",
@@ -46,10 +47,10 @@ let currentOrganizationId = null;
 let db = null;
 let browser = null;
 
-async function login(page) {
+async function login(page, user = LOCAL_E2E_USERS.tenantA) {
   await page.goto("/login");
-  await page.getByLabel(/email/i).fill(LOCAL_E2E_USERS.tenantA.email);
-  await page.getByLabel(/password|mot de passe/i).fill(LOCAL_E2E_USERS.tenantA.password);
+  await page.getByLabel(/email/i).fill(user.email);
+  await page.getByLabel(/password|mot de passe/i).fill(user.password);
   await page.getByRole("button", { name: /se connecter|login|sign in/i }).click();
   await page.waitForURL((url) => !url.pathname.endsWith("/login"), { timeout: 30_000 });
   const response = await page.request.get("/api/companies");
@@ -200,7 +201,7 @@ class CanonicalCertification {
     const id = idFrom(result) ?? (await latestId("knowledge_snapshots", "company_id"));
     assertUuid(id, "Knowledge snapshot");
     await expectStatus("knowledge_snapshots", id, "ready");
-    const counts = await countsFor(["knowledge_sources", "knowledge_facts", "knowledge_nodes"]);
+    const counts = await knowledgeCounts(db, currentOrganizationId, id);
     if (Object.values(counts).some((count) => count < 1))
       throw new Error(`Knowledge snapshot incomplete: ${JSON.stringify(counts)}`);
     this.results.knowledgeSnapshotId = id;
@@ -717,15 +718,6 @@ async function expectStatus(table, id, expected) {
     throw new Error(`${table} ${id} status expected ${expected} got ${actual}`);
 }
 
-async function countsFor(tables) {
-  const counts = {};
-  for (const table of tables) {
-    const row = await one(`select count(*)::int as count from public.${table}`);
-    counts[table] = Number(row.count);
-  }
-  return counts;
-}
-
 async function tenantUser(label) {
   const email = label === "A" ? LOCAL_E2E_USERS.tenantA.email : LOCAL_E2E_USERS.tenantB.email;
   const row = await one(
@@ -742,22 +734,15 @@ async function tenantUser(label) {
 }
 
 async function assertTenantBIsolation(companyId) {
-  const tenantB = await one(
-    `select om.organization_id
-     from public.organization_members om
-     join auth.users u on u.id = om.user_id
-     where lower(u.email) = lower($1)
-     limit 1`,
-    [LOCAL_E2E_USERS.tenantB.email],
-  );
-  const visible = await one(
-    `select count(*)::int as count
-     from public.companies
-     where organization_id = $1 and id = $2 and deleted_at is null`,
-    [tenantB.organization_id, companyId],
-  );
-  if (Number(visible.count) !== 0)
-    throw new Error("Tenant B can see Tenant A company in tenant-scoped query");
+  const context = await browser.newContext({ baseURL: LOCAL_APP_URL });
+  try {
+    const page = await context.newPage();
+    await login(page, LOCAL_E2E_USERS.tenantB);
+    await assertForeignCompanyDenied(page.request, companyId);
+    console.log("TENANT B AUTHENTICATED API ISOLATION: PASS");
+  } finally {
+    await context.close();
+  }
 }
 
 async function assertRefreshPersistence(page, companyId, result) {
@@ -851,6 +836,7 @@ async function main() {
     const result = await certification.run();
 
     await assertRefreshPersistence(page, company.id, result);
+    await assertTenantBIsolation(company.id);
     await reportSuccess(result);
   } finally {
     await browser?.close().catch(() => undefined);

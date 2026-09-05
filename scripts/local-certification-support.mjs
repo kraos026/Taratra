@@ -193,16 +193,19 @@ export async function waitForAppReadiness(timeoutMs) {
   let last = "";
   while (Date.now() - start < timeoutMs) {
     const results = [];
+    let allPassed = true;
     for (const check of checks) {
       const result = await httpCheck(`${LOCAL_APP_URL}${check.path}`);
       results.push(`${check.path}:${result.status}:${result.contentType}`);
       if (
         result.status !== check.expectedStatus ||
         !result.contentType.includes(check.expectedContentType)
-      )
+      ) {
+        allPassed = false;
         break;
+      }
     }
-    if (results.length === checks.length) return;
+    if (allPassed && results.length === checks.length) return;
     last = results.join(", ");
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
