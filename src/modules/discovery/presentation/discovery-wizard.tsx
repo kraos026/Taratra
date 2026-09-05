@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  preserveDiscoveryDetails,
+  readDiscoveryAnswers as readAnswers,
+} from "./discovery-answer-draft";
 const steps = ["company", "business", "organization", "software", "processes", "review"] as const;
 const labels = {
   company: "Entreprise",
@@ -68,7 +72,14 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
     const response = await fetch(`/api/discovery-sessions/${session.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ lockVersion: session.lockVersion, payload: payload(step, draft) }),
+      body: JSON.stringify({
+        lockVersion: session.lockVersion,
+        payload: preserveDiscoveryDetails(
+          session.answers.find((answer) => answer.step === step),
+          draft,
+          payload(step, draft),
+        ),
+      }),
     });
     if (!response.ok) {
       setMessage(
@@ -662,27 +673,6 @@ function payload(step: Step, d: Draft) {
       })),
     };
   return { step, confirmed: d.confirmed === "true" };
-}
-function readAnswers(session: Session) {
-  const draft: Draft = {};
-  for (const answer of session.answers) {
-    const value = answer.valueJson as Record<string, unknown>;
-    for (const [key, v] of Object.entries(value)) {
-      if (key === "step") continue;
-      if (Array.isArray(v))
-        draft[key] = v
-          .map((x) =>
-            typeof x === "object" && x !== null && "name" in x
-              ? String((x as { name: unknown }).name)
-              : typeof x === "object" && x !== null && "title" in x
-                ? String((x as { title: unknown }).title)
-                : String(x),
-          )
-          .join(", ");
-      else if (v !== null) draft[key] = String(v);
-    }
-  }
-  return draft;
 }
 function WizardSkeleton() {
   return (

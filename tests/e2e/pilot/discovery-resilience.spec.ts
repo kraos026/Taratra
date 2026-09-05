@@ -63,3 +63,38 @@ test("Discovery locks validated answers and provides the next real route", async
     `/companies/${companyId}/interview`,
   );
 });
+
+test("Discovery refresh restores tools and saves their existing details unchanged", async ({
+  page,
+}) => {
+  await openReview(page);
+  const tools = {
+    step: "software",
+    items: [{ name: "Planning", purpose: "Reservations", criticality: 4, usersCount: 12 }],
+  };
+  await page.route(`**/api/companies/${companyId}/discovery`, (route) =>
+    route.fulfill({
+      json: {
+        data: {
+          ...session,
+          currentStep: "software",
+          answers: [{ step: "software", valueJson: tools }],
+        },
+      },
+    }),
+  );
+  await page.reload();
+  await expect(page.locator("#software")).toHaveValue("Planning");
+  let saved: unknown;
+  await page.route(`**/api/discovery-sessions/${sessionId}`, (route) => {
+    saved = route.request().postDataJSON();
+    return route.fulfill({
+      json: {
+        data: { ...session, lockVersion: 2, answers: [{ step: "software", valueJson: tools }] },
+      },
+    });
+  });
+  await page.getByRole("button", { name: "Enregistrer et continuer" }).click();
+  await expect(page.getByText("Enregistré", { exact: true })).toBeVisible();
+  expect(saved).toEqual({ lockVersion: 1, payload: tools });
+});
