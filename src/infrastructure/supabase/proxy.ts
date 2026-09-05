@@ -26,33 +26,52 @@ export async function updateSession(request: NextRequest) {
   const { data } = await supabase.auth.getClaims();
   const isAuthenticated = Boolean(data?.claims?.sub);
   const isPublicRoute =
-    request.nextUrl.pathname.startsWith("/signup") ||
-    request.nextUrl.pathname.startsWith("/login") ||
+    request.nextUrl.pathname === "/signup" ||
+    request.nextUrl.pathname === "/login" ||
     request.nextUrl.pathname.startsWith("/auth/");
 
   if (!isAuthenticated && !isPublicRoute) {
-    return NextResponse.redirect(new URL("/login", request.url));
+    return redirectWithSession("/login");
   }
 
   if (isAuthenticated && !isPublicRoute) {
-    const { data: membership } = await supabase
+    const { data: membership, error: membershipError } = await supabase
       .from("organization_members")
       .select("organization_id")
+      .eq("user_id", data!.claims!.sub)
       .limit(1)
       .maybeSingle();
+
+    if (membershipError) {
+      const unavailable = new NextResponse(
+        "Votre espace est temporairement indisponible. Réessayez.",
+        {
+          status: 503,
+          headers: { "Cache-Control": "no-store", "Retry-After": "5" },
+        },
+      );
+      response.cookies.getAll().forEach((cookie) => unavailable.cookies.set(cookie));
+      return unavailable;
+    }
 
     if (
       !membership &&
       request.nextUrl.pathname !== "/onboarding" &&
       !request.nextUrl.pathname.startsWith("/api/onboarding")
     ) {
-      return NextResponse.redirect(new URL("/onboarding", request.url));
+      return redirectWithSession("/onboarding");
     }
 
     if (membership && request.nextUrl.pathname === "/onboarding") {
-      return NextResponse.redirect(new URL("/", request.url));
+      return redirectWithSession("/");
     }
   }
 
   return response;
+
+  function redirectWithSession(path: string) {
+    const redirect = NextResponse.redirect(new URL(path, request.url));
+    response.cookies.getAll().forEach((cookie) => redirect.cookies.set(cookie));
+    return redirect;
+  }
 }

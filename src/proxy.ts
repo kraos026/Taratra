@@ -12,6 +12,7 @@ export const config = {
     "/companies/:path*",
     "/crm/:path*",
     "/audits/:path*",
+    "/questionnaires/:path*",
     "/recommendations/:path*",
     "/reports/:path*",
     "/knowledge/:path*",
