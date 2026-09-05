@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -61,9 +62,8 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
       });
   }, [companyId]);
   const progress = useMemo(() => Math.round(((index + 1) / steps.length) * 100), [index]);
-  async function save(next?: Step) {
-    if (!session) return;
-    setBusy(true);
+  async function persistAnswers(): Promise<Session | null> {
+    if (!session || session.status === "validated") return null;
     setMessage("Enregistrement…");
     const response = await fetch(`/api/discovery-sessions/${session.id}`, {
       method: "PATCH",
@@ -76,26 +76,54 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
           ? "Cette session a été modifiée ailleurs. Rechargez la page."
           : "Vérifiez les informations saisies.",
       );
-      setBusy(false);
-      return;
+      return null;
     }
     const value = ((await response.json()) as { data: Session }).data;
     setSession(value);
-    if (next) setStep(next);
     setMessage("Enregistré");
-    setBusy(false);
+    return value;
+  }
+  async function save(next?: Step) {
+    if (busy) return;
+    setBusy(true);
+    try {
+      const saved = await persistAnswers();
+      if (saved && next) setStep(next);
+    } catch {
+      setMessage("Impossible d’enregistrer. Vos réponses sont conservées à l’écran. Réessayez.");
+    } finally {
+      setBusy(false);
+    }
   }
   async function validate() {
-    await save();
-    if (!session) return;
-    const response = await fetch(`/api/discovery-sessions/${session.id}/validate`, {
-      method: "POST",
-    });
-    setMessage(
-      response.ok
-        ? "Compréhension validée. Vous pouvez poursuivre vers l’entretien."
-        : "Complétez toutes les étapes avant validation.",
-    );
+    if (busy) return;
+    setBusy(true);
+    let saved: Session | null = null;
+    try {
+      saved = await persistAnswers();
+      if (!saved) return;
+      setMessage("Validation…");
+      const response = await fetch(`/api/discovery-sessions/${saved.id}/validate`, {
+        method: "POST",
+      });
+      if (!response.ok) {
+        setMessage(
+          "Validation impossible. Vérifiez que toutes les sections sont complètes, puis réessayez.",
+        );
+        return;
+      }
+      const value = ((await response.json()) as { data: Session }).data;
+      setSession(value);
+      setMessage("Compréhension validée. Vous pouvez poursuivre vers l’entretien.");
+    } catch {
+      setMessage(
+        saved
+          ? "Réponses enregistrées, mais validation non confirmée. Rechargez la page pour vérifier son état."
+          : "Impossible d’enregistrer. Vos réponses sont conservées à l’écran. Réessayez.",
+      );
+    } finally {
+      setBusy(false);
+    }
   }
   async function startDiscovery() {
     setBusy(true);
@@ -165,7 +193,7 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
         {steps.map((s, i) => (
           <button
             key={s}
-            disabled={i > index + 1}
+            disabled={busy || (!readOnly && i > index + 1)}
             onClick={() => setStep(s)}
             className={`min-w-36 flex-1 border-r border-white/10 p-3 text-left text-xs transition last:border-r-0 ${
               s === step ? "bg-blue-500/15 text-blue-100" : "text-slate-400 hover:bg-white/5"
@@ -193,7 +221,9 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
           <p className="mt-1 text-sm leading-6 text-slate-400">{guidance[step]}</p>
         </CardHeader>
         <CardContent className="p-5 sm:p-6">
-          <StepFields step={step} draft={draft} setDraft={setDraft} />
+          <fieldset disabled={busy || readOnly}>
+            <StepFields step={step} draft={draft} setDraft={setDraft} />
+          </fieldset>
         </CardContent>
       </Card>
       <footer className="sticky bottom-4 z-10 flex flex-col gap-3 rounded-2xl border border-white/10 bg-slate-950/95 p-3 shadow-2xl backdrop-blur sm:flex-row sm:items-center sm:justify-between">
@@ -208,12 +238,20 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
             <Button
               className="opt-secondary"
               variant="outline"
+              disabled={busy}
               onClick={() => setStep(steps[index - 1])}
             >
               Précédent
             </Button>
           )}
-          {index < steps.length - 1 ? (
+          {readOnly ? (
+            <Link
+              className="opt-primary inline-flex items-center rounded-xl px-4 py-3 text-sm font-semibold"
+              href={`/companies/${companyId}/interview`}
+            >
+              Continuer vers l’entretien
+            </Link>
+          ) : index < steps.length - 1 ? (
             <Button
               className="opt-primary"
               disabled={busy || readOnly}
