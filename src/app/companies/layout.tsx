@@ -2,6 +2,13 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
+import type { AssistedAuditReadModel } from "@/modules/assisted-audit/application/assisted-audit-model";
+import {
+  companyIdFromPath,
+  companyNavigationHref,
+  loadCompanyNavigation,
+} from "@/components/dashboard/company-navigation";
 import {
   BarChart3,
   Building2,
@@ -25,16 +32,28 @@ const pilotNavigation = [
 
 export default function CompaniesLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const companyId = pathname.match(/^\/companies\/([^/]+)/)?.[1];
+  const companyId = companyIdFromPath(pathname);
+  const [navigation, setNavigation] = useState<{
+    pathname: string;
+    model: AssistedAuditReadModel | null;
+  } | null>(null);
+  const model = navigation?.pathname === pathname ? navigation.model : null;
+
+  useEffect(() => {
+    if (!companyId) return;
+    const controller = new AbortController();
+    void loadCompanyNavigation(companyId, controller.signal)
+      .then((model) => {
+        if (!controller.signal.aborted) setNavigation({ pathname, model });
+      })
+      .catch(() => {
+        if (!controller.signal.aborted) setNavigation({ pathname, model: null });
+      });
+    return () => controller.abort();
+  }, [companyId, pathname]);
 
   function navigationHref(label: (typeof pilotNavigation)[number][1], fallback: string): string {
-    if (!companyId) return fallback;
-    if (label === "Mon entreprise") return `/companies/${companyId}`;
-    if (label === "Audit") return `/companies/${companyId}/automation-audit`;
-    if (label === "Résultats") return `/companies/${companyId}/automation-audit/results`;
-    if (label === "Opportunités" || label === "ROI" || label === "Plan d’action")
-      return `/companies/${companyId}/automation-audit`;
-    return fallback;
+    return companyNavigationHref(companyId, model, label, fallback);
   }
 
   function isActive(label: (typeof pilotNavigation)[number][1]): boolean {
