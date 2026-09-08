@@ -83,6 +83,15 @@ function input(): AutomationSpecificationInput {
 }
 
 describe("AutomationSpecificationEngine", () => {
+  it("blocks unresolved variables inherited from a blueprint", () => {
+    const value = input();
+    value.blueprint.objective = "{actor}";
+    expect(new AutomationSpecificationEngine().generate(value).validations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ ruleCode: "unresolved_template", passed: false }),
+      ]),
+    );
+  });
   it("keeps a human control linked to the exact original topology edge", () => {
     const source = input();
     source.blueprint.topology.push({

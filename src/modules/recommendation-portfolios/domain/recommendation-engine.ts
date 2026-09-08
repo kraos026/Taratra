@@ -172,6 +172,10 @@ export class RecommendationPortfolioEngine {
       values.push(error("unknown_priority_definition", "Priority definition is unavailable"));
     const identifiers = new Set<string>();
     for (const item of items) {
+      if (hasUnresolvedTemplate([item.candidate, item.rule]))
+        values.push(
+          error("unresolved_template", "Recommendation contains an unresolved catalog variable"),
+        );
       if (identifiers.has(item.identifier))
         values.push(error("duplicate_recommendation", `${item.identifier} occurs more than once`));
       identifiers.add(item.identifier);
@@ -311,3 +315,4 @@ function medianValue(values: number[]) {
   const middle = Math.floor(sorted.length / 2);
   return sorted.length % 2 ? sorted[middle]! : (sorted[middle - 1]! + sorted[middle]!) / 2;
 }
+import { hasUnresolvedTemplate } from "@/shared/domain/output-template";

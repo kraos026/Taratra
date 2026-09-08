@@ -51,7 +51,7 @@ export class AutomationSpecificationEngine {
     input: AutomationSpecificationInput,
     result: AutomationSpecificationResult,
   ): SpecificationValidation[] {
-    return input.rules
+    const validations: SpecificationValidation[] = input.rules
       .filter((rule) => rule.published && rule.ruleType === "validation" && rule.operator)
       .map((rule) => ({
         ruleCode: rule.code,
@@ -62,6 +62,17 @@ export class AutomationSpecificationEngine {
         message: rule.description,
         details: { operator: rule.operator },
       }));
+    if (hasUnresolvedTemplate([result.name, result.objective, result.scope, result.elements]))
+      validations.push({
+        ruleCode: "unresolved_template",
+        ruleVersion: 1,
+        severity: "error",
+        passed: false,
+        targetLocalId: null,
+        message: "Specification contains an unresolved catalog variable",
+        details: {},
+      });
+    return validations;
   }
 
   private project(rule: SpecificationRule, input: AutomationSpecificationInput) {
@@ -424,3 +435,4 @@ function asStrings(value: unknown) {
     ? value.filter((item): item is string => typeof item === "string")
     : [];
 }
+import { hasUnresolvedTemplate } from "@/shared/domain/output-template";

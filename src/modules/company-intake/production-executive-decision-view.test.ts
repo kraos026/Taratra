@@ -262,3 +262,15 @@ function publishedResult(): ExecutiveAuditResult {
     },
   };
 }
+// Historical published content must remain readable without leaking catalog tokens.
+it("uses an explicit fallback for old executive placeholders", () => {
+  const result = publishedResult();
+  result.findings[0]!.description = "{actor} performs {share}%";
+  const projection = new ProductionExecutiveDecisionViewBuilder().build({
+    tenantId: "tenant-a",
+    result,
+  });
+  expect(JSON.stringify(projection)).not.toContain("{actor}");
+  expect(JSON.stringify(projection)).not.toContain("{share}");
+  expect(JSON.stringify(projection)).toContain("information à préciser");
+});

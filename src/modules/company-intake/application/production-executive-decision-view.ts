@@ -1,4 +1,5 @@
 import type { ExecutiveAuditResult } from "../../executive-results/application/executive-result-model";
+import { safeExecutiveOutput } from "../../executive-results/application/executive-output";
 import type {
   ExecutiveCompletenessCheck,
   ExecutiveDecisionState,
@@ -40,7 +41,7 @@ export class ProductionExecutiveDecisionViewBuilder {
     const reason = unavailableReasonFor(input.result);
     if (reason) return deepFreeze({ view: null, unavailableReason: reason });
 
-    const result = input.result;
+    const result = safeExecutiveOutput(input.result);
     const traceability = traceabilityFor(input);
     const economicState = economicStateFor(result);
     const explanation = evidenceExplanationFor(result);

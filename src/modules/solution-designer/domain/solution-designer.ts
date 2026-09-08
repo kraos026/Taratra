@@ -232,7 +232,7 @@ export class SolutionDesigner {
   }
 
   validate(input: DesignerInput, result: BlueprintResult): BlueprintValidation[] {
-    return input.validationRules
+    const validations: BlueprintValidation[] = input.validationRules
       .filter((rule) => rule.published)
       .map((rule) => ({
         code: rule.code,
@@ -240,6 +240,22 @@ export class SolutionDesigner {
         message: rule.description,
         passed: evaluateValidationOperator(rule, input, result),
       }));
+    if (
+      hasUnresolvedTemplate([
+        result.name,
+        result.description,
+        result.objective,
+        result.components,
+        result.risks,
+      ])
+    )
+      validations.push({
+        code: "unresolved_template",
+        severity: "error",
+        passed: false,
+        message: "Blueprint contains an unresolved catalog variable",
+      });
+    return validations;
   }
 
   private complexity(template: PatternTemplate, connectorCount: number, constraintCount: number) {
@@ -356,3 +372,4 @@ function hasCycle(nodes: string[], edges: PatternTemplate["edges"]) {
   };
   return nodes.some(visit);
 }
+import { hasUnresolvedTemplate } from "@/shared/domain/output-template";

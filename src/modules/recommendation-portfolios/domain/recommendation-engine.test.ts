@@ -87,6 +87,15 @@ const input = (): RecommendationInput => ({
   ],
 });
 describe("RecommendationPortfolioEngine", () => {
+  it("blocks unresolved variables in recommendation output", () => {
+    const value = input();
+    value.candidates[0]!.title = "{actor}";
+    expect(new RecommendationPortfolioEngine().generate(value).validations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "unresolved_template", severity: "error" }),
+      ]),
+    );
+  });
   it("rejects a catalog that has no canonical priority definition", () => {
     const value = input();
     value.priorityDefinitions[0]!.code = "unrelated";

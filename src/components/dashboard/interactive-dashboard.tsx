@@ -224,7 +224,9 @@ export function InteractiveDashboard() {
               </div>
               <div>
                 <p>Audit</p>
-                <strong>{activeAudits ? "En cours" : "—"}</strong>
+                <strong>
+                  {activeModel ? customerStatusLabel(activeModel.overallStatus) : "—"}
+                </strong>
                 <small>{audits ? "Depuis vos dossiers accessibles" : "Chargement…"}</small>
               </div>
             </article>

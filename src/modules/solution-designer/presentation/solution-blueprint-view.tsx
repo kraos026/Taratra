@@ -1,4 +1,5 @@
 import { Badge } from "@/components/ui/badge";
+import { customerOutputText } from "@/shared/domain/output-template";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 
 type Blueprint = {
@@ -22,8 +23,8 @@ export function SolutionBlueprintView({ blueprint }: { blueprint: Blueprint }) {
     <main className="mx-auto max-w-6xl space-y-6 p-6">
       <header>
         <Badge>{blueprint.status}</Badge>
-        <h1 className="mt-2 text-3xl font-bold">{blueprint.name}</h1>
-        <p className="text-muted-foreground">{blueprint.description}</p>
+        <h1 className="mt-2 text-3xl font-bold">{customerOutputText(blueprint.name)}</h1>
+        <p className="text-muted-foreground">{customerOutputText(blueprint.description)}</p>
       </header>
       <section className="grid gap-4 md:grid-cols-3">
         <Metric label="Complexité" value={`${blueprint.complexityScore}/100`} />
@@ -61,7 +62,7 @@ function Grid({ title, values }: { title: string; values: unknown[] }) {
       </CardHeader>
       <CardContent>
         <pre className="overflow-auto text-sm whitespace-pre-wrap">
-          {JSON.stringify(values, null, 2)}
+          {customerOutputText(JSON.stringify(values, null, 2))}
         </pre>
       </CardContent>
     </Card>

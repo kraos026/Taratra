@@ -195,6 +195,15 @@ const input = (): DesignerInput => ({
   ],
 });
 describe("SolutionDesigner", () => {
+  it("blocks unresolved variables inherited from a recommendation", () => {
+    const value = input();
+    value.source.recommendationDescription = "{actor}: {share}";
+    expect(new SolutionDesigner().generate(value).validations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: "unresolved_template", passed: false }),
+      ]),
+    );
+  });
   const designer = new SolutionDesigner();
   it("selects the catalog pattern and calculates deterministic complexity and cost", () => {
     const result = designer.generate(input());

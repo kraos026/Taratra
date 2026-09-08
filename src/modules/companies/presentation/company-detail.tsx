@@ -20,6 +20,11 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CompanyStatusBadge } from "./company-status-badge";
 import type { CompanyDetailResponse } from "./company-view";
+import type { AssistedAuditReadModel } from "@/modules/assisted-audit/application/assisted-audit-model";
+import {
+  currentJourneyLabel,
+  customerStatusLabel,
+} from "@/modules/assisted-audit/presentation/canonical-journey";
 
 async function fetchCompany(id: string): Promise<CompanyDetailResponse> {
   const response = await fetch(`/api/companies/${id}`, { cache: "no-store" });
@@ -32,6 +37,25 @@ export function CompanyDetail({ id }: { id: string }) {
   const router = useRouter();
   const [data, setData] = useState<CompanyDetailResponse>();
   const [error, setError] = useState<string>();
+  const [auditData, setAudit] = useState<AssistedAuditReadModel | null>(null);
+  const audit = auditData?.company.id === id ? auditData : null;
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void fetch(`/api/companies/${id}/automation-audit`, {
+      cache: "no-store",
+      signal: controller.signal,
+    })
+      .then(async (response) => {
+        if (!response.ok) return;
+        const payload = (await response.json()) as { data?: AssistedAuditReadModel };
+        if (!controller.signal.aborted && payload.data?.company.id === id) setAudit(payload.data);
+      })
+      .catch(() => {
+        /* The company remains readable; no lifecycle state is inferred. */
+      });
+    return () => controller.abort();
+  }, [id]);
 
   const load = useCallback(() => {
     void fetchCompany(id)
@@ -134,7 +158,7 @@ export function CompanyDetail({ id }: { id: string }) {
       <section className="grid gap-5 lg:grid-cols-[1.1fr_0.9fr]">
         <Card className="border-white/10 bg-slate-900/80 text-slate-50 shadow-xl shadow-slate-950/20">
           <CardHeader>
-            <p className="opt-eyebrow">Audit en cours</p>
+            <p className="opt-eyebrow">État de l’audit</p>
             <CardTitle className="font-['Manrope'] text-2xl">Parcours Optivos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -142,9 +166,13 @@ export function CompanyDetail({ id }: { id: string }) {
               <StatusPanel
                 icon={<CircleGauge size={18} />}
                 label="Progression"
-                value="À poursuivre"
+                value={audit ? customerStatusLabel(audit.overallStatus) : "État indisponible"}
               />
-              <StatusPanel icon={<Building2 size={18} />} label="Étape actuelle" value="Audit" />
+              <StatusPanel
+                icon={<Building2 size={18} />}
+                label="Étape actuelle"
+                value={audit ? currentJourneyLabel(audit) : "À consulter dans l’audit"}
+              />
               <StatusPanel
                 icon={<ShieldAlert size={18} />}
                 label="Points d’attention"

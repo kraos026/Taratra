@@ -29,5 +29,8 @@ describe("ExecutiveRoadmap", () => {
     expect(html).toContain("Conditions / prérequis");
     expect(html).toContain("200,5%");
     expect(html).not.toContain("200.45678");
+    expect(html.match(/<article /g)).toHaveLength(1);
+    expect(html).toContain('href="#action-r"');
+    expect(html).toContain('id="action-r"');
   });
 });

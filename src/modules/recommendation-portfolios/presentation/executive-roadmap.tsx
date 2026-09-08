@@ -11,6 +11,7 @@ import {
   ShieldCheck,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { customerOutputText } from "@/shared/domain/output-template";
 
 type Item = {
   id: string;
@@ -85,7 +86,14 @@ export function ExecutiveRoadmap({ recommendations }: { readonly recommendations
           {topThree.length ? (
             <div className="grid gap-4 lg:grid-cols-3">
               {topThree.map((item, index) => (
-                <RecommendationCard key={item.id} item={item} rank={index + 1} compact />
+                <a
+                  key={item.id}
+                  href={`#action-${item.id}`}
+                  className="rounded-2xl border border-white/10 bg-slate-900 p-4 text-sm font-semibold text-blue-200 hover:bg-slate-800"
+                >
+                  #{index + 1} · {brandText(item.title)}{" "}
+                  <ArrowRight size={15} className="ml-2 inline" />
+                </a>
               ))}
             </div>
           ) : (
@@ -143,7 +151,10 @@ function RecommendationCard({
   readonly compact?: boolean;
 }) {
   return (
-    <article className="rounded-3xl border border-white/10 bg-slate-950/70 p-5">
+    <article
+      id={`action-${item.id}`}
+      className="scroll-mt-6 rounded-3xl border border-white/10 bg-slate-950/70 p-5"
+    >
       <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-xs font-bold tracking-[0.16em] text-blue-300 uppercase">
@@ -175,7 +186,6 @@ function RecommendationCard({
         <Metric label="Investissement" value={formatMoney(item.implementationCost)} />
       </dl>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
-        <InfoPanel label="Pourquoi" value={brandText(item.description)} />
         <InfoPanel
           label="Conditions / prérequis"
           value={
@@ -282,7 +292,9 @@ function InfoPanel({ label, value }: { readonly label: string; readonly value: s
 }
 
 function brandText(value: string): string {
-  return value.replaceAll("AutomateX", "Optivos").replaceAll("AUTOMATEX", "OPTIVOS");
+  return customerOutputText(value)
+    .replaceAll("AutomateX", "Optivos")
+    .replaceAll("AUTOMATEX", "OPTIVOS");
 }
 
 function EmptyState({ text }: { readonly text: string }) {
