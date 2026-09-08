@@ -1,5 +1,22 @@
 import type { AssistedAuditReadModel } from "@/modules/assisted-audit/application/assisted-audit-model";
 
+export type DecisionEvidenceQuality = "SUPPORTED" | "INFERRED" | "ASSUMED" | "MISSING" | "CONTRADICTORY";
+export interface OpportunityDecisionSafety {
+  organizationId: string;
+  companyId: string;
+  opportunityId: string;
+  automationSnapshotId: string;
+  evidence: { id: string; quality: DecisionEvidenceQuality }[];
+  observations: { factId: string; key: string; value: string | number | boolean; quality: DecisionEvidenceQuality; unit?: string }[];
+  prerequisites: {
+    id: string;
+    opportunityId: string;
+    kind: "connector" | "permission" | "human_approval" | "remediation";
+    satisfied: boolean | null;
+    remediation: string;
+  }[];
+}
+
 export interface ExecutiveAuditResult {
   company: { id: string; name: string };
   complete: boolean;
@@ -14,12 +31,14 @@ export interface ExecutiveAuditResult {
     impact: number;
     readiness: number;
     confidence: number;
+    safety?: OpportunityDecisionSafety;
   }[];
   roi: {
     id: string;
     currency: string;
     evaluations: {
       id: string;
+      automationOpportunityId?: string;
       title: string;
       annualBenefit: number | null;
       roi: number | null;

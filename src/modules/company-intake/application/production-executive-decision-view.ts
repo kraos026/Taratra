@@ -1,5 +1,6 @@
 import type { ExecutiveAuditResult } from "../../executive-results/application/executive-result-model";
 import { safeExecutiveOutput } from "../../executive-results/application/executive-output";
+import { opportunityDecisionSafety } from "../../executive-results/application/opportunity-decision-safety";
 import type {
   ExecutiveCompletenessCheck,
   ExecutiveDecisionState,
@@ -67,13 +68,13 @@ export class ProductionExecutiveDecisionViewBuilder {
       whatWeKnow: freeze(whatWeKnowFor(result)),
       whatWeBelieve: freeze(whatWeBelieveFor(result)),
       whatWeDoNotKnow: freeze(unknownsFor(result)),
-      contradictions: freeze([]),
+      contradictions: freeze(result.opportunities.flatMap(item => opportunityDecisionSafety(result, item, input.tenantId).contradictions)),
       rootCausesOrHypotheses: freeze(rootCausesFor(result)),
       bottlenecks: freeze(bottlenecksFor(result)),
       criticalIssues: freeze(criticalIssuesFor(result)),
       whatToFixFirst: freeze(whatToFixFirstFor(cards)),
       whatNotToAutomate: freeze(whatNotToAutomateFor(result)),
-      whatCanBeAutomated: freeze(whatCanBeAutomatedFor(result)),
+      whatCanBeAutomated: freeze(whatCanBeAutomatedFor(cards)),
       whatRequiresMoreEvidence: freeze(unknownsFor(result)),
       economicReadiness: economicState,
       economicPresentation: economicPresentationFor(result, economicState),
@@ -125,27 +126,30 @@ function cardsFor(
           traceability,
         }),
       ),
-      ...result.opportunities.map((opportunity) =>
-        card({
+      ...result.opportunities.map((opportunity) => {
+        const safety = opportunityDecisionSafety(result, opportunity, traceability.tenantId);
+        const evaluations = result.roi?.evaluations.filter(item => item.automationOpportunityId === opportunity.id) ?? [];
+        const opportunityEconomics = economicStateFor({ ...result, roi: result.roi ? { ...result.roi, evaluations } : null });
+        const state = safety.state ?? decisionStateFor(opportunity, opportunityEconomics);
+        const action = safety.remediations.length ? safety.remediations.join(" ") : actionFor(state);
+        return card({
           id: `opportunity:${opportunity.id}`,
           title: opportunity.title,
           problem: opportunity.problem,
           probableCause: probableCauseFor(result, opportunity.problem),
           priority: priorityFromOpportunity(opportunity),
-          state: decisionStateFor(opportunity, economicState),
-          economicState,
+          state,
+          economicState: opportunityEconomics,
           whyItMatters: `Business impact ${opportunity.impact}; readiness ${opportunity.readiness}; confidence ${opportunity.confidence}.`,
-          whatToDoNow: actionFor(decisionStateFor(opportunity, economicState)),
-          whatNotToDo: notActionFor(decisionStateFor(opportunity, economicState)),
-          nextBestAction:
-            result.recommendations.find((item) => item.title === opportunity.title)?.action ??
-            actionFor(decisionStateFor(opportunity, economicState)),
-          evidenceReferences: evidenceFor(result, opportunity.id),
-          uncertainty: uncertaintyFor(opportunity, result),
+          whatToDoNow: action,
+          whatNotToDo: notActionFor(state),
+          nextBestAction: action,
+          evidenceReferences: safety.evidenceIds,
+          uncertainty: [...safety.missing, ...safety.contradictions, ...(opportunityEconomics === "INSUFFICIENT_EVIDENCE" ? ["Le ROI doit être relié à cette opportunité."] : []), ...uncertaintyFor(opportunity, result)],
           explanation,
           traceability,
-        }),
-      ),
+        });
+      }),
       ...result.recommendations
         .filter(
           (recommendation) =>
@@ -367,9 +371,9 @@ function whatNotToAutomateFor(result: ExecutiveAuditResult): readonly string[] {
     : ["Do not automate controls or approvals without confirmed published evidence."];
 }
 
-function whatCanBeAutomatedFor(result: ExecutiveAuditResult): readonly string[] {
-  return result.opportunities
-    .filter((item) => decisionStateFor(item, economicStateFor(result)) !== "NEEDS_MORE_EVIDENCE")
+function whatCanBeAutomatedFor(cards: readonly ExecutivePriorityCard[]): readonly string[] {
+  return cards
+    .filter((item) => item.id.startsWith("opportunity:") && ["AUTOMATE_NOW", "AUTOMATE_CONDITIONALLY"].includes(item.recommendationState))
     .map((item) => item.title);
 }
 
@@ -378,8 +382,7 @@ function nextActionsFor(
   cards: readonly ExecutivePriorityCard[],
 ): readonly string[] {
   return freeze([
-    ...result.recommendations.map((item) => item.action),
-    ...(cards[0] ? [cards[0].nextBestAction] : []),
+    ...cards.map(item => item.nextBestAction),
   ]);
 }
 
@@ -412,9 +415,8 @@ function recommendationStateFor(
   if (recommendation.confidence < 50) return "NEEDS_MORE_EVIDENCE";
   if (economics === "NOT_JUSTIFIED") return "NOT_ECONOMICALLY_JUSTIFIED";
   if (economics === "INSUFFICIENT_EVIDENCE") return "NEEDS_MORE_EVIDENCE";
-  return recommendation.priority === "critical" || recommendation.priority === "high"
-    ? "AUTOMATE_NOW"
-    : "AUTOMATE_CONDITIONALLY";
+  // An unlinked recommendation cannot inherit another opportunity's safety/ROI.
+  return "NEEDS_MORE_EVIDENCE";
 }
 
 function actionFor(state: ExecutiveDecisionState): string {
@@ -500,7 +502,7 @@ function completenessFor(
     uncertainty: true,
     whatToFix: whatToFixFirstFor(cards).length > 0,
     whatNotToAutomate: whatNotToAutomateFor(result).length > 0,
-    whatToAutomate: whatCanBeAutomatedFor(result).length > 0,
+    whatToAutomate: cards.some(item => item.id.startsWith("opportunity:")) && Boolean(result.roi?.evaluations.length),
     economicStatus: Boolean(economicState),
     nextAction: nextBestActions.length > 0,
   };

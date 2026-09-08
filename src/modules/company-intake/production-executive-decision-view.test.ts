@@ -223,6 +223,15 @@ function publishedResult(): ExecutiveAuditResult {
         impact: 90,
         readiness: 85,
         confidence: 82,
+        safety: {
+          organizationId: "tenant-a",
+          companyId: "company-a",
+          opportunityId: "opportunity-1",
+          automationSnapshotId: "automation-snapshot-1",
+          evidence: [{ id: "evidence-1", quality: "SUPPORTED" }],
+          observations: [],
+          prerequisites: [],
+        },
       },
     ],
     roi: {
@@ -231,6 +240,7 @@ function publishedResult(): ExecutiveAuditResult {
       evaluations: [
         {
           id: "roi-evaluation-1",
+          automationOpportunityId: "opportunity-1",
           title: "Invoice reconciliation ROI",
           annualBenefit: 24000,
           roi: 3.2,
