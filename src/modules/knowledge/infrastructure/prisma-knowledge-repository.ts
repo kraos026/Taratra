@@ -72,7 +72,12 @@ export class PrismaKnowledgeRepository {
       this.db.companySoftware.findMany({ where: { organizationId, companyId } }),
       this.db.businessProcess.findMany({ where: { organizationId, companyId } }),
       this.db.interviewSession.findFirst({
-        where: { organizationId, companyId, status: "validated" },
+        where: {
+          organizationId,
+          companyId,
+          discoverySessionId: discoverySession.id,
+          status: "validated",
+        },
         orderBy: { version: "desc" },
       }),
     ]);

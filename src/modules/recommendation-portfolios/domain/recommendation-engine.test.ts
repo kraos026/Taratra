@@ -87,6 +87,25 @@ const input = (): RecommendationInput => ({
   ],
 });
 describe("RecommendationPortfolioEngine", () => {
+  it("rejects a catalog that has no canonical priority definition", () => {
+    const value = input();
+    value.priorityDefinitions[0]!.code = "unrelated";
+    expect(engine.generate(value).validations.some((item) => item.severity === "error")).toBe(true);
+  });
+  it("reports a missing matching rule instead of throwing", () => {
+    const value = input();
+    value.rules = [];
+    const result = engine.generate(value);
+    expect(result.recommendations).toEqual([]);
+    expect(result.validations.some((item) => item.severity === "error")).toBe(true);
+  });
+  it("rejects duplicate candidate identifiers without silently discarding evidence", () => {
+    const value = input();
+    value.candidates.push({ ...value.candidates[0]!, id: "other" });
+    expect(
+      engine.generate(value).validations.some((item) => item.code === "duplicate_recommendation"),
+    ).toBe(true);
+  });
   const engine = new RecommendationPortfolioEngine();
   it("classifies quick wins and calculates explicit priority", () => {
     const item = engine.generate(input()).recommendations[0]!;

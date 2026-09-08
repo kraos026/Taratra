@@ -117,6 +117,37 @@ function input(rules: AnalysisRule[]): AnalysisInput {
 
 describe("BusinessAnalysisEngine", () => {
   const engine = new BusinessAnalysisEngine();
+  it("renders measured actor share and preserves its calculation inputs", () => {
+    const source = input([
+      {
+        ...rule("human_bottleneck", { operator: "actorManualDurationShare", threshold: 60 }),
+        explanationTemplate: "{actor} carries {share}% of manual duration.",
+      },
+    ]);
+    const finding = engine.analyze(source).findings[0]!;
+    expect(finding.description).toBe("actor carries 100% of manual duration.");
+    expect(finding.evidence.explanationValues).toEqual({ actor: "actor", share: 100 });
+  });
+  it("renders duplicate counts using the same measurement as detection", () => {
+    const source = input([
+      {
+        ...rule("duplicate_manual_entry", { operator: "duplicateManualStep", minimum: 2 }),
+        explanationTemplate: "{count} duplicate manual steps.",
+      },
+    ]);
+    expect(engine.analyze(source).findings[0]?.description).toBe("2 duplicate manual steps.");
+  });
+  it("blocks an unknown explanation token without fabricating a value", () => {
+    const source = input([
+      {
+        ...rule("missing_process_owner", { operator: "missingOwner" }),
+        explanationTemplate: "Missing owner: {unknown_value}",
+      },
+    ]);
+    expect(engine.analyze(source).validations).toContainEqual(
+      expect.objectContaining({ code: "unresolved_explanation", severity: "error" }),
+    );
+  });
   it("detects every approved deterministic MVP condition", () => {
     const rules = [
       rule("duplicate_manual_entry", { operator: "duplicateManualStep", minimum: 2 }),

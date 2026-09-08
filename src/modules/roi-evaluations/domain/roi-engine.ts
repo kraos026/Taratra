@@ -95,16 +95,35 @@ const SCENARIOS: Record<ScenarioType, { volume: number; cost: number }> = {
 export class RoiEvaluationEngine {
   evaluate(input: RoiInput) {
     const model = input.models.find((item) => item.code === "automation_economic_impact");
+    const inputErrors = this.validateNumericInputs(input);
     const resolved = this.resolveAssumptions(input);
-    const scenarios =
-      model && resolved
+    let scenarios =
+      model && resolved && inputErrors.length === 0
         ? (Object.entries(SCENARIOS) as [ScenarioType, { volume: number; cost: number }][]).map(
             ([type, factors]) => this.scenario(type, factors, model, resolved, input.opportunities),
           )
         : [];
+    const invalidMetrics = scenarios.some((scenario) =>
+      scenario.evaluations.some((evaluation) =>
+        evaluation.metrics.some(
+          (metric) => metric.value !== null && !Number.isFinite(metric.value),
+        ),
+      ),
+    );
+    if (invalidMetrics) {
+      inputErrors.push(
+        error("non_finite_metric", "ROI arithmetic exceeds the supported numeric range"),
+      );
+      scenarios = [];
+    }
     return {
       scenarios,
-      validations: this.validate(input, scenarios),
+      validations: inputErrors.length
+        ? [
+            ...inputErrors,
+            ...this.validate(input, scenarios).filter((item) => item.severity === "error"),
+          ]
+        : this.validate(input, scenarios),
       catalogVersions: {
         models: input.models.map(({ id, code, version }) => ({ id, code, version })),
         assumptions: input.assumptions.map(({ id, code, version }) => ({ id, code, version })),
@@ -172,6 +191,57 @@ export class RoiEvaluationEngine {
     return values.some((item) => item === null)
       ? null
       : (values as NonNullable<(typeof values)[number]>[]);
+  }
+  private validateNumericInputs(input: RoiInput) {
+    const errors: { code: string; severity: "error"; message: string }[] = [];
+    const model = input.models.find((item) => item.code === "automation_economic_impact");
+    // These are the operands consumed by calculate, regardless of catalog metadata.
+    const operands: AssumptionCode[] = [
+      "hourly_cost",
+      "monthly_frequency",
+      "annual_frequency",
+      "hours_saved_per_occurrence",
+      "implementation_cost",
+      "maintenance_cost",
+      "training_cost",
+      "infrastructure_cost",
+      "error_cost",
+    ];
+    const defined = new Set(input.assumptions.map((item) => item.code));
+    const missing = [...new Set([...operands, ...(model?.requiredInputs ?? [])])].filter(
+      (code) => !defined.has(code as AssumptionCode),
+    );
+    if (missing.length)
+      errors.push(
+        error(
+          "incomplete_assumption_catalog",
+          `Missing assumption definitions: ${missing.join(", ")}`,
+        ),
+      );
+    for (const definition of input.assumptions) {
+      const value = this.value(definition, input);
+      if (value !== null && value !== undefined && (!Number.isFinite(value) || value < 0))
+        errors.push(
+          error(
+            "invalid_assumption",
+            `Assumption ${definition.code} must be finite and non-negative`,
+          ),
+        );
+    }
+    for (const opportunity of input.opportunities) {
+      if (
+        [opportunity.automationCoverage, opportunity.confidence].some(
+          (value) => !Number.isFinite(value) || value < 0 || value > 100,
+        )
+      )
+        errors.push(
+          error(
+            "invalid_opportunity_score",
+            `${opportunity.identifier} has an invalid coverage or confidence`,
+          ),
+        );
+    }
+    return errors;
   }
   private value(definition: RoiAssumptionDefinition, input: RoiInput) {
     if (input.unknownAssumptions.includes(definition.code)) return null;

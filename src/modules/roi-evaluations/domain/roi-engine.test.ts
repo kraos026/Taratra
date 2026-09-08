@@ -135,4 +135,36 @@ describe("RoiEvaluationEngine", () => {
   });
   it("rebuild remains deterministic", () =>
     expect(engine.rebuild(input())).toEqual(engine.evaluate(input())));
+
+  it.each([-1, Number.NaN, Number.POSITIVE_INFINITY])(
+    "blocks an invalid economic assumption (%s) before producing metrics",
+    (invalid) => {
+      const value = input();
+      value.suppliedAssumptions.hourly_cost = invalid;
+      const result = engine.evaluate(value);
+      expect(result.scenarios).toEqual([]);
+      expect(result.validations.some((item) => item.severity === "error")).toBe(true);
+    },
+  );
+  it("blocks an incomplete assumption catalog instead of publishing NaN metrics", () => {
+    const value = input();
+    value.assumptions = value.assumptions.filter((item) => item.code !== "hourly_cost");
+    const result = engine.evaluate(value);
+    expect(result.scenarios).toEqual([]);
+    expect(result.validations.some((item) => item.severity === "error")).toBe(true);
+  });
+  it("blocks arithmetic overflow even for finite positive inputs", () => {
+    const value = input();
+    value.suppliedAssumptions.hourly_cost = Number.MAX_VALUE;
+    const result = engine.evaluate(value);
+    expect(result.scenarios).toEqual([]);
+    expect(result.validations.some((item) => item.severity === "error")).toBe(true);
+  });
+  it.each([-1, 101, Number.NaN])("blocks invalid automation coverage (%s)", (coverage) => {
+    const value = input();
+    value.opportunities[0]!.automationCoverage = coverage;
+    const result = engine.evaluate(value);
+    expect(result.scenarios).toEqual([]);
+    expect(result.validations.some((item) => item.severity === "error")).toBe(true);
+  });
 });

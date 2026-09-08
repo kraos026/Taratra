@@ -261,6 +261,12 @@ export class BusinessAnalysisEngine {
         severity: "error",
         message: "Every score requires a visible formula",
       });
+    if (findings.some((finding) => /\{[a-zA-Z_][\w]*\}/.test(finding.description)))
+      validations.push({
+        code: "unresolved_explanation",
+        severity: "error",
+        message: "Finding explanations contain unresolved catalog variables",
+      });
     if (validations.length === 0)
       validations.push({
         code: "analysis_valid",
@@ -361,10 +367,15 @@ export class BusinessAnalysisEngine {
     const confidence = evidenceFacts.length
       ? round(evidenceFacts.reduce((sum, fact) => sum + fact.confidence, 0) / evidenceFacts.length)
       : input.processMap.confidence;
+    const explanationValues = this.explanationValues(rule, input);
     return {
       identifier: `${rule.code}:${step?.key ?? "process"}`,
       rule,
-      description: rule.explanationTemplate,
+      description: rule.explanationTemplate.replace(
+        /\{([a-zA-Z_][\w]*)\}/g,
+        (token, key: string) =>
+          Object.hasOwn(explanationValues, key) ? String(explanationValues[key]) : token,
+      ),
       relatedStepId: step?.id ?? null,
       relatedDepartmentId: step?.departmentId ?? null,
       relatedActorId: step?.actorId ?? null,
@@ -373,8 +384,58 @@ export class BusinessAnalysisEngine {
       businessImpact: rule.recommendationHint ?? rule.description,
       riskPoints: RISK_POINTS[rule.severity],
       evidenceFactIds: evidenceFacts.map((fact) => fact.id),
-      evidence: { ruleVersion: rule.version, processMapId: input.processMap.id },
+      evidence: { ruleVersion: rule.version, processMapId: input.processMap.id, explanationValues },
     };
+  }
+
+  private explanationValues(
+    rule: AnalysisRule,
+    input: AnalysisInput,
+  ): Record<string, string | number> {
+    const manual = input.nodes.filter((node) => node.executionMode === "manual");
+    const steps = input.nodes.filter((node) => ["step", "decision"].includes(node.type));
+    switch (rule.evaluationLogic.operator) {
+      case "duplicateManualStep":
+        return {
+          count: Math.max(0, ...Object.values(countBy(manual.map((node) => normalize(node.name))))),
+        };
+      case "approvalCount":
+      case "validationStepCount":
+        return { count: steps.filter((node) => /approv|valid/i.test(node.name)).length };
+      case "undocumentedShare":
+        return {
+          share: steps.length
+            ? round((100 * steps.filter((node) => !node.description?.trim()).length) / steps.length)
+            : 0,
+        };
+      case "manualHoursMonthly":
+        return {
+          hours: round(manual.reduce((sum, node) => sum + (node.durationMinutes ?? 0), 0) / 60),
+        };
+      case "processMetricBelow":
+        return {
+          value:
+            rule.evaluationLogic.metric === "confidence"
+              ? input.processMap.confidence
+              : input.processMap.completeness,
+        };
+      case "actorManualShare":
+      case "actorManualDurationShare": {
+        const duration = rule.evaluationLogic.operator === "actorManualDurationShare";
+        const counts = duration
+          ? sumByActor(manual)
+          : countBy(manual.map((node) => node.actorId).filter(isString));
+        const total = duration
+          ? manual.reduce((sum, node) => sum + (node.durationMinutes ?? 0), 0)
+          : manual.length;
+        const highest = Object.entries(counts).sort(
+          ([left, a], [right, b]) => b - a || left.localeCompare(right),
+        )[0];
+        return highest ? { actor: highest[0], share: round(maxShare(counts, total)) } : {};
+      }
+      default:
+        return {};
+    }
   }
 
   private nodeMatches(code: string, node: AnalysisNode) {

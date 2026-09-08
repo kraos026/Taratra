@@ -263,12 +263,10 @@ function evidenceFor(result: ExecutiveAuditResult, extra?: string): readonly str
 function economicStateFor(result: ExecutiveAuditResult): ExecutiveEconomicState {
   if (!result.roi?.evaluations.length) return "INSUFFICIENT_EVIDENCE";
   const values = result.roi.evaluations;
-  if (values.some((item) => item.roiSpecialValue === "infinite")) return "ECONOMICALLY_JUSTIFIED";
+  if (values.some((item) => item.roiSpecialValue === "unbounded")) return "ECONOMICALLY_JUSTIFIED";
   const numericRoi = values.map((item) => item.roi).filter(isNumber);
-  const benefits = values.map((item) => item.annualBenefit).filter(isNumber);
-  if (!numericRoi.length && !benefits.length) return "INSUFFICIENT_EVIDENCE";
-  if (numericRoi.some((item) => item > 0) || benefits.some((item) => item > 0))
-    return "ECONOMICALLY_JUSTIFIED";
+  if (numericRoi.length !== values.length) return "INSUFFICIENT_EVIDENCE";
+  if (numericRoi.some((item) => item > 0)) return "ECONOMICALLY_JUSTIFIED";
   return "NOT_JUSTIFIED";
 }
 
@@ -311,6 +309,12 @@ function whatWeBelieveFor(result: ExecutiveAuditResult): readonly string[] {
 function unknownsFor(result: ExecutiveAuditResult): readonly string[] {
   const missing: string[] = [];
   if (!result.roi?.evaluations.length) missing.push("Published ROI evaluation is unavailable.");
+  else if (
+    result.roi.evaluations.some(
+      (item) => !isNumber(item.roi) && item.roiSpecialValue !== "unbounded",
+    )
+  )
+    missing.push("Some published ROI evaluations lack a supported return on investment.");
   if (!result.recommendations.length) missing.push("Published recommendation portfolio is empty.");
   if (!result.opportunities.length) missing.push("Published automation opportunities are empty.");
   if (result.opportunities.some((item) => item.confidence < 50 || item.readiness < 50))

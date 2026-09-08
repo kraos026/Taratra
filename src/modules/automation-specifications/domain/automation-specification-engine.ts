@@ -218,14 +218,15 @@ const PROJECTORS: Record<TransformationDecision, Projector> = {
     ),
   project_controls: (input, rule) =>
     input.blueprint.topology
-      .filter((edge) => edge.type === "approves")
-      .map((edge, index) =>
+      .map((edge, sourceIndex) => ({ edge, sourceIndex }))
+      .filter(({ edge }) => edge.type === "approves")
+      .map(({ edge, sourceIndex }, index) =>
         projection(
           `control_${index + 1}`,
           "control",
           { kind: "human_validation", beforeStep: stepId(input, edge.to) },
           "topology_edge",
-          edgeId(edge, index),
+          edgeId(edge, sourceIndex),
           rule,
         ),
       ),
@@ -361,10 +362,11 @@ function referencesValid(elements: SpecificationElement[]) {
     elements.filter((element) => element.type === "step").map((element) => element.localId),
   );
   return elements
-    .filter((element) => element.type === "dependency")
-    .every(
-      (element) =>
-        steps.has(String(element.definition.from)) && steps.has(String(element.definition.to)),
+    .filter((element) => element.type === "dependency" || element.type === "control")
+    .every((element) =>
+      element.type === "control"
+        ? steps.has(String(element.definition.beforeStep))
+        : steps.has(String(element.definition.from)) && steps.has(String(element.definition.to)),
     );
 }
 

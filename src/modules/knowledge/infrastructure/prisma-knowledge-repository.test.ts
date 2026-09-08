@@ -98,7 +98,12 @@ describe("PrismaKnowledgeRepository production identity", () => {
     );
     expect(db.interviewSession.findFirst).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { organizationId: "org", companyId: "company", status: "validated" },
+        where: {
+          organizationId: "org",
+          companyId: "company",
+          discoverySessionId: "discovery",
+          status: "validated",
+        },
       }),
     );
   });

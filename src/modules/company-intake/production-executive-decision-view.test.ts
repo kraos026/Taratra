@@ -3,6 +3,38 @@ import type { ExecutiveAuditResult } from "../executive-results/application/exec
 import { PatronDecisionCenterPresenter, ProductionExecutiveDecisionViewBuilder } from "./index";
 
 describe("ProductionExecutiveDecisionViewBuilder", () => {
+  it.each([-20, 0])("does not justify automation from gross savings when ROI is %s", (roi) => {
+    const result = publishedResult();
+    result.roi!.evaluations[0]!.roi = roi;
+    const view = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result,
+    }).view!;
+    expect(view.economicReadiness).toBe("NOT_JUSTIFIED");
+    expect(view.priorityCards.some((card) => card.recommendationState === "AUTOMATE_NOW")).toBe(
+      false,
+    );
+  });
+  it("keeps missing ROI explicit even when gross benefit is positive", () => {
+    const result = publishedResult();
+    result.roi!.evaluations[0]!.roi = null;
+    const view = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result,
+    }).view!;
+    expect(view.economicReadiness).toBe("INSUFFICIENT_EVIDENCE");
+    expect(view.whatRequiresMoreEvidence.length).toBeGreaterThan(0);
+  });
+  it("recognizes the canonical unbounded ROI representation", () => {
+    const result = publishedResult();
+    result.roi!.evaluations[0]!.roi = null;
+    result.roi!.evaluations[0]!.roiSpecialValue = "unbounded";
+    result.roi!.evaluations[0]!.annualBenefit = null;
+    expect(
+      new ProductionExecutiveDecisionViewBuilder().build({ tenantId: "tenant-a", result }).view
+        ?.economicReadiness,
+    ).toBe("ECONOMICALLY_JUSTIFIED");
+  });
   it("projects a published executive result into the patron decision center contract", () => {
     const projection = new ProductionExecutiveDecisionViewBuilder().build({
       tenantId: "tenant-a",

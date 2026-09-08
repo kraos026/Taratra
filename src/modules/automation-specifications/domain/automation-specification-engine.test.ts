@@ -83,6 +83,34 @@ function input(): AutomationSpecificationInput {
 }
 
 describe("AutomationSpecificationEngine", () => {
+  it("keeps a human control linked to the exact original topology edge", () => {
+    const source = input();
+    source.blueprint.topology.push({
+      from: "receiver",
+      to: "processor",
+      type: "approves",
+      label: "Review",
+    });
+    const result = new AutomationSpecificationEngine().generate(source);
+    const control = result.elements.find((item) => item.type === "control")!;
+    expect(
+      result.provenance.find((item) => item.targetLocalId === control.localId)?.sourceElementId,
+    ).toBe("receiver:processor:approves:1");
+  });
+  it("rejects a human control referencing a step that does not exist", () => {
+    const source = input();
+    const engine = new AutomationSpecificationEngine();
+    const result = engine.generate(source);
+    result.elements.push({
+      localId: "control_review",
+      type: "control",
+      displayOrder: 99,
+      definition: { kind: "human_validation", beforeStep: "missing_step" },
+    });
+    expect(
+      engine.validate(source, result).find((item) => item.ruleCode === "references_valid")?.passed,
+    ).toBe(false);
+  });
   it("deterministically projects a published Blueprint", () => {
     const engine = new AutomationSpecificationEngine();
     expect(engine.generate(input())).toEqual(engine.generate(input()));

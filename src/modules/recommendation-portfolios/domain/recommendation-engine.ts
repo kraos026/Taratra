@@ -95,12 +95,22 @@ const PRIORITY_ORDER: Priority[] = ["critical", "high", "medium", "low", "future
 export class RecommendationPortfolioEngine {
   generate(input: RecommendationInput) {
     const definition = input.priorityDefinitions.find((item) => item.code === "portfolio_priority");
+    const errors: { code: string; severity: "error" | "information"; message: string }[] = [];
     const median = medianValue(input.candidates.map((item) => item.implementationCost));
     const partial = definition
-      ? input.candidates.map((candidate) => this.build(candidate, input.rules, definition, median))
+      ? input.candidates.flatMap((candidate) => {
+          const item = this.build(candidate, input.rules, definition, median);
+          if (item) return [item];
+          errors.push(
+            error(
+              "missing_recommendation_rule",
+              `${candidate.identifier} has no matching catalog rule`,
+            ),
+          );
+          return [];
+        })
       : [];
     const byRule = new Map(partial.map((item) => [item.rule.code, item]));
-    const errors: { code: string; severity: "error" | "information"; message: string }[] = [];
     for (const item of partial) {
       item.dependencyIdentifiers = item.rule.dependencies.map(
         (code) => byRule.get(code)?.identifier ?? `missing:${code}`,
@@ -158,9 +168,13 @@ export class RecommendationPortfolioEngine {
       input.processStatus !== "published"
     )
       values.push(error("source_unpublished", "All canonical source snapshots must be published"));
-    if (!input.priorityDefinitions.length)
+    if (!input.priorityDefinitions.some((item) => item.code === "portfolio_priority"))
       values.push(error("unknown_priority_definition", "Priority definition is unavailable"));
+    const identifiers = new Set<string>();
     for (const item of items) {
+      if (identifiers.has(item.identifier))
+        values.push(error("duplicate_recommendation", `${item.identifier} occurs more than once`));
+      identifiers.add(item.identifier);
       if (!item.candidate.evidence.length)
         values.push(error("missing_evidence", `${item.identifier} has no evidence`));
       if (item.candidate.roi === null && item.candidate.roiSpecialValue !== "unbounded")
@@ -182,12 +196,13 @@ export class RecommendationPortfolioEngine {
     rules: RecommendationRule[],
     definition: PriorityDefinition,
     median: number,
-  ): RecommendationResult {
+  ): RecommendationResult | null {
     const rule =
       [...rules]
         .sort((a, b) => a.precedence - b.precedence)
         .find((item) => this.matches(item.category, candidate, median)) ??
-      rules.find((item) => item.category === "long_term")!;
+      rules.find((item) => item.category === "long_term");
+    if (!rule) return null;
     const roiNormalized =
       candidate.roiSpecialValue === "unbounded" ? 100 : clamp(((candidate.roi ?? -100) + 100) / 4);
     const components = {
