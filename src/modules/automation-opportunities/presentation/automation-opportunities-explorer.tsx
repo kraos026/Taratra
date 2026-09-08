@@ -74,7 +74,7 @@ export function AutomationOpportunitiesExplorer({
                 <Sparkles size={16} />
                 Optivos · Priorités d’automatisation
               </p>
-              <h1 className="mt-4 font-['Manrope'] text-4xl font-extrabold tracking-tight text-white sm:text-6xl">
+              <h1 className="mt-4 font-['Manrope'] text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
                 Opportunités
               </h1>
               <p className="mt-4 text-base leading-7 text-slate-300 sm:text-lg">
@@ -82,7 +82,7 @@ export function AutomationOpportunitiesExplorer({
                 classées selon les données publiées de l’audit.
               </p>
             </div>
-            <div className="grid grid-cols-3 gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-3 text-center">
+            <div className="grid grid-cols-3 gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-3 text-center lg:min-w-80 lg:shrink-0">
               <HeroMetric
                 label="Top prioritaire"
                 value={String(Math.min(3, opportunities.length))}
@@ -251,9 +251,7 @@ function HeroMetric({
 }) {
   return (
     <div className="min-w-0 rounded-2xl bg-slate-950/70 px-4 py-3">
-      <p className="truncate text-[0.68rem] font-bold tracking-[0.16em] text-slate-500 uppercase">
-        {label}
-      </p>
+      <p className="text-[0.68rem] font-bold tracking-[0.08em] text-slate-400 uppercase">{label}</p>
       <p className={`mt-1 text-2xl font-extrabold ${muted ? "text-slate-400" : "text-white"}`}>
         {value}
       </p>

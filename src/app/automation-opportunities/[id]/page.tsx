@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { CompanyShell } from "@/components/dashboard/company-shell";
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { createClient } from "@/infrastructure/supabase/server";
 import { PrismaAutomationOpportunityRepository } from "@/modules/automation-opportunities/infrastructure/prisma-automation-opportunity-repository";
@@ -27,24 +28,26 @@ export default async function AutomationOpportunitiesPage({
   );
   if (!detail) notFound();
   return (
-    <AutomationOpportunitiesExplorer
-      opportunities={detail.opportunities.map((item) => ({
-        ...item,
-        actions: jsonStringArray(item.actionsJson),
-        outputs: jsonStringArray(item.outputsJson),
-        businessImpact: Number(item.businessImpact),
-        automationCoverage: Number(item.automationCoverage),
-        technicalFeasibility: Number(item.technicalFeasibility),
-        connectorAvailability: Number(item.connectorAvailability),
-        automationReadiness: Number(item.automationReadiness),
-        complexityScore: Number(item.complexityScore),
-        confidence: Number(item.confidence),
-      }))}
-      connectors={detail.connectors}
-      evidence={detail.evidence}
-      patterns={detail.patterns}
-      validations={detail.validations}
-    />
+    <CompanyShell verifiedCompanyId={detail.snapshot.companyId}>
+      <AutomationOpportunitiesExplorer
+        opportunities={detail.opportunities.map((item) => ({
+          ...item,
+          actions: jsonStringArray(item.actionsJson),
+          outputs: jsonStringArray(item.outputsJson),
+          businessImpact: Number(item.businessImpact),
+          automationCoverage: Number(item.automationCoverage),
+          technicalFeasibility: Number(item.technicalFeasibility),
+          connectorAvailability: Number(item.connectorAvailability),
+          automationReadiness: Number(item.automationReadiness),
+          complexityScore: Number(item.complexityScore),
+          confidence: Number(item.confidence),
+        }))}
+        connectors={detail.connectors}
+        evidence={detail.evidence}
+        patterns={detail.patterns}
+        validations={detail.validations}
+      />
+    </CompanyShell>
   );
 }
 

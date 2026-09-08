@@ -4,6 +4,14 @@ import type { ExecutiveAuditResult } from "../application/executive-result-model
 import { ExecutiveResultView } from "./executive-result-view";
 
 describe("Executive Result", () => {
+  it("offers real feedback and keeps supplementary detail collapsed", () => {
+    const html = renderToStaticMarkup(<ExecutiveResultView result={result()} />);
+    expect(html).toContain("Donner mon avis");
+    expect(html).not.toContain("Aucun stockage feedback");
+    expect(html).toMatch(/<details[^>]*><summary[^>]*>Plan d’action recommandé/);
+    expect(html).not.toMatch(/<details[^>]*open/);
+    expect(html).toContain("L’audit ne déploie aucune automatisation");
+  });
   it("renders only published canonical facts and preserves their order and provenance", () => {
     const html = renderToStaticMarkup(<ExecutiveResultView result={result()} />);
     expect(html).toContain("Canonical Company");

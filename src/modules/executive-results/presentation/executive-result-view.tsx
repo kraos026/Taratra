@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { PilotFeedbackDialog } from "@/modules/pilot-feedback/presentation/pilot-feedback-dialog";
 import type { ExecutiveAuditResult } from "../application/executive-result-model";
 
 export function ExecutiveResultView({ result }: { readonly result: ExecutiveAuditResult }) {
@@ -39,7 +40,7 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
           </p>
           <div className="mt-4 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
             <div>
-              <h1 className="font-['Manrope'] text-3xl font-extrabold sm:text-5xl">
+              <h1 className="font-['Manrope'] text-2xl font-extrabold sm:text-3xl">
                 Votre audit Optivos est terminé
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
@@ -71,9 +72,9 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
           />
           <HeroCard
             icon={<ShieldCheck />}
-            label="Contrôle humain"
-            value="Visible"
-            text="Risques et validations restent explicites"
+            label="Votre décision"
+            value="À examiner"
+            text="L’audit ne déploie aucune automatisation"
           />
         </section>
 
@@ -124,7 +125,7 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
               </div>
             </Panel>
 
-            <Panel title="Opportunités retenues">
+            <Panel title="Opportunités retenues" collapsible>
               <div className="grid gap-4 md:grid-cols-2">
                 {result.opportunities.slice(0, 3).map((item) => (
                   <article
@@ -145,7 +146,7 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
               </div>
             </Panel>
 
-            <Panel title="Plan d’action recommandé">
+            <Panel title="Plan d’action recommandé" collapsible>
               <div className="space-y-3">
                 {result.recommendations.map((item) => (
                   <article
@@ -250,14 +251,14 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
               </div>
             </Panel>
 
-            <Panel title="Feedback pilote">
+            <Panel title="Votre avis sur cet audit">
               <p className="text-sm leading-6 text-slate-300">
-                Emplacement préparé pour la prochaine phase : compréhension, pertinence, crédibilité
-                ROI, clarté du prochain pas, expérience d’audit, volonté de payer et prix.
+                Ces conclusions vous aident-elles à décider ? Partagez votre avis pour améliorer
+                Optivos.
               </p>
-              <p className="mt-3 rounded-2xl border border-dashed border-slate-700 bg-slate-950/70 p-3 text-sm text-slate-400">
-                Aucun stockage feedback n’est activé dans cette mission.
-              </p>
+              <div className="mt-4">
+                <PilotFeedbackDialog companyId={result.company.id} />
+              </div>
             </Panel>
           </aside>
         </section>
@@ -266,10 +267,27 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
   );
 }
 
-function Panel({ title, children }: { readonly title: string; readonly children: ReactNode }) {
+function Panel({
+  title,
+  children,
+  collapsible = false,
+}: {
+  readonly title: string;
+  readonly children: ReactNode;
+  readonly collapsible?: boolean;
+}) {
+  if (collapsible)
+    return (
+      <details className="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5">
+        <summary className="cursor-pointer py-2 text-lg font-bold focus-visible:outline-2 focus-visible:outline-blue-400">
+          {title}
+        </summary>
+        <div className="mt-4">{children}</div>
+      </details>
+    );
   return (
     <section className="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5">
-      <h2 className="text-2xl font-bold">{title}</h2>
+      <h2 className="text-xl font-bold">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
   );

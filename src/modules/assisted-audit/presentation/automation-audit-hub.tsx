@@ -154,9 +154,9 @@ export function AutomationAuditView({
 
   return (
     <main className="opt-container space-y-5" aria-labelledby="audit-title">
-      <header className="rounded-[1.75rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/70 p-5 shadow-2xl shadow-blue-950/20 sm:p-7">
+      <header className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
         <Link
-          className="mb-5 inline-flex text-sm text-blue-300 hover:text-blue-100"
+          className="mb-3 inline-flex text-sm text-blue-300 hover:text-blue-100"
           href={`/companies/${companyId}`}
         >
           ← Retour à {companyName}
@@ -168,16 +168,16 @@ export function AutomationAuditView({
             </p>
             <h1
               id="audit-title"
-              className="font-['Manrope'] text-3xl font-extrabold tracking-tight text-white sm:text-4xl"
+              className="font-['Manrope'] text-2xl font-extrabold tracking-tight text-white sm:text-3xl"
             >
               Audit
             </h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
-              Nous comprenons votre entreprise, vos preuves et vos contraintes avant de recommander
-              quoi automatiser, corriger ou différer.
+              Identifiez quoi automatiser, quoi améliorer et ce qui doit rester sous contrôle
+              humain.
             </p>
           </div>
-          <div className="min-w-64 rounded-2xl border border-white/10 bg-white/[0.04] p-4">
+          <div className="w-full shrink-0 lg:w-60">
             <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
               Progression
             </span>
@@ -202,14 +202,81 @@ export function AutomationAuditView({
         </div>
       )}
 
-      <section aria-labelledby="audit-progress-title">
+      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_19rem]">
+        <section aria-label="Votre prochaine action" className="min-w-0">
+          {auditComplete ? (
+            <Card className="opt-card border-emerald-400/40 bg-emerald-500/10">
+              <CardHeader>
+                <CardTitle>Audit Optivos terminé</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p>Optivos a analysé votre entreprise et préparé votre plan d’action.</p>
+                <ActionControl action={action} busy={busy} onCommand={onCommand} />
+              </CardContent>
+            </Card>
+          ) : (
+            <Card className="opt-card">
+              <CardHeader>
+                <div className="flex flex-wrap items-center gap-2">
+                  <Badge className="bg-blue-500/15 text-blue-100">Prochaine action</Badge>
+                  <span className="text-sm text-slate-400">{activeStep?.label}</span>
+                </div>
+                <CardTitle className="font-['Manrope'] text-2xl">
+                  {action ? customerActionLabel(action.label) : "Informations requises"}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-slate-300">
+                  {action?.description
+                    ? customerActionDescription(action.description)
+                    : model.blockingReason
+                      ? customerBlocker(model.blockingReason)
+                      : "Votre accès permet de consulter l’avancement. Une personne autorisée doit réaliser la prochaine action."}
+                </p>
+                <ActionControl action={action} busy={busy} onCommand={onCommand} />
+                {model.blockingReason && !action && (
+                  <p className="flex items-center gap-2 text-sm text-amber-200" role="status">
+                    <LockKeyhole size={16} aria-hidden /> {customerBlocker(model.blockingReason)}
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
+        </section>
+        <aside
+          className="rounded-2xl border border-blue-400/15 bg-blue-500/[0.04] p-5"
+          aria-label="Comment avance votre audit"
+        >
+          <p className="text-sm font-semibold text-white">Vous gardez la main</p>
+          <ol className="mt-4 space-y-4 text-sm">
+            <li>
+              <strong className="text-blue-200">1. Vous décrivez votre activité</strong>
+              <p className="mt-1 leading-5 text-slate-400">
+                Quelques informations, puis des questions sur votre travail quotidien.
+              </p>
+            </li>
+            <li>
+              <strong className="text-blue-200">2. Optivos prépare l’analyse</strong>
+              <p className="mt-1 leading-5 text-slate-400">
+                Processus, possibilités d’automatisation et estimation économique, selon les données
+                disponibles.
+              </p>
+            </li>
+            <li>
+              <strong className="text-blue-200">3. Vous examinez les propositions</strong>
+              <p className="mt-1 leading-5 text-slate-400">
+                Vous validez chaque étape. Aucune automatisation n’est déployée par cet audit.
+              </p>
+            </li>
+          </ol>
+        </aside>
+      </div>
+
+      <section aria-labelledby="audit-progress-title" className="pb-4">
         <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
           <div>
             <p className="opt-eyebrow">Chemin de décision</p>
-            <h2
-              id="audit-progress-title"
-              className="font-['Manrope'] text-2xl font-bold text-white"
-            >
+            <h2 id="audit-progress-title" className="font-['Manrope'] text-lg font-bold text-white">
               De la compréhension à la décision
             </h2>
           </div>
@@ -223,8 +290,9 @@ export function AutomationAuditView({
           {clientSteps.map((step, index) => (
             <li
               key={step.label}
+              aria-current={step.current ? "step" : undefined}
               className={cn(
-                "relative min-w-36 flex-1 border-r border-white/10 p-4 last:border-r-0",
+                "relative min-w-32 flex-1 border-r border-white/10 p-3 last:border-r-0",
                 step.current && "bg-blue-500/12",
               )}
               title={step.description}
@@ -254,45 +322,6 @@ export function AutomationAuditView({
           ))}
         </ol>
       </section>
-
-      {auditComplete ? (
-        <Card className="opt-card border-emerald-400/40 bg-emerald-500/10">
-          <CardHeader>
-            <CardTitle>Audit Optivos terminé</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p>Optivos a analysé votre entreprise et préparé votre plan d’action.</p>
-            <ActionControl action={action} busy={busy} onCommand={onCommand} />
-          </CardContent>
-        </Card>
-      ) : (
-        <Card className="opt-card">
-          <CardHeader>
-            <div className="flex flex-wrap items-center gap-2">
-              <Badge className="bg-blue-500/15 text-blue-100">Prochaine action</Badge>
-              <span className="text-sm text-slate-400">{activeStep?.label}</span>
-            </div>
-            <CardTitle className="font-['Manrope'] text-2xl">
-              {action ? customerActionLabel(action.label) : "Informations requises"}
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-slate-300">
-              {action?.description
-                ? customerActionDescription(action.description)
-                : model.blockingReason
-                  ? customerBlocker(model.blockingReason)
-                  : "Votre accès permet de consulter l’avancement. Une personne autorisée doit réaliser la prochaine action."}
-            </p>
-            <ActionControl action={action} busy={busy} onCommand={onCommand} />
-            {model.blockingReason && !action && (
-              <p className="flex items-center gap-2 text-sm text-amber-800" role="status">
-                <LockKeyhole size={16} aria-hidden /> {model.blockingReason}
-              </p>
-            )}
-          </CardContent>
-        </Card>
-      )}
 
       {ambiguity && (
         <ProcessMapChoice
@@ -497,6 +526,7 @@ function customerActionDescription(description: string): string {
 }
 
 function customerBlocker(reason: string): string {
+  if (/read-only access/i.test(reason)) return "Votre accès permet la consultation uniquement.";
   if (/interview/i.test(reason)) return "Terminez et validez l’entretien avant de continuer.";
   if (/discovery|company information/i.test(reason))
     return "Complétez la compréhension de l’entreprise avant de continuer.";

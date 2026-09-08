@@ -1,11 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { interviewDomainLabel, isInterviewReadOnly, interviewAnswerLabel } from "./interview-copy";
 
 type Question = {
   id: string;
@@ -72,7 +74,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
   }
 
   async function act(path: string, body?: object) {
-    if (!view) return;
+    if (!view || isInterviewReadOnly(view.session.status)) return;
     setBusy(true);
     setMessage("Enregistrement…");
     try {
@@ -96,7 +98,10 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
   if (!view)
     return (
       <div role="status" className="mx-auto max-w-5xl space-y-4 rounded-xl border p-6">
-        <p>{message || "Entretien indisponible. Vérifiez que Discovery est validée."}</p>
+        <p>
+          {message ||
+            "Entretien indisponible. Vérifiez que les informations de votre entreprise sont validées."}
+        </p>
         <Button disabled={busy} onClick={startInterview}>
           Démarrer l’entretien
         </Button>
@@ -104,22 +109,42 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
     );
 
   const question = view.nextQuestion;
+  const readOnly = isInterviewReadOnly(view.session.status);
   return (
-    <main className="mx-auto max-w-5xl space-y-6">
+    <main className="mx-auto max-w-5xl space-y-5 text-slate-50">
       <header className="space-y-2">
-        <p className="text-sm font-semibold tracking-wider text-violet-600">ADAPTIVE INTERVIEW</p>
-        <h1 className="text-3xl font-bold">Entretien contextuel</h1>
-        <p className="text-muted-foreground">
-          Les questions s’adaptent aux données Discovery et aux réponses déjà confirmées.
+        <Link
+          className="inline-flex min-h-11 items-center text-sm text-blue-300"
+          href={`/companies/${companyId}/automation-audit`}
+        >
+          ← Retour à l’audit
+        </Link>
+        <p className="text-xs font-semibold tracking-wider text-blue-300">
+          VOTRE TRAVAIL AU QUOTIDIEN
+        </p>
+        <h1 className="text-3xl font-bold">Entretien guidé</h1>
+        <p className="text-slate-300">
+          {readOnly
+            ? "Vos réponses sont validées et restent consultables ici."
+            : "Quelques questions adaptées à votre activité. Répondez avec ce que vous savez ; vous pourrez reprendre plus tard."}
         </p>
       </header>
 
       <section aria-label="Progression globale" className="grid gap-4 sm:grid-cols-3">
-        <Metric label="Progression" value={`${view.progress.progressPercentage}%`} />
-        <Metric label="Confiance" value={`${view.progress.confidencePercentage}%`} />
+        <Metric label="Réponses enregistrées" value={String(view.answers.length)} />
         <Metric
-          label="Process Mapping"
-          value={view.progress.readyForProcessMapping ? "Prêt" : "Informations manquantes"}
+          label="Informations à confirmer"
+          value={String(view.progress.missingMandatory.length)}
+        />
+        <Metric
+          label="Suite de l’audit"
+          value={
+            readOnly
+              ? "Entretien validé"
+              : view.progress.readyForProcessMapping
+                ? "Prête à examiner"
+                : "À compléter"
+          }
         />
       </section>
 
@@ -133,15 +158,17 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
       <nav aria-label="Domaines de l’entretien" className="flex flex-wrap gap-2">
         {view.progress.domains.map((domain) => (
           <span key={domain.domain} className="rounded-full border px-3 py-1 text-sm">
-            {domain.domain}: {domain.progressPercentage}% · confiance {domain.confidencePercentage}%
+            {interviewDomainLabel(domain.domain)}
           </span>
         ))}
       </nav>
 
-      {question ? (
-        <Card>
+      {question && !readOnly ? (
+        <Card className="border-white/10 bg-slate-900/80 text-slate-50">
           <CardHeader>
-            <p className="text-xs font-semibold text-violet-600 uppercase">{question.domain}</p>
+            <p className="text-xs font-semibold text-blue-300 uppercase">
+              {interviewDomainLabel(question.domain)}
+            </p>
             <CardTitle>{question.prompt}</CardTitle>
           </CardHeader>
           <CardContent className="space-y-5">
@@ -152,7 +179,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
                 id="confidence"
                 value={confidence}
                 onChange={(event) => setConfidence(event.target.value as "confirmed" | "uncertain")}
-                className="bg-background h-10 w-full rounded-md border px-3"
+                className="h-11 w-full rounded-md border border-slate-600 bg-slate-950 px-3 text-slate-50"
               >
                 <option value="confirmed">Réponse confirmée</option>
                 <option value="uncertain">Réponse incertaine</option>
@@ -196,7 +223,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
           </CardContent>
         </Card>
       ) : (
-        <Card>
+        <Card className="border-white/10 bg-slate-900/80 text-slate-50">
           <CardHeader>
             <CardTitle>Revue de l’entretien</CardTitle>
           </CardHeader>
@@ -206,12 +233,21 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
                 ? "Toutes les informations obligatoires sont suffisamment fiables."
                 : `${view.progress.missingMandatory.length} information(s) obligatoire(s) restent à confirmer.`}
             </p>
-            <Button
-              disabled={!view.progress.readyForProcessMapping || busy}
-              onClick={() => act("complete")}
-            >
-              Terminer l’entretien
-            </Button>
+            {readOnly ? (
+              <Link
+                className="opt-primary inline-flex min-h-11 items-center rounded-xl px-4 py-3 text-sm font-semibold"
+                href={`/companies/${companyId}/automation-audit`}
+              >
+                Voir la suite de l’audit
+              </Link>
+            ) : (
+              <Button
+                disabled={!view.progress.readyForProcessMapping || busy}
+                onClick={() => act("complete")}
+              >
+                Terminer l’entretien
+              </Button>
+            )}
             <div className="divide-y rounded-lg border">
               {view.answers.map((answer) => {
                 const answeredQuestion = view.questions.find(
@@ -220,25 +256,29 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
                 return (
                   <div
                     key={answer.questionId}
-                    className="flex items-center justify-between gap-4 p-3"
+                    className="flex flex-wrap items-center justify-between gap-4 p-3"
                   >
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <p className="font-medium">{answeredQuestion?.prompt ?? "Question"}</p>
-                      <p className="text-muted-foreground text-sm">
-                        {answer.value === null ? "Sans réponse" : String(answer.value)}
+                      <p className="text-sm break-words text-slate-300">
+                        {interviewAnswerLabel(answer.value)}
                       </p>
                     </div>
-                    <Button
-                      variant="outline"
-                      onClick={() =>
-                        act("back", {
-                          lockVersion: view.session.lockVersion,
-                          questionId: answer.questionId,
-                        })
-                      }
-                    >
-                      Modifier
-                    </Button>
+                    {!readOnly && (
+                      <Button
+                        variant="outline"
+                        className="opt-secondary"
+                        disabled={busy}
+                        onClick={() =>
+                          act("back", {
+                            lockVersion: view.session.lockVersion,
+                            questionId: answer.questionId,
+                          })
+                        }
+                      >
+                        Modifier
+                      </Button>
+                    )}
                   </div>
                 );
               })}
@@ -248,7 +288,10 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
       )}
 
       <p aria-live="polite" className="text-muted-foreground text-sm">
-        {message}
+        {message ||
+          (readOnly
+            ? "Entretien validé · consultation seule"
+            : "Vos réponses sont enregistrées à chaque étape.")}
       </p>
     </main>
   );
@@ -269,7 +312,7 @@ function AnswerField({
         aria-label="Réponse"
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        className="bg-background h-10 w-full rounded-md border px-3"
+        className="h-11 w-full rounded-md border border-slate-600 bg-slate-950 px-3 text-slate-50"
       >
         <option value="">Sélectionner</option>
         <option value="true">Oui</option>
@@ -282,7 +325,7 @@ function AnswerField({
         aria-label="Réponse"
         value={value}
         onChange={(event) => setValue(event.target.value)}
-        className="bg-background h-10 w-full rounded-md border px-3"
+        className="h-11 w-full rounded-md border border-slate-600 bg-slate-950 px-3 text-slate-50"
       >
         <option value="">Sélectionner</option>
         {question.options.map((option) => (
@@ -296,6 +339,7 @@ function AnswerField({
     return (
       <Textarea
         aria-label="Réponse"
+        className="border-slate-600 bg-slate-950 text-slate-50"
         value={value}
         onChange={(event) => setValue(event.target.value)}
       />
@@ -303,6 +347,7 @@ function AnswerField({
   return (
     <Input
       aria-label="Réponse"
+      className="border-slate-600 bg-slate-950 text-slate-50"
       type={question.answerType === "number" ? "number" : "text"}
       value={value}
       onChange={(event) => setValue(event.target.value)}
@@ -312,7 +357,7 @@ function AnswerField({
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <Card>
+    <Card className="border-white/10 bg-slate-900/80 text-slate-50">
       <CardContent className="pt-6">
         <p className="text-muted-foreground text-sm">{label}</p>
         <p className="text-xl font-bold">{value}</p>
@@ -338,7 +383,7 @@ async function readView(response: Response): Promise<InterviewView> {
     error?: { message?: string };
   };
   if (!response.ok || !payload.data)
-    throw new Error(payload.error?.message ?? "Interview request failed");
+    throw new Error(payload.error?.message ?? "Impossible de charger l’entretien");
   return payload.data;
 }
 

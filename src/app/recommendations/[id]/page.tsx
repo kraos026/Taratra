@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { CompanyShell } from "@/components/dashboard/company-shell";
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { createClient } from "@/infrastructure/supabase/server";
 import { PrismaRecommendationPortfolioRepository } from "@/modules/recommendation-portfolios/infrastructure/prisma-recommendation-portfolio-repository";
@@ -23,14 +24,16 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   );
   if (!detail) notFound();
   return (
-    <ExecutiveRoadmap
-      recommendations={detail.recommendations.map((item) => ({
-        ...item,
-        priorityScore: Number(item.priorityScore),
-        expectedRoi: item.expectedRoi === null ? null : Number(item.expectedRoi),
-        confidence: Number(item.confidence),
-        implementationCost: Number(item.implementationCost),
-      }))}
-    />
+    <CompanyShell verifiedCompanyId={detail.snapshot.companyId}>
+      <ExecutiveRoadmap
+        recommendations={detail.recommendations.map((item) => ({
+          ...item,
+          priorityScore: Number(item.priorityScore),
+          expectedRoi: item.expectedRoi === null ? null : Number(item.expectedRoi),
+          confidence: Number(item.confidence),
+          implementationCost: Number(item.implementationCost),
+        }))}
+      />
+    </CompanyShell>
   );
 }

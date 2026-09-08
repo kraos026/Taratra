@@ -17,112 +17,117 @@ export type AuditActionPresentation =
 
 const copy: Record<AssistedAuditAction, { label: string; description: string }> = {
   START_DISCOVERY: {
-    label: "Start company discovery",
-    description: "Tell Optivos how your company is organized and operates.",
+    label: "Décrire mon entreprise",
+    description:
+      "Décrivez votre activité avec ce que vous savez. Vous pourrez enregistrer et reprendre plus tard.",
   },
   CONTINUE_DISCOVERY: {
-    label: "Continue company discovery",
-    description: "Complete the remaining company information.",
+    label: "Reprendre mes réponses",
+    description: "Complétez les informations sur votre activité, vos priorités et vos difficultés.",
   },
   VALIDATE_DISCOVERY: {
-    label: "Confirm company information",
-    description: "Confirm that the information collected about your company is correct.",
+    label: "Confirmer mes informations",
+    description: "Relisez vos réponses et confirmez qu’elles décrivent bien votre entreprise.",
   },
   START_INTERVIEW: {
-    label: "Start the interview",
-    description: "Answer a short set of questions about your daily operations.",
+    label: "Préciser mon quotidien",
+    description: "Répondez aux questions utiles sur vos tâches et votre organisation.",
   },
   CONTINUE_INTERVIEW: {
-    label: "Continue the interview",
-    description: "Complete the remaining operational questions.",
+    label: "Continuer l’entretien",
+    description: "Complétez les dernières questions sur votre travail quotidien.",
   },
   VALIDATE_INTERVIEW: {
-    label: "Confirm the interview",
-    description: "Approve the completed answers before analysis begins.",
+    label: "Confirmer mes réponses",
+    description: "Vérifiez les réponses de l’entretien avant de lancer leur analyse.",
   },
   BUILD_KNOWLEDGE: {
-    label: "Build company knowledge",
-    description: "Organize your confirmed information into a reliable company model.",
+    label: "Préparer la synthèse",
+    description: "Optivos rassemble vos informations confirmées pour préparer l’analyse.",
   },
   BUILD_PROCESS_MAP: {
-    label: "Create process maps",
-    description: "Turn company knowledge into structured business processes.",
+    label: "Décrire les processus",
+    description:
+      "Optivos structure les activités et les enchaînements de travail à partir de vos informations.",
   },
   SELECT_PROCESS_MAP: {
-    label: "Choose a process",
-    description: "Choose the process you want Optivos to analyze first.",
+    label: "Choisir un processus",
+    description: "Choisissez le processus à analyser en premier.",
   },
   VALIDATE_PROCESS_MAP: {
-    label: "Confirm the process map",
-    description: "Review and validate the selected business process.",
+    label: "Vérifier le processus",
+    description: "Examinez les étapes du processus sélectionné et validez leur cohérence.",
   },
   PUBLISH_PROCESS_MAP: {
-    label: "Approve the process map",
-    description: "Approve this process so the business analysis can begin.",
+    label: "Approuver le processus",
+    description: "Votre approbation rend ce processus disponible pour l’analyse.",
   },
   GENERATE_ANALYSIS: {
-    label: "Run business analysis",
-    description: "Analyze the approved process for friction, risk and improvement potential.",
+    label: "Analyser le processus",
+    description: "Repérez les difficultés, les risques et les possibilités d’amélioration.",
   },
   VALIDATE_ANALYSIS: {
-    label: "Review the analysis",
-    description: "Confirm the findings produced from your business process.",
+    label: "Vérifier l’analyse",
+    description: "Examinez les constats issus de votre processus.",
   },
   PUBLISH_ANALYSIS: {
-    label: "Approve the analysis",
-    description: "Approve the findings before opportunity detection begins.",
+    label: "Approuver l’analyse",
+    description: "Confirmez les constats avant de rechercher les possibilités d’automatisation.",
   },
   GENERATE_AI_OPPORTUNITIES: {
-    label: "Find AI opportunities",
-    description: "Identify where AI could responsibly support the process.",
+    label: "Explorer les usages de l’IA",
+    description:
+      "Identifiez les tâches pour lesquelles une assistance par l’IA pourrait être pertinente.",
   },
   VALIDATE_AI_OPPORTUNITIES: {
-    label: "Review AI opportunities",
-    description: "Review the detected AI opportunities and their evidence.",
+    label: "Vérifier les usages proposés",
+    description: "Examinez les propositions et les informations qui les soutiennent.",
   },
   PUBLISH_AI_OPPORTUNITIES: {
-    label: "Approve AI opportunities",
-    description: "Approve these opportunities before automation assessment.",
+    label: "Approuver les usages proposés",
+    description:
+      "Confirmez les propositions à utiliser pour évaluer les possibilités d’automatisation.",
   },
   GENERATE_AUTOMATION_OPPORTUNITIES: {
-    label: "Find automation opportunities",
-    description: "Identify deterministic automation opportunities for the approved findings.",
+    label: "Identifier les automatisations",
+    description: "Évaluez les possibilités d’automatisation à partir des constats approuvés.",
   },
   VALIDATE_AUTOMATION_OPPORTUNITIES: {
-    label: "Review automation opportunities",
-    description: "Review the opportunities, constraints and supporting evidence.",
+    label: "Vérifier les automatisations",
+    description: "Examinez les possibilités, leurs contraintes et les preuves disponibles.",
   },
   PUBLISH_AUTOMATION_OPPORTUNITIES: {
-    label: "Approve automation opportunities",
-    description: "Approve these opportunities before calculating ROI.",
+    label: "Approuver les propositions",
+    description: "Confirmez les possibilités à évaluer économiquement. Rien n’est déployé.",
   },
   ENTER_ROI_ASSUMPTIONS: {
-    label: "Complete ROI assumptions",
-    description: "ROI needs your company costs and operating assumptions before calculation.",
+    label: "Préciser les hypothèses économiques",
+    description: "Renseignez les coûts et les volumes connus pour permettre l’évaluation du ROI.",
   },
   VALIDATE_ROI: {
-    label: "Review ROI",
-    description: "Confirm the calculated scenarios and their assumptions.",
+    label: "Vérifier l’évaluation économique",
+    description: "Examinez les scénarios, les hypothèses et les informations encore manquantes.",
   },
   PUBLISH_ROI: {
-    label: "Approve ROI",
-    description: "Approve the ROI scenarios before creating the action plan.",
+    label: "Approuver l’évaluation économique",
+    description: "Confirmez les scénarios avant de préparer le plan d’action.",
   },
   GENERATE_RECOMMENDATIONS: {
-    label: "Create the action plan",
-    description: "Prioritize the approved opportunities into a practical roadmap.",
+    label: "Préparer le plan d’action",
+    description: "Organisez les propositions approuvées en priorités et prochaines étapes.",
   },
   VALIDATE_RECOMMENDATIONS: {
-    label: "Review the action plan",
-    description: "Review the recommended priorities and implementation phases.",
+    label: "Vérifier le plan d’action",
+    description: "Examinez les priorités recommandées et les conditions de mise en œuvre.",
   },
   PUBLISH_RECOMMENDATIONS: {
-    label: "Approve the action plan",
-    description: "Approve the final action plan for this audit.",
+    label: "Approuver le plan d’action",
+    description: "Confirmez le plan proposé pour terminer cette étape de l’audit.",
   },
   VIEW_RESULTS: {
-    label: "View recommendations",
-    description: "Open the completed action plan and its supporting results.",
+    label: "Voir les résultats",
+    description:
+      "Consultez vos priorités, votre plan d’action et les éléments qui justifient les décisions.",
   },
 };
 

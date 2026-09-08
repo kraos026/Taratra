@@ -67,7 +67,7 @@ describe("Assisted Audit presentation action plan", () => {
     });
     expect(presentNextAction(value, "company")).toMatchObject({
       kind: "navigate",
-      label: "Complete ROI assumptions",
+      label: "Préciser les hypothèses économiques",
       href: "/companies/company/automation-audit/roi/real-opportunity-id?roiId=real-roi-id",
     });
   });

@@ -13,7 +13,7 @@ export function PatronDecisionCenterView({ center }: { readonly center: PatronDe
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/70 p-6 shadow-2xl shadow-blue-950/20 sm:p-8">
           <Badge className="w-fit bg-blue-500/15 text-blue-200">Centre de décision Optivos</Badge>
-          <h1 className="mt-3 font-['Manrope'] text-3xl font-extrabold tracking-tight sm:text-5xl">
+          <h1 className="mt-3 font-['Manrope'] text-2xl font-extrabold tracking-tight sm:text-3xl">
             Centre de décision exécutif
           </h1>
           <p className="max-w-3xl text-sm text-slate-300">
@@ -23,7 +23,6 @@ export function PatronDecisionCenterView({ center }: { readonly center: PatronDe
         </header>
 
         <Overview center={center} />
-        <AskAutomateXEntry center={center} />
         <ExecutiveSummary center={center} />
 
         <section className="grid gap-6 xl:grid-cols-[1.8fr_1fr]">
@@ -69,6 +68,14 @@ export function PatronDecisionCenterView({ center }: { readonly center: PatronDe
             />
           </aside>
         </section>
+        <details className="rounded-2xl border border-blue-900/60 bg-slate-900/70 p-4">
+          <summary className="cursor-pointer py-2 font-semibold text-blue-100 focus-visible:outline-2 focus-visible:outline-blue-400">
+            Une question sur ces décisions ?
+          </summary>
+          <div className="mt-4">
+            <AskAutomateXEntry center={center} />
+          </div>
+        </details>
       </div>
     </main>
   );
@@ -85,14 +92,14 @@ function Overview({ center }: { readonly center: PatronDecisionCenter }) {
             {brandText(overview.companyName)} · {readableDecisionState(overview.auditStatus)}
           </CardDescription>
         </CardHeader>
-        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
+        <CardContent className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           <Metric label="Priorités" value={overview.topProblemsCount} />
           <Metric label="À automatiser" value={overview.automationReadyCount} />
           <Metric label="À corriger" value={overview.fixBeforeAutomationCount} />
           <Metric label="À ne pas automatiser" value={overview.doNotAutomateCount} />
           <Metric label="Données manquantes" value={overview.needsMoreEvidenceCount} />
           <Metric label="ROI" value={readableEconomicState(overview.economicReadiness)} />
-          <div className="rounded-lg border border-blue-900/60 bg-blue-950/40 p-4 sm:col-span-2 xl:col-span-6">
+          <div className="rounded-lg border border-blue-900/60 bg-blue-950/40 p-4 sm:col-span-2 xl:col-span-3">
             <p className="text-xs tracking-wide text-slate-400 uppercase">Prochaine action</p>
             <p className="mt-2 text-base font-semibold">
               {brandText(overview.topNextAction ?? "Données complémentaires requises")}
@@ -366,7 +373,7 @@ function Metric({ label, value }: { readonly label: string; readonly value: numb
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-950/70 p-4">
       <p className="text-xs tracking-wide text-slate-400 uppercase">{label}</p>
-      <p className="mt-2 text-2xl font-bold">{value}</p>
+      <p className="mt-2 text-xl font-bold [overflow-wrap:anywhere]">{value}</p>
     </div>
   );
 }

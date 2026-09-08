@@ -497,7 +497,7 @@ button:disabled {
 .stats small b {
   color: #23a67a;
 }
-.grid {
+.dashboard-grid {
   display: grid;
   grid-template-columns: 1.55fr 1fr;
   gap: 17px;
@@ -868,7 +868,7 @@ footer {
   .stats {
     grid-template-columns: repeat(2, 1fr);
   }
-  .grid {
+  .dashboard-grid {
     grid-template-columns: 1fr;
   }
   .sidebar {
@@ -939,7 +939,7 @@ footer {
   .topbar .help {
     display: none;
   }
-  .grid {
+  .dashboard-grid {
     display: block;
   }
   .panel,

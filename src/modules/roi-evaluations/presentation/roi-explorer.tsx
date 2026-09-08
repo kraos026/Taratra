@@ -103,7 +103,10 @@ export function RoiExplorer({
           </div>
         </header>
 
-        <section aria-labelledby="roi-executive-summary" className="grid gap-4 xl:grid-cols-5">
+        <section
+          aria-labelledby="roi-executive-summary"
+          className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
+        >
           <SummaryMetric
             label="Potentiel économique annuel"
             metric={summaryMetrics?.savings}
@@ -116,7 +119,7 @@ export function RoiExplorer({
             currency={currency}
           />
           <SummaryMetric label="ROI" metric={summaryMetrics?.roi} percent />
-          <SummaryMetric label="Payback" metric={summaryMetrics?.payback} />
+          <SummaryMetric label="Délai de retour" metric={summaryMetrics?.payback} />
           <h2 id="roi-executive-summary" className="sr-only">
             Synthèse ROI exécutive
           </h2>
@@ -212,7 +215,7 @@ export function RoiExplorer({
                       <p className="mt-1 font-bold text-blue-100">{roiState(roi)}</p>
                     </div>
                   </div>
-                  <dl className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                  <dl className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <Metric label="Gains annuels" metric={savings} currency={currency} />
                     <Metric label="Investissement" metric={cost} currency={currency} />
                     <Metric label="Retour" metric={payback} />
@@ -298,7 +301,7 @@ function SummaryMetric({
       }`}
     >
       <p className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">{label}</p>
-      <p className="mt-3 text-2xl font-extrabold text-white">
+      <p className="mt-3 text-xl font-extrabold [overflow-wrap:anywhere] text-white">
         {formatMetric(metric, currency, percent)}
       </p>
     </article>
@@ -381,7 +384,11 @@ function metricLabel(code: string): string {
     annual_time_saved: "Temps économisable",
     implementation_cost: "Coût d’implémentation",
     roi_percentage: "ROI",
-    payback_period: "Payback",
+    payback_period: "Délai de retour",
+    annual_hours_saved: "Heures économisables par an",
+    monthly_hours_saved: "Heures économisables par mois",
+    monthly_cost_saved: "Gain mensuel",
+    maintenance_cost: "Coût de maintenance",
   };
   return labels[code] ?? code.replaceAll("_", " ");
 }

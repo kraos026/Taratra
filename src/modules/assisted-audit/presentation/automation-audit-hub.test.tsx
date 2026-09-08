@@ -51,7 +51,7 @@ describe("AutomationAuditView", () => {
     });
     restricted.stages[1]!.availableActions = [];
     const html = render(restricted);
-    expect(html).toContain("This role has read-only access");
+    expect(html).toContain("Votre accès permet la consultation uniquement.");
     expect(html).not.toContain("Continuer l’entretien</button>");
   });
 
@@ -94,6 +94,18 @@ describe("AutomationAuditView", () => {
     );
     expect(html).toContain('role="alert"');
     expect(html).toContain("Something went wrong while updating the audit");
+  });
+
+  it("puts the next action before the detailed journey and explains who does what", () => {
+    const html = render(model({ currentStage: "DISCOVERY", nextAction: "START_DISCOVERY" }));
+    expect(html.indexOf('aria-label="Votre prochaine action"')).toBeLessThan(
+      html.indexOf('aria-labelledby="audit-progress-title"'),
+    );
+    expect(html).toContain("Décrire mon entreprise");
+    expect(html).toContain("Vous gardez la main");
+    expect(html).toContain("Aucune automatisation n’est déployée par cet audit.");
+    expect(html).not.toContain("Start company discovery");
+    expect(html).toContain('aria-current="step"');
   });
 });
 

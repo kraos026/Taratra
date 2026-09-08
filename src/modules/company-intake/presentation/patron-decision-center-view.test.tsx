@@ -9,6 +9,15 @@ import type { ExecutiveAuditResult } from "../../executive-results/application/e
 import { PatronDecisionCenterView } from "./patron-decision-center-view";
 
 describe("PatronDecisionCenterView", () => {
+  it("puts the decisions before optional conversational help", () => {
+    const html = renderToStaticMarkup(
+      <PatronDecisionCenterView center={PatronDecisionCenterPresenter.build(northstarView())} />,
+    );
+    expect(html.indexOf("À corriger avant automatisation")).toBeLessThan(
+      html.indexOf("Une question sur ces décisions"),
+    );
+    expect(html).toMatch(/<details[^>]*><summary[^>]*>Une question sur ces décisions/);
+  });
   it("renders the Northstar executive acceptance view without internal jargon", () => {
     const html = renderToStaticMarkup(
       <PatronDecisionCenterView center={PatronDecisionCenterPresenter.build(northstarView())} />,

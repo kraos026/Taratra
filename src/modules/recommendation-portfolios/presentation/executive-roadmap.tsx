@@ -169,7 +169,7 @@ function RecommendationCard({
               ? readableEconomicState(item.roiSpecialValue)
               : item.expectedRoi === null
                 ? "Données complémentaires requises"
-                : `${item.expectedRoi}%`
+                : `${item.expectedRoi.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}%`
           }
         />
         <Metric label="Investissement" value={formatMoney(item.implementationCost)} />
@@ -236,7 +236,14 @@ function readablePhase(value: string): string {
 }
 
 function readablePriority(value: string): string {
-  return value === "critical" ? "Critique" : value === "high" ? "Haute" : value;
+  return (
+    (
+      { critical: "Critique", high: "Haute", medium: "Modérée", low: "Faible" } as Record<
+        string,
+        string
+      >
+    )[value] ?? value
+  );
 }
 
 function priorityClass(value: string): string {

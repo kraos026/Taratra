@@ -250,7 +250,7 @@ export function InteractiveDashboard() {
             </article>
           </div>
 
-          <div className="grid">
+          <div className="dashboard-grid">
             <section className="panel companies">
               <div className="panel-head">
                 <div>

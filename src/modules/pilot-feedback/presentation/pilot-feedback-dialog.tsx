@@ -88,7 +88,7 @@ export function PilotFeedbackDialog({ companyId }: { readonly companyId?: string
   return (
     <>
       <button
-        className="pilot-feedback-trigger outline"
+        className="pilot-feedback-trigger inline-flex min-h-11 flex-wrap items-center justify-center gap-2 rounded-xl border border-slate-500 px-4 py-3 text-sm font-semibold text-slate-100 outline hover:bg-white/5 focus-visible:outline-2 focus-visible:outline-blue-400 disabled:opacity-60"
         type="button"
         disabled={!companyId || state === "loading"}
         title={!companyId ? "Créez d’abord votre entreprise pour donner votre avis" : undefined}

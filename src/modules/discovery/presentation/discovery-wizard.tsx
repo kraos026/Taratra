@@ -187,13 +187,16 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
               Comprendre votre entreprise
             </h1>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-300">
-              Répondez simplement avec ce que vous savez. Vous pouvez enregistrer et reprendre plus
-              tard.
+              {readOnly
+                ? "Vos informations sont validées. Vous pouvez les consulter et retrouver la suite de votre audit."
+                : "Répondez simplement avec ce que vous savez. Vous pouvez enregistrer et reprendre plus tard."}
             </p>
           </div>
           <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-slate-300">
             <strong className="block text-white">Étape {index + 1} sur 6</strong>
-            Environ {Math.max(2, (steps.length - index) * 2)} min restantes
+            {readOnly
+              ? "Informations validées"
+              : `Environ ${Math.max(2, (steps.length - index) * 2)} min restantes, selon vos réponses`}
           </div>
         </div>
       </header>
@@ -204,6 +207,7 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
         {steps.map((s, i) => (
           <button
             key={s}
+            aria-current={s === step ? "step" : undefined}
             disabled={busy || (!readOnly && i > index + 1)}
             onClick={() => setStep(s)}
             className={`min-w-36 flex-1 border-r border-white/10 p-3 text-left text-xs transition last:border-r-0 ${
@@ -244,7 +248,7 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
               ? "Parcours validé · consultation seule"
               : "Vos réponses restent modifiables")}
         </span>
-        <div className="flex gap-3">
+        <div className="flex flex-wrap gap-3">
           {index > 0 && (
             <Button
               className="opt-secondary"
