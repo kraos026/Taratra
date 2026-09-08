@@ -10,3 +10,17 @@ test-results
 *.tsbuildinfo
 src/generated
 supabase/.temp
+.vercel/
+
+# Reproducible local QA screenshots and reports.
+artifacts/optivos-company-audit-qa/
+artifacts/optivos-downstream-p2028-fix/
+artifacts/optivos-downstream-ux-pass/
+artifacts/optivos-executive-frontend-qa/
+artifacts/optivos-frontend-final-qa/
+artifacts/optivos-frontend-reset-qa/
+artifacts/optivos-opportunities-qa/
+artifacts/optivos-presentation/
+artifacts/visual-identity-final/
+artifacts/optivos-visual-qa/**/*.png
+artifacts/optivos-visual-qa/**/*.json
