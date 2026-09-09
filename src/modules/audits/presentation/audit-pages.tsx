@@ -110,6 +110,7 @@ export function NewAudit({ companyId }: { companyId: string }) {
   );
 }
 export function AuditOverview({ id, summary = false }: { id: string; summary?: boolean }) {
+  const router = useRouter();
   const [data, setData] = useState<Detail>();
   const [error, setError] = useState<string>();
   useEffect(() => {
@@ -161,10 +162,10 @@ export function AuditOverview({ id, summary = false }: { id: string; summary?: b
         <Summary audit={item} />
       ) : (
         <div className="flex gap-3">
-          <Button onClick={() => location.assign(`/audits/${id}/questionnaire`)}>
+          <Button onClick={() => router.push(`/audits/${id}/questionnaire`)}>
             Ouvrir le questionnaire
           </Button>
-          <Button variant="outline" onClick={() => location.assign(`/audits/${id}/summary`)}>
+          <Button variant="outline" onClick={() => router.push(`/audits/${id}/summary`)}>
             Voir le résumé
           </Button>
         </div>
@@ -197,6 +198,7 @@ function Summary({ audit }: { audit: Audit }) {
   );
 }
 export function AuditQuestionnaire({ id }: { id: string }) {
+  const router = useRouter();
   const [data, setData] = useState<Detail>();
   const [sectionIndex, setSectionIndex] = useState(0);
   const [state, setState] = useState<"idle" | "saving" | "saved" | "error">("idle");
@@ -276,7 +278,7 @@ export function AuditQuestionnaire({ id }: { id: string }) {
         {sectionIndex < data.item.questionnaireVersion.sections.length - 1 ? (
           <Button onClick={() => setSectionIndex((i) => i + 1)}>Suivant</Button>
         ) : (
-          <Button onClick={() => location.assign(`/audits/${id}/summary`)}>Résumé</Button>
+          <Button onClick={() => router.push(`/audits/${id}/summary`)}>Résumé</Button>
         )}
       </div>
     </div>
