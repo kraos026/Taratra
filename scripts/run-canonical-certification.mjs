@@ -1,5 +1,7 @@
 import pg from "pg";
 import { randomUUID } from "node:crypto";
+import { performance } from "node:perf_hooks";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
 import {
   LOCAL_APP_URL,
@@ -46,6 +48,7 @@ let currentCompanyId = null;
 let currentOrganizationId = null;
 let db = null;
 let browser = null;
+const stageTimings = [];
 
 async function login(page, user = LOCAL_E2E_USERS.tenantA) {
   await page.goto("/login");
@@ -88,18 +91,29 @@ class CanonicalCertification {
 
   async run() {
     await this.createAudit();
-    await this.discovery();
-    await this.interview();
-    await this.knowledge();
-    await this.processMap();
-    await this.analysis();
-    await this.aiOpportunity();
-    await this.automationOpportunity();
-    await this.roi();
-    await this.recommendationPortfolio();
-    await this.solutionBlueprint();
-    await this.automationSpecification();
-    await this.executiveResult();
+    const methods = [
+      "discovery",
+      "interview",
+      "knowledge",
+      "processMap",
+      "analysis",
+      "aiOpportunity",
+      "automationOpportunity",
+      "roi",
+      "recommendationPortfolio",
+      "solutionBlueprint",
+      "automationSpecification",
+      "executiveResult",
+    ];
+    for (const [index, method] of methods.entries()) {
+      const start = performance.now();
+      await this[method]();
+      const milliseconds = Math.round((performance.now() - start) * 100) / 100;
+      stageTimings.push({ stage: STAGES[index], milliseconds });
+      console.log(
+        `STAGE TIMING ${STAGES[index]}: ${milliseconds}ms${milliseconds > 5000 ? " SLOW >5s" : ""}`,
+      );
+    }
     return this.results;
   }
 
@@ -776,6 +790,21 @@ async function reportSuccess(result) {
   for (const stage of STAGES) console.log(`${stage}: PASS`);
   console.log(`recommendation count: ${result.recommendationCount}`);
   console.log(`executive result complete: ${result.executiveResult.complete}`);
+  mkdirSync("artifacts", { recursive: true });
+  writeFileSync(
+    `artifacts/canonical-timings-${certificationRunId}.json`,
+    JSON.stringify(
+      {
+        runId: certificationRunId,
+        environment: "LOCAL",
+        measurement:
+          "wall-clock stage including API, validation, publish and readback; not pure compute",
+        samples: stageTimings,
+      },
+      null,
+      2,
+    ),
+  );
 }
 
 async function one(sql, params = []) {
@@ -796,6 +825,8 @@ function assertUuid(value, label) {
 async function main() {
   const supabase = await ensureLocalSupabase();
   const env = certificationEnv(supabase);
+  if (process.argv.includes("--trace-pg"))
+    env.NODE_OPTIONS = `${env.NODE_OPTIONS ?? ""} --trace-deprecation`.trim();
   assertLocalCertificationEnv(env);
   configureSystemChromeForPlaywright(env);
 
