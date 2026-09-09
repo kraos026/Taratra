@@ -3,3 +3,10 @@ node_modules
 src/generated
 package-lock.json
 supabase/.temp
+HANDOFF.md
+artifacts/OPTIVOS_UX_REFERENCE_AUDIT_2026-09-07.md
+artifacts/recovery-reference/company-navigation-smoke.mjs
+artifacts/recovery-reference/preview-readonly-0762132.mjs
+artifacts/recovery-reference/run-preview-qa.mjs
+artifacts/recovery-reference/run-staging-canonical-preview.mjs
+artifacts/recovery-reference/ux-reference-review.mjs

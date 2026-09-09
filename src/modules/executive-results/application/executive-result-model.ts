@@ -1,13 +1,20 @@
 import type { AssistedAuditReadModel } from "@/modules/assisted-audit/application/assisted-audit-model";
 
-export type DecisionEvidenceQuality = "SUPPORTED" | "INFERRED" | "ASSUMED" | "MISSING" | "CONTRADICTORY";
+export type DecisionEvidenceQuality =
+  "SUPPORTED" | "INFERRED" | "ASSUMED" | "MISSING" | "CONTRADICTORY";
 export interface OpportunityDecisionSafety {
   organizationId: string;
   companyId: string;
   opportunityId: string;
   automationSnapshotId: string;
   evidence: { id: string; quality: DecisionEvidenceQuality }[];
-  observations: { factId: string; key: string; value: string | number | boolean; quality: DecisionEvidenceQuality; unit?: string }[];
+  observations: {
+    factId: string;
+    key: string;
+    value: string | number | boolean;
+    quality: DecisionEvidenceQuality;
+    unit?: string;
+  }[];
   prerequisites: {
     id: string;
     opportunityId: string;

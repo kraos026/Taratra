@@ -68,7 +68,11 @@ export class ProductionExecutiveDecisionViewBuilder {
       whatWeKnow: freeze(whatWeKnowFor(result)),
       whatWeBelieve: freeze(whatWeBelieveFor(result)),
       whatWeDoNotKnow: freeze(unknownsFor(result)),
-      contradictions: freeze(result.opportunities.flatMap(item => opportunityDecisionSafety(result, item, input.tenantId).contradictions)),
+      contradictions: freeze(
+        result.opportunities.flatMap(
+          (item) => opportunityDecisionSafety(result, item, input.tenantId).contradictions,
+        ),
+      ),
       rootCausesOrHypotheses: freeze(rootCausesFor(result)),
       bottlenecks: freeze(bottlenecksFor(result)),
       criticalIssues: freeze(criticalIssuesFor(result)),
@@ -128,10 +132,18 @@ function cardsFor(
       ),
       ...result.opportunities.map((opportunity) => {
         const safety = opportunityDecisionSafety(result, opportunity, traceability.tenantId);
-        const evaluations = result.roi?.evaluations.filter(item => item.automationOpportunityId === opportunity.id) ?? [];
-        const opportunityEconomics = economicStateFor({ ...result, roi: result.roi ? { ...result.roi, evaluations } : null });
+        const evaluations =
+          result.roi?.evaluations.filter(
+            (item) => item.automationOpportunityId === opportunity.id,
+          ) ?? [];
+        const opportunityEconomics = economicStateFor({
+          ...result,
+          roi: result.roi ? { ...result.roi, evaluations } : null,
+        });
         const state = safety.state ?? decisionStateFor(opportunity, opportunityEconomics);
-        const action = safety.remediations.length ? safety.remediations.join(" ") : actionFor(state);
+        const action = safety.remediations.length
+          ? safety.remediations.join(" ")
+          : actionFor(state);
         return card({
           id: `opportunity:${opportunity.id}`,
           title: opportunity.title,
@@ -145,7 +157,14 @@ function cardsFor(
           whatNotToDo: notActionFor(state),
           nextBestAction: action,
           evidenceReferences: safety.evidenceIds,
-          uncertainty: [...safety.missing, ...safety.contradictions, ...(opportunityEconomics === "INSUFFICIENT_EVIDENCE" ? ["Le ROI doit être relié à cette opportunité."] : []), ...uncertaintyFor(opportunity, result)],
+          uncertainty: [
+            ...safety.missing,
+            ...safety.contradictions,
+            ...(opportunityEconomics === "INSUFFICIENT_EVIDENCE"
+              ? ["Le ROI doit être relié à cette opportunité."]
+              : []),
+            ...uncertaintyFor(opportunity, result),
+          ],
           explanation,
           traceability,
         });
@@ -373,7 +392,11 @@ function whatNotToAutomateFor(result: ExecutiveAuditResult): readonly string[] {
 
 function whatCanBeAutomatedFor(cards: readonly ExecutivePriorityCard[]): readonly string[] {
   return cards
-    .filter((item) => item.id.startsWith("opportunity:") && ["AUTOMATE_NOW", "AUTOMATE_CONDITIONALLY"].includes(item.recommendationState))
+    .filter(
+      (item) =>
+        item.id.startsWith("opportunity:") &&
+        ["AUTOMATE_NOW", "AUTOMATE_CONDITIONALLY"].includes(item.recommendationState),
+    )
     .map((item) => item.title);
 }
 
@@ -381,9 +404,7 @@ function nextActionsFor(
   result: ExecutiveAuditResult,
   cards: readonly ExecutivePriorityCard[],
 ): readonly string[] {
-  return freeze([
-    ...cards.map(item => item.nextBestAction),
-  ]);
+  return freeze([...cards.map((item) => item.nextBestAction)]);
 }
 
 function probableCauseFor(result: ExecutiveAuditResult, problem: string): string {
@@ -502,7 +523,9 @@ function completenessFor(
     uncertainty: true,
     whatToFix: whatToFixFirstFor(cards).length > 0,
     whatNotToAutomate: whatNotToAutomateFor(result).length > 0,
-    whatToAutomate: cards.some(item => item.id.startsWith("opportunity:")) && Boolean(result.roi?.evaluations.length),
+    whatToAutomate:
+      cards.some((item) => item.id.startsWith("opportunity:")) &&
+      Boolean(result.roi?.evaluations.length),
     economicStatus: Boolean(economicState),
     nextAction: nextBestActions.length > 0,
   };
