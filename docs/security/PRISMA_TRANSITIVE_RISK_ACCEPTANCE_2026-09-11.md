@@ -16,12 +16,12 @@ optional `prisma: "*"` peer of production `@prisma/client` (7.9.1).
 
 ## Dependency reachability
 
-| Package | Path | Installed | Next runtime trace | Application runtime |
-|---|---|---|---|---|
-| `prisma` | optional peer of `@prisma/client` | Yes | No | No |
-| `@prisma/config` | `prisma` dependency | Yes | No | No |
-| `deepmerge-ts` | `@prisma/config` dependency | Yes | No | No |
-| `mysql2` | Prisma tooling dependency | Yes | No | No |
+| Package          | Path                              | Installed | Next runtime trace | Application runtime |
+| ---------------- | --------------------------------- | --------- | ------------------ | ------------------- |
+| `prisma`         | optional peer of `@prisma/client` | Yes       | No                 | No                  |
+| `@prisma/config` | `prisma` dependency               | Yes       | No                 | No                  |
+| `deepmerge-ts`   | `@prisma/config` dependency       | Yes       | No                 | No                  |
+| `mysql2`         | Prisma tooling dependency         | Yes       | No                 | No                  |
 
 The temporary production install reproduced this tree. Removing only the root
 Prisma devDependency removed the Prisma tooling subtree while retaining
