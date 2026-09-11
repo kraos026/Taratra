@@ -1,0 +1,55 @@
+{
+  "runId": "run-20260911072128-da1017a2",
+  "environment": "LOCAL",
+  "measurement": "wall-clock stage including API, validation, publish and readback; not pure compute",
+  "samples": [
+    {
+      "stage": "Discovery",
+      "milliseconds": 409.17
+    },
+    {
+      "stage": "Interview",
+      "milliseconds": 936.85
+    },
+    {
+      "stage": "Enterprise Knowledge",
+      "milliseconds": 153.78
+    },
+    {
+      "stage": "Process Map",
+      "milliseconds": 188.13
+    },
+    {
+      "stage": "Business Analysis",
+      "milliseconds": 177.46
+    },
+    {
+      "stage": "AI Opportunities",
+      "milliseconds": 221.16
+    },
+    {
+      "stage": "Automation Opportunities",
+      "milliseconds": 258.68
+    },
+    {
+      "stage": "ROI",
+      "milliseconds": 359.73
+    },
+    {
+      "stage": "Recommendation Portfolio",
+      "milliseconds": 189.72
+    },
+    {
+      "stage": "Solution Blueprint",
+      "milliseconds": 182.96
+    },
+    {
+      "stage": "Automation Specification",
+      "milliseconds": 254.84
+    },
+    {
+      "stage": "Executive Result",
+      "milliseconds": 97.2
+    }
+  ]
+}
