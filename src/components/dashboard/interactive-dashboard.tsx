@@ -156,10 +156,7 @@ export function InteractiveDashboard() {
             <Sparkles size={17} />
           </span>
           <strong>Espace Optivos</strong>
-          <p>Audit privé sur optivos.vip, fondé sur vos réponses et vos preuves publiées.</p>
-          <button type="button" disabled title="Activation commerciale après validation">
-            Préparé
-          </button>
+          <p>Audit privé fondé sur vos réponses et vos preuves publiées.</p>
         </div>
         <div className="profile">
           <div className="avatar">OV</div>
@@ -182,9 +179,6 @@ export function InteractiveDashboard() {
               Rechercher
             </button>
           </form>
-          <Link className="help" href="https://optivos.vip" aria-label="Aide Optivos">
-            ?
-          </Link>
           <Link className="primary" href={dashboardRoutes.companies}>
             <Sparkles size={17} />
             Lancer un audit Optivos
@@ -236,8 +230,8 @@ export function InteractiveDashboard() {
               </div>
               <div>
                 <p>Opportunités</p>
-                <strong>—</strong>
-                <small>Depuis l’audit publié</small>
+                <Link href={activeRoutes.opportunities}>Consulter</Link>
+                <small>Décisions issues de vos audits</small>
               </div>
             </article>
             <article>
@@ -245,9 +239,9 @@ export function InteractiveDashboard() {
                 <Clock3 />
               </div>
               <div>
-                <p>Heures économisables</p>
-                <strong>—</strong>
-                <small>Données complémentaires requises</small>
+                <p>Estimation ROI</p>
+                <Link href={activeRoutes.roi}>Consulter</Link>
+                <small>Hypothèses et résultats économiques</small>
               </div>
             </article>
           </div>
@@ -313,29 +307,16 @@ export function InteractiveDashboard() {
             <section className="panel score">
               <div className="panel-head">
                 <div>
-                  <h2>Performance globale</h2>
-                  <p>Disponible depuis les rapports d’audit validés</p>
+                  <h2>Votre analyse</h2>
+                  <p>Résultats propres à chaque dossier</p>
                 </div>
-                <select
-                  aria-label="Période"
-                  defaultValue="30"
-                  disabled
-                  title="Filtrage temporel bientôt disponible"
-                >
-                  <option value="30">30 derniers jours</option>
-                </select>
               </div>
               <div className="score-body">
-                <div className="unavailable ring">
-                  <div>
-                    <strong>—</strong>
-                    <span>/100</span>
-                  </div>
-                </div>
                 <div className="score-copy">
-                  <h3>Aucune moyenne globale calculée</h3>
+                  <h3>Consultez les décisions et leurs preuves</h3>
                   <p>
-                    Optivos n’invente pas de score. Ouvrez un audit réel pour consulter son analyse.
+                    Ouvrez un dossier pour retrouver son analyse, les informations manquantes et la
+                    prochaine action.
                   </p>
                   <Link href={dashboardRoutes.companies}>
                     Voir l’analyse <ArrowRight size={14} />
@@ -350,13 +331,6 @@ export function InteractiveDashboard() {
                   <h2>États de décision</h2>
                   <p>Optivos distingue décision, preuve manquante et contrôle humain</p>
                 </div>
-                <button
-                  type="button"
-                  disabled
-                  title="Exécution opérationnelle masquée pendant cette phase"
-                >
-                  •••
-                </button>
               </div>
               <div className="grid gap-2 text-sm text-neutral-600">
                 <p className="empty-state">Automatiser maintenant · après résultat publié</p>

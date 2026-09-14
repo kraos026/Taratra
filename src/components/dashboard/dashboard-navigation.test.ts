@@ -59,14 +59,17 @@ describe("dashboard interactions", () => {
     expect(dashboard).toContain("onSubmit={search}");
   });
 
-  it("marks unsupported dashboard controls as disabled", () => {
+  it("offers real destination links instead of unfinished dashboard controls", () => {
     const dashboard = readFileSync(
       join(process.cwd(), "src/components/dashboard/interactive-dashboard.tsx"),
       "utf8",
     );
     expect(dashboard).toContain("PilotFeedbackDialog");
-    expect(dashboard).toContain("Filtrage temporel bientôt disponible");
-    expect(dashboard).toContain("Activation commerciale après validation");
+    expect(dashboard).not.toContain("Filtrage temporel bientôt disponible");
+    expect(dashboard).not.toContain("Activation commerciale après validation");
+    expect(dashboard).not.toContain('aria-label="Aide Optivos"');
+    expect(dashboard).toContain("href={activeRoutes.roi}");
+    expect(dashboard).toContain("href={activeRoutes.opportunities}");
   });
 
   it("keeps dashboard and recommendations language customer-facing", () => {
