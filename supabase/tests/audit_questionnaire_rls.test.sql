@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(15);
+select plan(23);
 
 insert into auth.users(instance_id,id,aud,role,email,encrypted_password,email_confirmed_at,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select '00000000-0000-0000-0000-000000000000',id,'authenticated','authenticated',email,crypt('password',gen_salt('bf')),now(),'{}','{}',now(),now() from(values
@@ -46,4 +46,15 @@ reset role;set local role authenticated;select set_config('request.jwt.claim.sub
 select throws_like($$update public.audits set status='validated' where id='6a600000-0000-0000-0000-000000000001'$$,'%Only owners and admins%','consultant cannot validate audit');
 reset role;set local role authenticated;select set_config('request.jwt.claim.sub','61000000-0000-0000-0000-000000000002',true);
 select lives_ok($$update public.audits set status='validated' where id='6a600000-0000-0000-0000-000000000001'$$,'admin validates audit');
+-- Repository insertion uses separate INSERT and SELECT statements: the STABLE
+-- visibility helpers cannot read a just-inserted template/version via RETURNING.
+select lives_ok($$insert into public.questionnaire_templates(id,organization_id,name,category) values('6a200000-0000-0000-0000-000000000003','6a000000-0000-0000-0000-000000000001','CERT-STAGING-RLS-create','test')$$,'admin inserts own template without returning');
+select is((select count(*)::int from public.questionnaire_templates where id='6a200000-0000-0000-0000-000000000003'),1,'next statement reads newly inserted template');
+select lives_ok($$insert into public.questionnaire_versions(id,questionnaire_template_id,version_number) values('6a300000-0000-0000-0000-000000000003','6a200000-0000-0000-0000-000000000003',1)$$,'admin inserts own version without returning');
+select is((select count(*)::int from public.questionnaire_versions where id='6a300000-0000-0000-0000-000000000003'),1,'next statement reads newly inserted version');
+reset role;set local role authenticated;select set_config('request.jwt.claim.sub','62000000-0000-0000-0000-000000000001',true);
+select is((select count(*)::int from public.questionnaire_templates where id='6a200000-0000-0000-0000-000000000003'),0,'tenant B cannot read newly inserted template');
+select is((select count(*)::int from public.questionnaire_versions where id='6a300000-0000-0000-0000-000000000003'),0,'tenant B cannot read newly inserted version');
+select results_eq($$with x as(update public.questionnaire_templates set name='DENIED' where id='6a200000-0000-0000-0000-000000000003' returning 1)select count(*)::int from x$$,array[0],'tenant B cannot mutate newly inserted template');
+select results_eq($$with x as(update public.questionnaire_versions set version_number=2 where id='6a300000-0000-0000-0000-000000000003' returning 1)select count(*)::int from x$$,array[0],'tenant B cannot mutate newly inserted version');
 select * from finish();rollback;

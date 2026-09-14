@@ -1,4 +1,5 @@
 import type { Prisma } from "@/generated/prisma/client";
+import { randomUUID } from "node:crypto";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 
 export class PrismaQuestionnaireRepository {
@@ -57,10 +58,17 @@ export class PrismaQuestionnaireRepository {
       },
     });
   }
-  create(organizationId: string, input: { name: string; description?: string; category: string }) {
-    return this.db.questionnaireTemplate.create({
-      data: { ...input, organizationId, isSystem: false },
+  async create(
+    organizationId: string,
+    input: { name: string; description?: string; category: string },
+  ) {
+    const id = randomUUID();
+    // The SELECT policy reads the template through a STABLE function. INSERT RETURNING
+    // cannot see the new row there; a separate statement in this transaction can.
+    await this.db.questionnaireTemplate.createMany({
+      data: { ...input, id, organizationId, isSystem: false },
     });
+    return this.db.questionnaireTemplate.findUniqueOrThrow({ where: { id } });
   }
   update(id: string, input: { name?: string; description?: string; category?: string }) {
     return this.db.questionnaireTemplate.update({ where: { id }, data: input });
@@ -70,12 +78,16 @@ export class PrismaQuestionnaireRepository {
       where: { questionnaireTemplateId: templateId },
       _max: { versionNumber: true },
     });
-    return this.db.questionnaireVersion.create({
+    const id = randomUUID();
+    // Version visibility also uses a STABLE helper that reads the newly inserted row.
+    await this.db.questionnaireVersion.createMany({
       data: {
+        id,
         questionnaireTemplateId: templateId,
         versionNumber: (aggregate._max.versionNumber ?? 0) + 1,
       },
     });
+    return this.db.questionnaireVersion.findUniqueOrThrow({ where: { id } });
   }
   async duplicate(id: string) {
     const source = await this.db.questionnaireVersion.findUnique({
