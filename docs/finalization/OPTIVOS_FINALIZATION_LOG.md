@@ -84,6 +84,14 @@ References: [Supabase password flow](https://supabase.com/docs/guides/auth/passw
 
 ### Current remaining release work
 
+Final mobile follow-up:
+
+- Final exact source-SHA Preview: `cc20d1af250293c1f057d7082addee15529b145b`, deployment `dpl_FxFEFvk8fxLmnySQ5UMjz8gH7hs3`, `https://taratra-46nunmoan-optivos.vercel.app`, READY/Preview, all three runtime targets STAGING. Run `CERT-STAGING-1789394403757-def7a14d` **PASS**, exit0, including actual390px logout click, anonymous401 afterward, re-login and persisted company200. Sanitized evidence retained in `evidence/staging-auth-boundary-cc20d1a.json`. Any following documentation/evidence-only commit is not a new full canonical certification.
+
+- `97ea8c2fd14ecaf7d8a2ad71c4a8cadb44ca37d2`: inventory/evidence checkpoint only, no engine change. Exact Preview `dpl_4Q9RNNchSetQycQmqpYMSkr3enYR` READY and scoped staging run `CERT-STAGING-1789394203584-eb711535` PASS, including refresh/re-login and authenticated isolation. Full canonical staging still NOT_RUN.
+- `cc20d1af250293c1f057d7082addee15529b145b`: confirmed mobile accessibility defect. Existing CSS hid the logout form below760px, and icon-only navigation lost visible text. Keep a44px labelled logout button visible; label navigation links; focus outline retained. 9 navigation tests PASS, scoped lint/typecheck PASS; full **1218/1218**,196 files,52.70s; full format/lint PASS. Risk LOW, presentation-only; no Auth service change. Runner now verifies actual mobile logout rather than only posting the endpoint.
+- Browser network guard deliberately permits only the Preview and staging Auth origins. External Google Font requests are blocked; these captures prove bounded layout and interaction under fallback fonts, not final brand typography.
+
 Checkpoint consolidation on 2026-09-14:
 
 - `b298e35c9263be274ff08f65ae55a4541ed3093a`: local runner lifecycle fix. Rerun completed **25/25 pilot tests, 13 files, exit0**; build26/26 and migration24/24. LOW risk, runner-only, owned process cleanup verified.
