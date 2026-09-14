@@ -1,6 +1,6 @@
 import type { Prisma } from "@/generated/prisma/client";
 import { getPrismaClient } from "./prisma";
-import { logError, logInfo } from "@/shared/infrastructure/logger";
+import { logError } from "@/shared/infrastructure/logger";
 
 export type TransactionClient = Prisma.TransactionClient;
 export type AuthenticatedDatabaseTransactionOptions = Parameters<
@@ -12,26 +12,19 @@ export async function withAuthenticatedDatabase<Result>(
   operation: (database: TransactionClient) => Promise<Result>,
   options?: AuthenticatedDatabaseTransactionOptions,
 ): Promise<Result> {
-  logInfo({ action: "database.authenticated.enter", userId });
-
   try {
     return await getPrismaClient().$transaction(async (transaction: Prisma.TransactionClient) => {
-      logInfo({ action: "database.transaction.entered", userId });
       await transaction.$executeRaw`select set_config('request.jwt.claim.sub', ${userId}, true)`;
-      logInfo({ action: "database.jwt_context.set", userId });
 
       // Constant SQL is required because PostgreSQL does not parameterize role identifiers.
       await transaction.$executeRawUnsafe("set local role authenticated");
-      logInfo({ action: "database.role_context.set", userId });
 
       const result = await operation(transaction);
-      logInfo({ action: "database.operation.completed", userId });
       return result;
     }, options);
   } catch (caught) {
     logError({
       action: "database.authenticated.failed",
-      userId,
       ...describeDatabaseException(caught),
     });
     throw caught;

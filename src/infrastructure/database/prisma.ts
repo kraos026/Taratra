@@ -30,11 +30,6 @@ function describeDatabaseConnection(connectionString: string): Record<string, st
     const url = new URL(connectionString);
     const host = url.hostname;
     const port = url.port || "default";
-    const username = decodeURIComponent(url.username || "");
-    const projectRef =
-      username.match(/^postgres\.([a-z0-9]+)$/i)?.[1] ??
-      host.match(/(?:^|\.)([a-z0-9]{20})\.supabase\.co$/i)?.[1] ??
-      "unknown";
     const mode = host.includes("pooler.supabase.com")
       ? port === "6543"
         ? "transaction-pooler"
@@ -44,18 +39,10 @@ function describeDatabaseConnection(connectionString: string): Record<string, st
         : "other";
 
     return {
-      databaseHost: host,
-      databasePort: port,
-      databaseUsername: username,
-      databaseProjectRef: projectRef,
       databaseConnectionMode: mode,
     };
   } catch {
     return {
-      databaseHost: "invalid-url",
-      databasePort: "unknown",
-      databaseUsername: "unknown",
-      databaseProjectRef: "unknown",
       databaseConnectionMode: "unknown",
     };
   }
