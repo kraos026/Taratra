@@ -76,4 +76,6 @@ for (const file of pilotFiles) {
   runChecked("npx", ["playwright", "test", file], env);
 }
 
+// A live child keeps Node's event loop open, so the exit hook alone cannot clean it up.
+stopAppProcess();
 console.log("LOCAL CERTIFICATION: PASS");
