@@ -44,7 +44,7 @@ export async function POST(
     const tenantId = await tenantForCompany(db, auth, id);
     if (!tenantId) return apiError("COMPANY_NOT_FOUND", "Company not found", 404);
 
-    const body = createRequestSchema.safeParse(await request.json());
+    const body = createRequestSchema.safeParse(await request.json().catch(() => null));
     if (!body.success) return apiError("VALIDATION_ERROR", "Invalid evidence request", 400);
 
     const repository = new PrismaDurableAuditWorkflowRepository(db);
