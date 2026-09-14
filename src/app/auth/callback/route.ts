@@ -8,15 +8,26 @@ export async function GET(request: Request) {
   const next = safeReturnUrl(requestedNext, url.origin);
 
   if (code) {
-    const supabase = await createClient();
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    try {
+      const supabase = await createClient();
+      const { error } = await supabase.auth.exchangeCodeForSession(code);
 
-    if (!error) {
-      return NextResponse.redirect(next);
+      if (!error) {
+        return NextResponse.redirect(next);
+      }
+    } catch {
+      /* Failed exchanges must not expose provider details or strand the user. */
     }
   }
 
-  return NextResponse.redirect(new URL("/signup?error=confirmation", url.origin));
+  return NextResponse.redirect(
+    new URL(
+      next.pathname === "/reset-password"
+        ? "/forgot-password?error=recovery"
+        : "/signup?error=confirmation",
+      url.origin,
+    ),
+  );
 }
 
 function safeReturnUrl(value: string | null, origin: string): URL {

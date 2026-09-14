@@ -7,6 +7,8 @@ import { AuthShell } from "@/modules/auth/presentation/auth-shell";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { createClient } from "@/infrastructure/supabase/client";
+import Link from "next/link";
+import { SIGNUP_INSTRUCTIONS } from "@/modules/auth/presentation/password-recovery";
 
 export default function SignUpPage() {
   const router = useRouter();
@@ -31,6 +33,10 @@ export default function SignUpPage() {
         options: { emailRedirectTo: callbackUrl },
       });
       if (error) {
+        if (error.code === "user_already_exists" || error.code === "email_exists") {
+          setMessage(SIGNUP_INSTRUCTIONS);
+          return;
+        }
         setMessage(
           error.status === 429
             ? "Trop de demandes. Patientez quelques instants avant de réessayer."
@@ -43,7 +49,7 @@ export default function SignUpPage() {
         router.refresh();
         return;
       }
-      setMessage("Consultez votre e-mail pour confirmer votre compte.");
+      setMessage(SIGNUP_INSTRUCTIONS);
     } catch {
       setMessage("Connexion indisponible. Vos informations restent à l’écran ; réessayez.");
     } finally {
@@ -89,6 +95,9 @@ export default function SignUpPage() {
           </p>
         )}
       </form>
+      <Link href="/forgot-password" className="mt-4 block text-sm text-blue-400 underline">
+        Récupérer mon mot de passe
+      </Link>
     </AuthShell>
   );
 }

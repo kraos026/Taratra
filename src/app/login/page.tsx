@@ -70,8 +70,8 @@ export default function LoginPage() {
           required
         />
         <div className="text-right">
-          <Link className="text-sm text-blue-400 hover:text-blue-300" href="/signup">
-            Nouveau sur Optivos ?
+          <Link className="text-sm text-blue-400 hover:text-blue-300" href="/forgot-password">
+            Mot de passe oublié ?
           </Link>
         </div>
         <Button
