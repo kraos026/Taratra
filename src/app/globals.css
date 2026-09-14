@@ -197,6 +197,18 @@ button:disabled {
   margin-left: auto;
   color: #969ca7;
 }
+.dashboard-signout {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.dashboard-signout:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+}
 .content {
   margin-left: 250px;
   width: calc(100% - 250px);
@@ -895,7 +907,6 @@ footer {
   .nav-item b,
   .upgrade,
   .profile div:nth-child(2),
-  .profile form,
   .profile > span {
     display: none;
   }
@@ -907,6 +918,7 @@ footer {
   }
   .profile {
     justify-content: center;
+    flex-direction: column;
   }
   .content {
     margin: 0;

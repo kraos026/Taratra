@@ -13,6 +13,7 @@ import {
   FileText,
   LayoutDashboard,
   Lightbulb,
+  LogOut,
   Search,
   Sparkles,
   Target,
@@ -144,7 +145,12 @@ export function InteractiveDashboard() {
         <nav aria-label="Navigation principale">
           <p className="nav-label">ESPACE OPTIVOS</p>
           {navigation.map(([Icon, label, href]) => (
-            <Link className={href === "/" ? "nav-item active" : "nav-item"} href={href} key={label}>
+            <Link
+              className={href === "/" ? "nav-item active" : "nav-item"}
+              href={href}
+              key={label}
+              aria-label={label}
+            >
               <Icon size={19} />
               <span>{label}</span>
               {label === "Audit" && activeAudits !== undefined && activeAudits === 1 && <b>1</b>}
@@ -165,7 +171,14 @@ export function InteractiveDashboard() {
             <small>Espace sécurisé</small>
           </div>
           <form action="/auth/logout" method="post">
-            <button type="submit">Se deconnecter</button>
+            <button
+              type="submit"
+              className="dashboard-signout"
+              aria-label="Se déconnecter"
+              title="Se déconnecter"
+            >
+              <LogOut size={18} aria-hidden="true" />
+            </button>
           </form>
         </div>
       </aside>

@@ -244,11 +244,14 @@ try {
   evidence.results.push("company persistence after refresh and mobile overflow: PASS");
   stage = "logout-relogin-persistence";
   await api(pages[0], "/api/companies");
-  const logout = await pages[0].request.post(`${preview}/auth/logout`, {
-    headers: bypassHeaders,
-    maxRedirects: 0,
-  });
-  assert.equal(logout.status(), 303);
+  await pages[0].setViewportSize({ width: 390, height: 844 });
+  const logoutResponse = pages[0].waitForResponse(
+    (response) =>
+      response.url() === `${preview}/auth/logout` && response.request().method() === "POST",
+  );
+  await pages[0].getByRole("button", { name: "Se déconnecter", exact: true }).click();
+  assert.equal((await logoutResponse).status(), 303);
+  await pages[0].waitForURL(preview + "/login");
   await api(pages[0], `/api/companies/${companyId}`, "GET", undefined, [401]);
   await pages[0].goto(`${preview}/login`);
   await pages[0].getByLabel("email", { exact: true }).fill(credentials[0].email);
