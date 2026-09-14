@@ -1,0 +1,131 @@
+{
+  "runId": "CERT-STAGING-1789393904839-bd2d7639",
+  "sha": "87afbc7a3060dab793f170979512e1a018ffb4fd",
+  "preview": "https://taratra-hbpulboc9-optivos.vercel.app",
+  "environment": "STAGING",
+  "results": [
+    "exact SHA preview and three runtime STAGING targets: PASS",
+    "USER A UI login and workspace access: PASS",
+    "USER B UI login and workspace access: PASS",
+    "USER B cannot read/mutate USER A company, audit projection or evidence: PASS",
+    "USER A discovery creation: PASS",
+    "company persistence after refresh and mobile overflow: PASS",
+    "logout revokes local access; re-login restores persisted company: PASS"
+  ],
+  "identities": [
+    {
+      "label": "A",
+      "userId": "529d511e-ef40-43e7-a285-a981f36f8387"
+    },
+    {
+      "label": "B",
+      "userId": "0414e443-05c0-4ad6-93f7-9097d2ce8a84"
+    }
+  ],
+  "authSettings": {
+    "disableSignup": false,
+    "mailerAutoconfirm": false,
+    "emailEnabled": true,
+    "smtpDelivery": "NOT_PROVEN",
+    "redirectAllowlist": "NOT_PROVEN"
+  },
+  "authResponse": {
+    "status": 200,
+    "errorCode": null
+  },
+  "requests": [
+    {
+      "method": "POST",
+      "path": "/api/companies",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/automation-audit",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/automation-audit/evidence-requests",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/automation-audit/results",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/automation-audit/decision-center",
+      "status": 404
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/analysis",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/ai-opportunities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/automation-opportunities",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/recommendations",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/automation-audit/evidence",
+      "status": 404
+    },
+    {
+      "method": "PATCH",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06/discovery",
+      "status": 201
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies",
+      "status": 200
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06",
+      "status": 401
+    },
+    {
+      "method": "GET",
+      "path": "/api/companies/8cac8f5b-0bc7-44ae-aa4d-f961736a0b06",
+      "status": 200
+    }
+  ],
+  "companyId": "8cac8f5b-0bc7-44ae-aa4d-f961736a0b06",
+  "fullCanonicalJourney": "NOT_RUN",
+  "result": "PASS_SCOPED_AUTH_COMPANY_ISOLATION_ONLY"
+}
