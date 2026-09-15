@@ -24,6 +24,24 @@ function repository(overrides: Record<string, unknown> = {}) {
   } as unknown as PrismaAuditRepository;
 }
 describe("AuditService", () => {
+  it("returns not found without attempting to archive a foreign or missing audit", async () => {
+    const archive = vi.fn().mockRejectedValue(new Error("Prisma record not found"));
+    const repo = repository({ get: vi.fn().mockResolvedValue(null), archive });
+    await expect(new AuditService(repo, "user").archive("foreign-audit")).rejects.toMatchObject({
+      code: "AUDIT_NOT_FOUND",
+      status: 404,
+    });
+    expect(archive).not.toHaveBeenCalled();
+  });
+  it("archives an accessible audit under the resolved organization", async () => {
+    const archive = vi.fn().mockResolvedValue({ status: "archived" });
+    const repo = repository({ archive });
+    await expect(new AuditService(repo, "user").archive("audit")).resolves.toMatchObject({
+      status: "archived",
+    });
+    expect(repo.get).toHaveBeenCalledWith("org", "audit");
+    expect(archive).toHaveBeenCalledWith("org", "audit");
+  });
   it("creates an audit in resolved organization", async () => {
     const repo = repository();
     await new AuditService(repo, "user").create({

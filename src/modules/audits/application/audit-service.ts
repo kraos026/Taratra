@@ -100,6 +100,7 @@ export class AuditService {
   }
   async archive(id: string) {
     const c = await this.editor();
+    if (!(await this.repository.get(c.organizationId, id))) throw new AuditNotFoundError();
     return this.repository.archive(c.organizationId, id);
   }
 }
