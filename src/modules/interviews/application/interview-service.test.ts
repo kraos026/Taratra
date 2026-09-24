@@ -54,6 +54,31 @@ function subject(role = "consultant", hasDiscovery = true) {
 }
 
 describe("InterviewService", () => {
+  it.each(["consultant", "viewer"])("forbids final validation for %s", async (role) => {
+    const { service, repo } = subject(role);
+    await expect(service.validate("session")).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(repo.validate).not.toHaveBeenCalled();
+  });
+
+  it("requires a completed interview before owner validation", async () => {
+    const { service, repo } = subject("owner");
+    await expect(service.validate("session")).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(repo.validate).not.toHaveBeenCalled();
+  });
+
+  it.each(["owner", "admin"])("allows %s to validate a completed interview", async (role) => {
+    const { service, repo } = subject(role);
+    repo.session.mockResolvedValue({
+      id: "session",
+      companyId: "company",
+      lockVersion: 1,
+      status: "completed",
+    });
+    await service.validate("session");
+    expect(repo.validate).toHaveBeenCalledWith("org", "session", "user");
+    expect(repo.timeline).toHaveBeenCalledWith("org", "session", "user", "validated");
+  });
+
   it("requires a validated Discovery", async () => {
     await expect(subject("consultant", false).service.start("company")).rejects.toMatchObject({
       code: "VALIDATION_ERROR",

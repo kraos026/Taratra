@@ -243,9 +243,11 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
             ) : (
               <Button
                 disabled={!view.progress.readyForProcessMapping || busy}
-                onClick={() => act("complete")}
+                onClick={() => act(view.session.status === "completed" ? "validate" : "complete")}
               >
-                Terminer l’entretien
+                {view.session.status === "completed"
+                  ? "Valider l’entretien et continuer"
+                  : "Terminer l’entretien"}
               </Button>
             )}
             <div className="divide-y rounded-lg border">
@@ -306,6 +308,35 @@ function AnswerField({
   value: string;
   setValue: (value: string) => void;
 }) {
+  if (question.answerType === "multiple_choice" && Array.isArray(question.options)) {
+    const selected = value.split(",").filter(Boolean);
+    return (
+      <fieldset className="space-y-2">
+        <legend>Réponse — plusieurs choix possibles</legend>
+        {question.options.map((option) => {
+          const choice = String(option);
+          return (
+            <label key={choice} className="flex min-h-11 items-center gap-3">
+              <input
+                type="checkbox"
+                value={choice}
+                checked={selected.includes(choice)}
+                onChange={(event) =>
+                  setValue(
+                    (event.target.checked
+                      ? [...selected, choice]
+                      : selected.filter((item) => item !== choice)
+                    ).join(","),
+                  )
+                }
+              />
+              {choice}
+            </label>
+          );
+        })}
+      </fieldset>
+    );
+  }
   if (question.answerType === "boolean")
     return (
       <select
