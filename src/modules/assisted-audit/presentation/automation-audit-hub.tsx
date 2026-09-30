@@ -143,7 +143,22 @@ export function AutomationAuditView({
 }) {
   const progress = journeyProgress(model);
   const action = presentNextAction(model, companyId);
-  const analysis = model.stages.find((stage) => stage.stage === "BUSINESS_ANALYSIS")?.artifact;
+  const reviewRoutes = {
+    PROCESS_MAP: { path: "process-maps", label: "Consulter le processus" },
+    BUSINESS_ANALYSIS: { path: "analysis", label: "Consulter les constats de l’analyse" },
+    AI_OPPORTUNITIES: { path: "ai-opportunities", label: "Consulter les usages proposés" },
+    AUTOMATION_OPPORTUNITIES: {
+      path: "automation-opportunities",
+      label: "Consulter les automatisations proposées",
+    },
+    ROI: { path: "roi", label: "Consulter l’évaluation économique" },
+    RECOMMENDATIONS: { path: "recommendations", label: "Consulter le plan d’action" },
+  };
+  const reviewRoute =
+    model.currentStage in reviewRoutes
+      ? reviewRoutes[model.currentStage as keyof typeof reviewRoutes]
+      : null;
+  const reviewArtifact = model.stages.find((stage) => stage.stage === model.currentStage)?.artifact;
   const ambiguity = model.stages.find((stage) => stage.status === "AMBIGUOUS");
   const auditComplete = model.currentStage === "COMPLETED";
   const companyName = brandText(model.company.name);
@@ -234,17 +249,17 @@ export function AutomationAuditView({
                       ? customerBlocker(model.blockingReason)
                       : "Votre accès permet de consulter l’avancement. Une personne autorisée doit réaliser la prochaine action."}
                 </p>
-                {model.currentStage === "BUSINESS_ANALYSIS" && analysis && (
+                {reviewRoute && reviewArtifact && (
                   <div className="space-y-2">
                     <p className="text-sm text-slate-300">
-                      Consultez les constats et leurs preuves avant de valider ou d’approuver
-                      l’analyse.
+                      Consultez le détail et les informations disponibles avant de valider ou
+                      d’approuver cette étape.
                     </p>
                     <Link
                       className={buttonVariants({ variant: "outline" })}
-                      href={`/analysis/${analysis.id}`}
+                      href={`/${reviewRoute.path}/${reviewArtifact.id}`}
                     >
-                      Consulter les constats de l’analyse
+                      {reviewRoute.label}
                     </Link>
                   </div>
                 )}

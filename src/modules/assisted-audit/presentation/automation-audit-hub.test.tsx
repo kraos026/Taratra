@@ -4,6 +4,53 @@ import type { AssistedAuditReadModel } from "../application/assisted-audit-model
 import { AutomationAuditView } from "./automation-audit-hub";
 
 describe("AutomationAuditView", () => {
+  it.each([
+    ["PROCESS_MAP", "process-maps", "VALIDATE_PROCESS_MAP", "PUBLISH_PROCESS_MAP"],
+    [
+      "AI_OPPORTUNITIES",
+      "ai-opportunities",
+      "VALIDATE_AI_OPPORTUNITIES",
+      "PUBLISH_AI_OPPORTUNITIES",
+    ],
+    [
+      "AUTOMATION_OPPORTUNITIES",
+      "automation-opportunities",
+      "VALIDATE_AUTOMATION_OPPORTUNITIES",
+      "PUBLISH_AUTOMATION_OPPORTUNITIES",
+    ],
+    ["ROI", "roi", "VALIDATE_ROI", "PUBLISH_ROI"],
+    ["RECOMMENDATIONS", "recommendations", "VALIDATE_RECOMMENDATIONS", "PUBLISH_RECOMMENDATIONS"],
+  ] as const)(
+    "exposes the scoped %s detail before validation and publication",
+    (currentStage, path, validate, publish) => {
+      for (const nextAction of [validate, publish, null]) {
+        const value = model({ currentStage, nextAction });
+        const current = value.stages.find((stage) => stage.stage === currentStage)!;
+        current.artifact = {
+          id: "current-scoped-id",
+          version: 1,
+          status: "validated",
+          lockVersion: 1,
+        };
+        value.stages.find((stage) => stage.stage === "DISCOVERY")!.artifact = {
+          id: "unrelated-id",
+          version: 1,
+          status: "published",
+        };
+        const html = render(value);
+        expect(html).toContain(`href="/${path}/current-scoped-id"`);
+        expect(html).not.toContain(`href="/${path}/unrelated-id"`);
+        if (nextAction)
+          expect(html.indexOf(`href="/${path}/current-scoped-id"`)).toBeLessThan(
+            html.indexOf("<button"),
+          );
+        else expect(html).not.toContain("<button");
+        current.artifact = null;
+        expect(render(value)).not.toContain(`href="/${path}/`);
+      }
+    },
+  );
+
   it.each(["VALIDATE_ANALYSIS", "PUBLISH_ANALYSIS"] as const)(
     "exposes the canonical findings before %s without replacing the action",
     (nextAction) => {
