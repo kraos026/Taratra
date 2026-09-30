@@ -53,7 +53,8 @@ describe("AutomationOpportunitiesExplorer", () => {
     expect(html).toContain("Reporter");
     expect(html).toContain("Ne pas automatiser");
     expect(html).toContain("Automatiser après correction");
-    expect(html).toContain("ROI estimé");
+    expect(html).toContain("À vérifier dans l’évaluation ROI");
+    expect(html).not.toContain("ROI estimé");
     expect(html).toContain("Validation humaine requise");
     expect(html).not.toContain("Automation Opportunities Explorer");
     expect(html).not.toContain("Deterministic Automation Opportunity Engine");
@@ -68,4 +69,25 @@ describe("AutomationOpportunitiesExplorer", () => {
     expect(html).toContain("Continuer l’audit");
     expect(html).not.toContain("0 €");
   });
+
+  it.each([0, 1, 5])(
+    "does not infer economic validation from %i generic evidence links",
+    (count) => {
+      const html = renderToStaticMarkup(
+        <AutomationOpportunitiesExplorer
+          opportunities={[opportunity()]}
+          connectors={[]}
+          evidence={Array.from({ length: count }, () => ({ opportunityId: "o" }))}
+          patterns={[]}
+        />,
+      );
+      expect(html).toContain("Preuves liées");
+      expect(html).toContain("À vérifier dans l’évaluation ROI");
+      expect(html).toContain("Données supplémentaires requises");
+      expect(html).not.toContain("ROI estimé");
+      expect(html).not.toContain("Automatiser maintenant");
+      expect(html).not.toContain("données publiées");
+      expect(html).toContain("ne signifie pas");
+    },
+  );
 });

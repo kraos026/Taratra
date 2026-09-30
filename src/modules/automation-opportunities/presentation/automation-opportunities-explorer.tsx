@@ -78,8 +78,8 @@ export function AutomationOpportunitiesExplorer({
                 Opportunités
               </h1>
               <p className="mt-4 text-base leading-7 text-slate-300 sm:text-lg">
-                Les meilleures opportunités d’automatisation identifiées pour votre entreprise,
-                classées selon les données publiées de l’audit.
+                Possibilités d’automatisation issues de votre audit. Leur présence ne signifie pas
+                qu’elles sont approuvées ou économiquement validées.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-3 text-center lg:min-w-80 lg:shrink-0">
@@ -166,7 +166,7 @@ export function AutomationOpportunitiesExplorer({
                 </div>
               ) : (
                 <p className="rounded-3xl border border-white/10 bg-slate-900/60 p-5 text-sm text-slate-300">
-                  Toutes les opportunités publiées sont déjà visibles dans le Top 3.
+                  Toutes les opportunités de ce dossier sont déjà visibles dans le Top 3.
                 </p>
               )}
             </section>
@@ -216,7 +216,8 @@ function OpportunityCard({
         <Fact label="Impact" value={scoreLabel(opportunity.businessImpact)} />
         <Fact label="Effort" value={effortLabel(opportunity.implementationEffort)} />
         <Fact label="Confiance" value={`${Math.round(opportunity.confidence)} %`} />
-        <Fact label="ROI" value={roiEvidenceLabel(evidenceCount)} />
+        <Fact label="Preuves liées" value={String(evidenceCount)} />
+        <Fact label="ROI" value="À vérifier dans l’évaluation ROI" />
       </dl>
 
       <div className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -348,10 +349,6 @@ function decisionLabel(opportunity: Opportunity): string {
     DO_NOT_AUTOMATE: "Ne pas automatiser",
   };
   return opportunity.decisionState ? labels[opportunity.decisionState] : labels.NEEDS_MORE_EVIDENCE;
-}
-
-function roiEvidenceLabel(evidenceItems: number): string {
-  return evidenceItems > 0 ? "ROI estimé" : "Données insuffisantes";
 }
 
 function scoreLabel(value: number): string {
