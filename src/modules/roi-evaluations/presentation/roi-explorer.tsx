@@ -63,7 +63,7 @@ export function RoiExplorer({
   const summaryMetrics = primaryEvaluation
     ? {
         savings: value(primaryEvaluation.id, "annual_cost_saved"),
-        time: value(primaryEvaluation.id, "annual_time_saved"),
+        time: value(primaryEvaluation.id, "annual_hours_saved"),
         cost: value(primaryEvaluation.id, "implementation_cost"),
         roi: value(primaryEvaluation.id, "roi_percentage"),
         payback: value(primaryEvaluation.id, "payback_period"),
@@ -85,8 +85,8 @@ export function RoiExplorer({
             Évaluation économique
           </h1>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-            Les scénarios validés distinguent calcul, estimation et données insuffisantes. Aucun
-            gain n’est présenté comme garanti.
+            Les scénarios distinguent calcul, estimation et données insuffisantes. Aucun gain n’est
+            présenté comme garanti.
           </p>
           <div className="mt-6 grid gap-3 sm:grid-cols-3">
             <HeroMetric icon={<Calculator />} label="Scénarios" value={String(scenarios.length)} />
@@ -103,12 +103,19 @@ export function RoiExplorer({
           </div>
         </header>
 
+        {primaryEvaluation && (
+          <p className="text-sm text-slate-300">
+            Synthèse du scénario probable pour : {brandText(primaryEvaluation.title)}. Les
+            évaluations des différentes opportunités ne doivent pas être additionnées sans vérifier
+            les hypothèses communes et les doubles comptes.
+          </p>
+        )}
         <section
           aria-labelledby="roi-executive-summary"
           className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3"
         >
           <SummaryMetric
-            label="Potentiel économique annuel"
+            label="Économie annuelle de temps valorisée"
             metric={summaryMetrics?.savings}
             currency={currency}
           />
@@ -153,16 +160,16 @@ export function RoiExplorer({
 
         <section className="grid gap-4 lg:grid-cols-3">
           <EvidenceBlock
-            title="Données connues"
+            title="Métriques calculées disponibles"
             items={knownMetrics.map((metric) => metricLabel(metric.code))}
-            empty="Aucune donnée économique confirmée n’est encore disponible."
+            empty="Aucune métrique économique calculée n’est encore disponible."
           />
           <EvidenceBlock
-            title="Hypothèses"
+            title="Évaluations et confiance du modèle"
             items={evaluations.map(
               (item) => `${brandText(item.title)} · confiance ${item.confidence}%`,
             )}
-            empty="Aucune hypothèse économique publiée."
+            empty="Aucune évaluation économique disponible."
           />
           <EvidenceBlock
             title="Données manquantes"
@@ -216,8 +223,41 @@ export function RoiExplorer({
                     </div>
                   </div>
                   <dl className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                    <Metric label="Gains annuels" metric={savings} currency={currency} />
-                    <Metric label="Investissement" metric={cost} currency={currency} />
+                    <Metric
+                      label="Économie annuelle de temps valorisée"
+                      metric={savings}
+                      currency={currency}
+                    />
+                    <Metric
+                      label="Heures économisables par an"
+                      metric={value(item.id, "annual_hours_saved")}
+                    />
+                    <Metric
+                      label="Bénéfice annuel total"
+                      metric={value(item.id, "annual_benefit")}
+                      currency={currency}
+                    />
+                    <Metric label="Coût d’implémentation" metric={cost} currency={currency} />
+                    <Metric
+                      label="Coût de formation"
+                      metric={value(item.id, "training_cost")}
+                      currency={currency}
+                    />
+                    <Metric
+                      label="Coût d’infrastructure"
+                      metric={value(item.id, "infrastructure_cost")}
+                      currency={currency}
+                    />
+                    <Metric
+                      label="Maintenance annuelle"
+                      metric={value(item.id, "maintenance_cost")}
+                      currency={currency}
+                    />
+                    <Metric
+                      label="Bénéfice annuel net"
+                      metric={value(item.id, "annual_net_benefit")}
+                      currency={currency}
+                    />
                     <Metric label="Retour" metric={payback} />
                     <Metric label="ROI" metric={roi} percent />
                     <Metric
@@ -226,6 +266,15 @@ export function RoiExplorer({
                       percent
                     />
                   </dl>
+                  <p className="mt-4 text-sm leading-6 text-slate-300">
+                    Le bénéfice annuel total inclut le temps valorisé et le coût des erreurs évitées
+                    selon les hypothèses du modèle. Le coût d’erreur est appliqué à la fréquence et
+                    à la couverture d’automatisation ; ce montant doit être vérifié, il ne prouve
+                    pas qu’une erreur est évitée à chaque occurrence. Le ROI de première année
+                    déduit la maintenance et l’investissement initial (implémentation, formation et
+                    infrastructure). Le délai de retour utilise le bénéfice net mensuel. Ces
+                    estimations ne constituent pas une autorisation d’automatiser.
+                  </p>
                 </article>
               );
             })
@@ -320,7 +369,9 @@ function formatMetric(
   if (percent || metric.unit === "percent") return `${metric.value.toFixed(1)} %`;
   if (metric.unit.includes("currency"))
     return `${metric.value.toLocaleString("fr-FR")} ${currency ?? ""}`.trim();
-  if (metric.unit.includes("month")) return `${metric.value.toFixed(1)} mois`;
+  if (metric.unit === "hours/year") return `${metric.value.toLocaleString("fr-FR")} h/an`;
+  if (metric.unit === "hours/month") return `${metric.value.toLocaleString("fr-FR")} h/mois`;
+  if (metric.unit === "months") return `${metric.value.toFixed(1)} mois`;
   return `${metric.value.toLocaleString("fr-FR")} ${metric.unit}`;
 }
 
