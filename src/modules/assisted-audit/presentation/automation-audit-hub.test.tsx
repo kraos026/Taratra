@@ -4,6 +4,42 @@ import type { AssistedAuditReadModel } from "../application/assisted-audit-model
 import { AutomationAuditView } from "./automation-audit-hub";
 
 describe("AutomationAuditView", () => {
+  it.each(["VALIDATE_ANALYSIS", "PUBLISH_ANALYSIS"] as const)(
+    "exposes the canonical findings before %s without replacing the action",
+    (nextAction) => {
+      const value = model({ currentStage: "BUSINESS_ANALYSIS", nextAction });
+      value.stages[4]!.artifact = {
+        id: "scoped-analysis-id",
+        version: 1,
+        status: "validated",
+        lockVersion: 2,
+      };
+      const html = render(value);
+      expect(html).toContain('href="/analysis/scoped-analysis-id"');
+      expect(html).toContain("Consulter les constats de l’analyse");
+      expect(html.indexOf('href="/analysis/scoped-analysis-id"')).toBeLessThan(
+        html.indexOf("<button"),
+      );
+      expect(html).toContain(
+        nextAction === "VALIDATE_ANALYSIS" ? "Vérifier l’analyse" : "Approuver l’analyse",
+      );
+    },
+  );
+
+  it("does not invent a findings link when the analysis artifact is absent", () => {
+    expect(render(model({ currentStage: "BUSINESS_ANALYSIS", nextAction: null }))).not.toContain(
+      'href="/analysis/',
+    );
+  });
+
+  it("allows read-only consultation without granting an approval action", () => {
+    const value = model({ currentStage: "BUSINESS_ANALYSIS", nextAction: null });
+    value.stages[4]!.artifact = { id: "scoped-analysis-id", version: 1, status: "draft" };
+    const html = render(value);
+    expect(html).toContain('href="/analysis/scoped-analysis-id"');
+    expect(html).not.toContain("<button");
+  });
+
   it("renders the real current stage, completed stages and primary action", () => {
     const html = render(model());
     expect(html).toContain("Audit");

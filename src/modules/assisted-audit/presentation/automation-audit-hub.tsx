@@ -143,6 +143,7 @@ export function AutomationAuditView({
 }) {
   const progress = journeyProgress(model);
   const action = presentNextAction(model, companyId);
+  const analysis = model.stages.find((stage) => stage.stage === "BUSINESS_ANALYSIS")?.artifact;
   const ambiguity = model.stages.find((stage) => stage.status === "AMBIGUOUS");
   const auditComplete = model.currentStage === "COMPLETED";
   const companyName = brandText(model.company.name);
@@ -233,6 +234,20 @@ export function AutomationAuditView({
                       ? customerBlocker(model.blockingReason)
                       : "Votre accès permet de consulter l’avancement. Une personne autorisée doit réaliser la prochaine action."}
                 </p>
+                {model.currentStage === "BUSINESS_ANALYSIS" && analysis && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-slate-300">
+                      Consultez les constats et leurs preuves avant de valider ou d’approuver
+                      l’analyse.
+                    </p>
+                    <Link
+                      className={buttonVariants({ variant: "outline" })}
+                      href={`/analysis/${analysis.id}`}
+                    >
+                      Consulter les constats de l’analyse
+                    </Link>
+                  </div>
+                )}
                 <ActionControl action={action} busy={busy} onCommand={onCommand} />
                 {model.blockingReason && !action && (
                   <p className="flex items-center gap-2 text-sm text-amber-200" role="status">
