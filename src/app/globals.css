@@ -1600,6 +1600,14 @@ footer {
   }
 }
 @media (max-width: 1100px) {
+  .app-shell .dashboard-focus {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .dashboard-focus-progress {
+    border-left: 0;
+    border-top: 1px solid #ffffff12;
+    padding: 20px 0 0;
+  }
   .journey-action-layout {
     grid-template-columns: minmax(0, 1fr);
   }
