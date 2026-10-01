@@ -27,7 +27,15 @@ type Item = {
   implementationCost: number;
 };
 
-export function ExecutiveRoadmap({ recommendations }: { readonly recommendations: Item[] }) {
+export function ExecutiveRoadmap({
+  recommendations,
+  status,
+  companyId,
+}: {
+  readonly recommendations: Item[];
+  readonly status: string;
+  readonly companyId: string;
+}) {
   const [query, setQuery] = useState("");
   const filtered = useMemo(
     () =>
@@ -52,8 +60,11 @@ export function ExecutiveRoadmap({ recommendations }: { readonly recommendations
                 Feuille de route exécutive
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                Les recommandations sont affichées par priorité et par phase, uniquement à partir du
-                plan validé.
+                Les recommandations sont classées par priorité et par phase. Ce classement et les
+                estimations économiques ne constituent pas une autorisation d’automatiser.
+              </p>
+              <p className="mt-3 text-sm font-semibold text-blue-200">
+                Statut du plan : {readableStatus(status)}
               </p>
             </div>
             <div className="rounded-2xl border border-blue-400/20 bg-blue-500/10 px-5 py-4">
@@ -129,7 +140,7 @@ export function ExecutiveRoadmap({ recommendations }: { readonly recommendations
                 </div>
                 <div className="grid gap-3">
                   {items.map((item) => (
-                    <RecommendationCard key={item.id} item={item} />
+                    <RecommendationCard key={item.id} item={item} companyId={companyId} />
                   ))}
                 </div>
               </div>
@@ -145,10 +156,12 @@ function RecommendationCard({
   item,
   rank,
   compact = false,
+  companyId,
 }: {
   readonly item: Item;
   readonly rank?: number;
   readonly compact?: boolean;
+  readonly companyId: string;
 }) {
   return (
     <article
@@ -171,7 +184,7 @@ function RecommendationCard({
       <p className="mt-3 text-sm leading-6 text-slate-300">{brandText(item.description)}</p>
       <dl className={`mt-4 grid gap-3 text-sm ${compact ? "sm:grid-cols-2" : "sm:grid-cols-4"}`}>
         <Metric icon={<BadgeCheck size={16} />} label="Confiance" value={`${item.confidence}%`} />
-        <Metric label="Impact" value={String(Math.round(item.priorityScore))} />
+        <Metric label="Score de priorité" value={String(Math.round(item.priorityScore))} />
         <Metric
           icon={<CircleDollarSign size={16} />}
           label="État économique"
@@ -188,21 +201,18 @@ function RecommendationCard({
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <InfoPanel
           label="Conditions / prérequis"
-          value={
-            needsHumanApproval(item)
-              ? "Validation humaine requise avant mise en œuvre autonome."
-              : "Aucun prérequis additionnel publié dans le plan."
-          }
+          value="Consultez les preuves et les prérequis dans le Decision Center. Leur absence sur cette page ne signifie pas qu’ils sont satisfaits."
         />
       </div>
-      {needsHumanApproval(item) && (
-        <p className="mt-4 inline-flex items-center gap-2 rounded-2xl border border-amber-400/25 bg-amber-500/10 px-3 py-2 text-sm font-semibold text-amber-100">
-          <ShieldCheck size={16} /> Validation humaine requise
-        </p>
-      )}
       <p className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-200">
-        Prochaine action <ArrowRight size={15} />
+        <ShieldCheck size={16} /> La décision canonique reste celle du Decision Center.
       </p>
+      <a
+        href={`/companies/${companyId}/automation-audit/decision-center`}
+        className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-200 underline"
+      >
+        Consulter la décision et les prérequis <ArrowRight size={15} />
+      </a>
     </article>
   );
 }
@@ -276,10 +286,14 @@ function readableEconomicState(value: string): string {
   return labels[value] ?? value.replaceAll("_", " ");
 }
 
-function needsHumanApproval(item: Item): boolean {
-  return /approval|human|finance|legal|control|validation|contrôle|juridique|rh/i.test(
-    `${item.title} ${item.description} ${item.category}`,
-  );
+function readableStatus(value: string): string {
+  const labels: Record<string, string> = {
+    draft: "Brouillon — à vérifier",
+    validated: "Validé — à publier",
+    published: "Publié",
+    archived: "Archivé",
+  };
+  return labels[value] ?? "Non confirmé";
 }
 
 function InfoPanel({ label, value }: { readonly label: string; readonly value: string }) {

@@ -5,6 +5,8 @@ describe("ExecutiveRoadmap", () => {
   it("renders portfolio priority and phase", () => {
     const html = renderToStaticMarkup(
       <ExecutiveRoadmap
+        status="draft"
+        companyId="company-1"
         recommendations={[
           {
             id: "r",
@@ -32,5 +34,24 @@ describe("ExecutiveRoadmap", () => {
     expect(html.match(/<article /g)).toHaveLength(1);
     expect(html).toContain('href="#action-r"');
     expect(html).toContain('id="action-r"');
+    expect(html).toContain("Brouillon — à vérifier");
+    expect(html).not.toContain("plan validé");
+    expect(html).not.toContain("Aucun prérequis additionnel");
+    expect(html).toContain("Score de priorité");
+    expect(html).toContain("ne constituent pas une autorisation d’automatiser");
+    expect(html).toContain('href="/companies/company-1/automation-audit/decision-center"');
+    expect(html).toContain("Leur absence sur cette page ne signifie pas qu’ils sont satisfaits");
+  });
+  it.each([
+    ["validated", "Validé — à publier"],
+    ["published", "Publié"],
+    ["archived", "Archivé"],
+    ["unknown", "Non confirmé"],
+  ])("renders the actual %s portfolio status without inferring approval", (status, label) => {
+    const html = renderToStaticMarkup(
+      <ExecutiveRoadmap recommendations={[]} status={status} companyId="company-1" />,
+    );
+    expect(html).toContain(label);
+    expect(html).toContain("ne constituent pas une autorisation d’automatiser");
   });
 });

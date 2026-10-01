@@ -26,6 +26,8 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   return (
     <CompanyShell verifiedCompanyId={detail.snapshot.companyId}>
       <ExecutiveRoadmap
+        status={detail.snapshot.status}
+        companyId={detail.snapshot.companyId}
         recommendations={detail.recommendations.map((item) => ({
           ...item,
           priorityScore: Number(item.priorityScore),
