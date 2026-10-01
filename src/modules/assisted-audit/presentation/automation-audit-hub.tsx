@@ -35,6 +35,7 @@ import {
   type AuditCommandRequest,
 } from "./assisted-audit-action-plan";
 import { buildCustomerJourney, customerStatusLabel, journeyProgress } from "./canonical-journey";
+import { JourneyProgressRing } from "./journey-progress-ring";
 
 export function AutomationAuditHub({ companyId }: { companyId: string }) {
   const [model, setModel] = useState<AssistedAuditReadModel | null>(null);
@@ -169,8 +170,8 @@ export function AutomationAuditView({
   const activeStep = clientSteps.find((step) => step.status !== "COMPLETED") ?? clientSteps.at(-1);
 
   return (
-    <main className="opt-container space-y-5" aria-labelledby="audit-title">
-      <header className="rounded-2xl border border-white/10 bg-slate-900/60 p-5">
+    <main className="audit-experience opt-container space-y-5" aria-labelledby="audit-title">
+      <header className="journey-hero rounded-2xl border border-white/10 bg-slate-900/60 p-5">
         <Link
           className="mb-3 inline-flex text-sm text-blue-300 hover:text-blue-100"
           href={`/companies/${companyId}`}
@@ -180,31 +181,26 @@ export function AutomationAuditView({
         <div className="flex flex-col justify-between gap-5 lg:flex-row lg:items-center">
           <div className="space-y-2">
             <p className="flex items-center gap-2 text-xs font-bold tracking-[0.28em] text-blue-300 uppercase">
-              <Sparkles size={15} /> Parcours Optivos
+              <Sparkles size={15} /> Audit Optivos
             </p>
             <h1
               id="audit-title"
               className="font-['Manrope'] text-2xl font-extrabold tracking-tight text-white sm:text-3xl"
             >
-              Audit
+              Votre parcours de décision
             </h1>
             <p className="max-w-3xl text-sm leading-6 text-slate-300 sm:text-base">
               Identifiez quoi automatiser, quoi améliorer et ce qui doit rester sous contrôle
               humain.
             </p>
           </div>
-          <div className="w-full shrink-0 lg:w-60">
-            <span className="text-xs font-bold tracking-[0.18em] text-slate-400 uppercase">
-              Progression
-            </span>
-            <div className="mt-1 flex items-end justify-between gap-4">
-              <strong className="block text-3xl text-white">{progress}%</strong>
-              <span className="pb-1 text-xs text-slate-400">{activeStep?.label}</span>
+          <div className="journey-progress-summary">
+            <JourneyProgressRing progress={progress} />
+            <div>
+              <span className="opt-eyebrow">Progression</span>
+              <p className="mt-2 font-semibold text-white">{activeStep?.label}</p>
+              <p className="mt-2 text-xs text-slate-400">Progression validée, sans estimation</p>
             </div>
-            <div className="mt-2 h-2 rounded-full bg-slate-800">
-              <div className="h-2 rounded-full bg-blue-400" style={{ width: `${progress}%` }} />
-            </div>
-            <p className="mt-2 text-xs text-slate-400">Progression validée, sans estimation</p>
           </div>
         </div>
       </header>
@@ -218,11 +214,14 @@ export function AutomationAuditView({
         </div>
       )}
 
-      <div className="grid items-start gap-5 xl:grid-cols-[minmax(0,1fr)_19rem]">
+      <div className="journey-action-layout">
         <section aria-label="Votre prochaine action" className="min-w-0">
           {auditComplete ? (
-            <Card className="opt-card border-emerald-400/40 bg-emerald-500/10">
+            <Card className="journey-action-card opt-card border-emerald-400/40 bg-emerald-500/10">
               <CardHeader>
+                <div className="journey-action-icon">
+                  <CheckCircle2 size={28} aria-hidden />
+                </div>
                 <CardTitle>Audit Optivos terminé</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -231,8 +230,11 @@ export function AutomationAuditView({
               </CardContent>
             </Card>
           ) : (
-            <Card className="opt-card">
+            <Card className="journey-action-card opt-card">
               <CardHeader>
+                <div className="journey-action-icon" aria-hidden>
+                  {activeStep?.icon}
+                </div>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge className="bg-blue-500/15 text-blue-100">Prochaine action</Badge>
                   <span className="text-sm text-slate-400">{activeStep?.label}</span>
@@ -274,7 +276,7 @@ export function AutomationAuditView({
           )}
         </section>
         <aside
-          className="rounded-2xl border border-blue-400/15 bg-blue-500/[0.04] p-5"
+          className="journey-guide rounded-2xl border border-blue-400/15 bg-blue-500/[0.04] p-5"
           aria-label="Comment avance votre audit"
         >
           <p className="text-sm font-semibold text-white">Vous gardez la main</p>
@@ -316,21 +318,23 @@ export function AutomationAuditView({
             </p>
           )}
         </div>
-        <ol className="flex overflow-x-auto rounded-2xl border border-white/10 bg-slate-900/60">
+        <ol className="journey-step-grid">
           {clientSteps.map((step, index) => (
             <li
               key={step.label}
               aria-current={step.current ? "step" : undefined}
               className={cn(
-                "relative min-w-32 flex-1 border-r border-white/10 p-3 last:border-r-0",
-                step.current && "bg-blue-500/12",
+                "journey-step",
+                step.current && "journey-step-current",
+                step.status === "COMPLETED" && "journey-step-complete",
               )}
+              style={{ animationDelay: `${index * 45}ms` }}
               title={step.description}
             >
               <div>
                 <div
                   className={cn(
-                    "grid size-9 shrink-0 place-items-center rounded-xl bg-slate-800 text-slate-400",
+                    "journey-step-icon grid size-9 shrink-0 place-items-center rounded-xl bg-slate-800 text-slate-400",
                     step.current && "bg-blue-500 text-white",
                     step.status === "COMPLETED" && "bg-emerald-500/15 text-emerald-300",
                   )}
@@ -341,7 +345,8 @@ export function AutomationAuditView({
                   <span className="text-[10px] font-bold tracking-widest text-slate-600">
                     0{index + 1}
                   </span>
-                  <p className="truncate text-sm font-bold text-white">{step.label}</p>
+                  <h3 className="text-sm font-bold text-white">{step.label}</h3>
+                  <p className="journey-step-description">{step.description}</p>
                   <div className="mt-1 flex items-center gap-1.5">
                     <StatusIcon status={step.status} />
                     <StatusText status={step.status} current={step.current} />

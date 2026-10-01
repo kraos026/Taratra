@@ -28,6 +28,7 @@ import {
 import { dashboardRoutes, dashboardSearchRoute } from "./dashboard-navigation";
 import { OptivosLogo } from "@/components/brand/optivos-logo";
 import { PilotFeedbackDialog } from "@/modules/pilot-feedback/presentation/pilot-feedback-dialog";
+import { JourneyProgressRing } from "@/modules/assisted-audit/presentation/journey-progress-ring";
 
 type Company = {
   id: string;
@@ -213,6 +214,52 @@ export function InteractiveDashboard() {
               {error}
             </p>
           )}
+
+          <section className="dashboard-focus" aria-labelledby="dashboard-focus-title">
+            <div className="dashboard-focus-copy">
+              <span className="dashboard-focus-kicker">
+                <Sparkles size={15} aria-hidden /> VOTRE PARCOURS DE DÉCISION
+              </span>
+              <h2 id="dashboard-focus-title">
+                {activeCompany ? activeCompany.name : "Votre prochain pas commence ici"}
+              </h2>
+              <p>
+                {activeModel
+                  ? `Étape actuelle : ${currentJourneyLabel(activeModel)}. Retrouvez vos preuves et la prochaine action de votre audit.`
+                  : "Décrivez votre activité. Examinez les propositions. Décidez avec des preuves, à votre rythme."}
+              </p>
+              <Link className="primary dashboard-focus-action" href={activeRoutes.audit}>
+                {activeModel?.currentStage === "COMPLETED"
+                  ? "Examiner mon audit"
+                  : activeCompany
+                    ? "Continuer mon parcours"
+                    : "Créer mon premier dossier"}
+                <ArrowRight size={18} aria-hidden />
+              </Link>
+              <span className="dashboard-focus-note">
+                Aucune automatisation déployée · Vous gardez la décision
+              </span>
+            </div>
+            <div className="dashboard-focus-progress">
+              {activeModel ? (
+                <JourneyProgressRing progress={journeyProgress(activeModel)} />
+              ) : (
+                <div className="dashboard-start-icon">
+                  <CircleGauge size={48} strokeWidth={1.4} aria-hidden />
+                </div>
+              )}
+              <strong>
+                {activeModel
+                  ? customerStatusLabel(activeModel.overallStatus)
+                  : "Comprendre avant d’automatiser"}
+              </strong>
+              <small>
+                {activeModel
+                  ? "Progression validée, sans estimation"
+                  : "Un parcours guidé, de l’activité aux décisions"}
+              </small>
+            </div>
+          </section>
 
           <div className="stats">
             <article>

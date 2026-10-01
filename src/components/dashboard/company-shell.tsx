@@ -92,6 +92,7 @@ export function CompanyShell({
               key={label}
               href={navigationHref(label, href)}
               aria-current={isActive(label) ? "page" : undefined}
+              aria-label={label}
               className={`workspace-nav group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive(label)
                   ? "bg-indigo-400/10 text-indigo-200 ring-1 ring-indigo-400/20"
@@ -101,7 +102,7 @@ export function CompanyShell({
               <span className="grid size-7 place-items-center">
                 <Icon size={17} strokeWidth={1.8} />
               </span>
-              {label}
+              <span className="workspace-nav-label">{label}</span>
             </Link>
           ))}
         </nav>
@@ -146,7 +147,7 @@ export function CompanyShell({
           ))}
         </nav>
       </header>
-      <div className="min-w-0 lg:ml-64">
+      <div className="workspace-body min-w-0 lg:ml-64">
         <header className="workspace-toolbar hidden items-center justify-between gap-4 px-8 lg:flex">
           <p className="text-sm text-slate-400">
             Espace de travail{" "}

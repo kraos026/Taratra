@@ -4,6 +4,20 @@ import type { AssistedAuditReadModel } from "../application/assisted-audit-model
 import { AutomationAuditView } from "./automation-audit-hub";
 
 describe("AutomationAuditView", () => {
+  it("renders real accessible progress and readable journey descriptions without a scrolling rail", () => {
+    const html = render(model());
+    expect(html).toContain('role="progressbar"');
+    expect(html).toContain('aria-valuenow="11"');
+    expect(html).toContain('class="journey-step-grid"');
+    expect(html).toContain('aria-current="step"');
+    expect(html).toContain("Cartographie du travail réellement observé.");
+    expect(html).not.toContain("overflow-x-auto");
+  });
+  it("shows completed progress without implying automatic deployment", () => {
+    const html = render(model({ currentStage: "COMPLETED", nextAction: "VIEW_RESULTS" }));
+    expect(html).toContain('aria-valuenow="100"');
+    expect(html).toContain("Aucune automatisation n’est déployée par cet audit.");
+  });
   it.each([
     ["PROCESS_MAP", "process-maps", "VALIDATE_PROCESS_MAP", "PUBLISH_PROCESS_MAP"],
     [

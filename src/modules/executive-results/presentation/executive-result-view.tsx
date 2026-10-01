@@ -32,9 +32,12 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
     );
 
   return (
-    <main className="min-h-screen bg-slate-950 px-4 py-8 text-slate-50 sm:px-6">
+    <main className="result-experience min-h-screen bg-slate-950 px-4 py-8 text-slate-50 sm:px-6">
       <div className="mx-auto max-w-7xl space-y-7">
-        <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/70 p-6 sm:p-8">
+        <header className="result-hero rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/70 p-6 sm:p-8">
+          <div className="journey-action-icon">
+            <CheckCircle2 size={28} aria-hidden />
+          </div>
           <p className="text-xs font-bold tracking-[0.28em] text-blue-300 uppercase">
             Résultats Optivos · optivos.vip
           </p>
@@ -278,7 +281,7 @@ function Panel({
 }) {
   if (collapsible)
     return (
-      <details className="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5">
+      <details className="result-panel rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5">
         <summary className="cursor-pointer py-2 text-lg font-bold focus-visible:outline-2 focus-visible:outline-blue-400">
           {title}
         </summary>
@@ -286,7 +289,7 @@ function Panel({
       </details>
     );
   return (
-    <section className="rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5">
+    <section className="result-panel rounded-[1.75rem] border border-white/10 bg-slate-900/75 p-5">
       <h2 className="text-xl font-bold">{title}</h2>
       <div className="mt-4">{children}</div>
     </section>
@@ -305,7 +308,7 @@ function HeroCard({
   readonly text: string;
 }) {
   return (
-    <article className="rounded-[1.5rem] border border-white/10 bg-slate-900/80 p-5">
+    <article className="result-metric rounded-[1.5rem] border border-white/10 bg-slate-900/80 p-5">
       <div className="flex items-center gap-2 text-blue-200">
         {icon}
         <p className="text-xs font-bold tracking-[0.16em] uppercase">{label}</p>
