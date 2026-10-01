@@ -201,11 +201,14 @@ export function customerDecisionCenter(center: PatronDecisionCenter): PatronDeci
   }
   const text = (value: string) =>
     customerDecisionText(
-      value.replace(
-        /connecteur ([0-9a-f-]{36})/gi,
-        (_, id: string) =>
-          connections.get(id.toLowerCase()) ?? "connexion requise (nom non renseigné)",
-      ),
+      value
+        .replace(
+          /connecteur ([0-9a-f-]{36})/gi,
+          (_, id: string) =>
+            connections.get(id.toLowerCase()) ?? "connexion requise (nom non renseigné)",
+        )
+        .replace(/\ble connexion\b/g, "la connexion")
+        .replace(/\bdu connexion\b/g, "de la connexion"),
     );
   const texts = (values: readonly string[]) => values.map(text);
   const referenceLabels = new Map<string, string>();

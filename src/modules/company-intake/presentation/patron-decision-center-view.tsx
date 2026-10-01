@@ -250,7 +250,7 @@ function DecisionCard({ card }: { readonly card: PatronDecisionCard }) {
       </div>
       {card.whatNotToDo ? (
         <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
-          À éviter : {brandText(card.whatNotToDo)}
+          Point de vigilance : {brandText(card.whatNotToDo)}
         </p>
       ) : null}
       <details className="mt-4 rounded-lg border border-slate-800 bg-slate-900/80 p-3">
