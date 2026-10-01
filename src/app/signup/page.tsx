@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useState, type FormEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { AuthShell } from "@/modules/auth/presentation/auth-shell";
 import { Label } from "@/components/ui/label";
@@ -10,8 +10,9 @@ import { createClient } from "@/infrastructure/supabase/client";
 import Link from "next/link";
 import { SIGNUP_INSTRUCTIONS } from "@/modules/auth/presentation/password-recovery";
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter();
+  const invalidConfirmation = useSearchParams().get("error") === "confirmation";
   const [message, setMessage] = useState<string>();
   const [pending, setPending] = useState(false);
 
@@ -63,6 +64,21 @@ export default function SignUpPage() {
       description="Créez votre espace, puis décrivez votre entreprise pour démarrer votre audit."
       footer={{ href: "/login", label: "Déjà un compte ? Se connecter" }}
     >
+      {invalidConfirmation && (
+        <div
+          role="alert"
+          className="mb-4 rounded-xl border border-amber-400/30 bg-amber-400/10 p-4 text-sm text-amber-100"
+        >
+          <p>
+            Ce lien de confirmation n’est plus utilisable : il peut être expiré, déjà utilisé ou
+            invalide. Si votre adresse est déjà confirmée, connectez-vous. Sinon, réessayez
+            l’inscription pour demander un nouvel email.
+          </p>
+          <Link href="/login" className="mt-2 inline-block font-medium underline">
+            Se connecter
+          </Link>
+        </div>
+      )}
       <form className="space-y-4" onSubmit={handleSubmit}>
         <Label htmlFor="signup-email">Adresse e-mail</Label>
         <Input
@@ -99,5 +115,13 @@ export default function SignUpPage() {
         Récupérer mon mot de passe
       </Link>
     </AuthShell>
+  );
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={<p role="status">Chargement de l’inscription…</p>}>
+      <SignUpForm />
+    </Suspense>
   );
 }
