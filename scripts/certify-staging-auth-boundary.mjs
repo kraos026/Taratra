@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 import { chromium } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { detectSystemChrome } from "./system-chrome.mjs";
+import { certifyStagingJourney } from "./staging-canonical-journey.mjs";
 
 const ref = "ajvncwsazrhqjlktzojm";
 const supabaseUrl = `https://${ref}.supabase.co`;
@@ -221,7 +222,10 @@ try {
   currentPage = pages[0];
   await pages[0].reload();
   await pages[0].getByRole("heading", { name: "Bienvenue dans Optivos" }).waitFor();
-  await pages[0].getByText(`${runId}-Company-A`, { exact: true }).waitFor({ timeout: 60000 });
+  await pages[0]
+    .locator(".company-list")
+    .getByText(`${runId}-Company-A`, { exact: true })
+    .waitFor({ timeout: 60000 });
   await pages[0].evaluate(() => document.fonts.ready);
   await pages[0].setViewportSize({ width: 390, height: 844 });
   assert.equal(
@@ -262,7 +266,13 @@ try {
   assert.ok(JSON.stringify(afterRelogin).includes(`${runId}-Company-A`));
   evidence.results.push("logout revokes local access; re-login restores persisted company: PASS");
   evidence.fullCanonicalJourney = "NOT_RUN";
-  evidence.result = "PASS_SCOPED_AUTH_COMPANY_ISOLATION_ONLY";
+  if (process.argv.includes("--canonical")) {
+    stage = "canonical-journey";
+    await certifyStagingJourney({ api, pages, admin, companyId, evidence });
+  }
+  evidence.result = process.argv.includes("--canonical")
+    ? "PASS_STAGING_CANONICAL_AND_POPULATED_ISOLATION"
+    : "PASS_SCOPED_AUTH_COMPANY_ISOLATION_ONLY";
 } catch (error) {
   evidence.lastPath = currentPage ? new URL(currentPage.url()).pathname : null;
   if (currentPage) {
