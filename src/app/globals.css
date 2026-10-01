@@ -1236,6 +1236,9 @@ footer {
 }
 
 .app-shell .cta {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  align-content: center;
   background: #222a43;
   border: 1px solid #384367;
   border-radius: 10px;
@@ -1253,7 +1256,9 @@ footer {
 }
 
 .app-shell .cta-link {
-  flex-shrink: 0;
+  grid-column: 2;
+  justify-self: start;
+  margin-left: 0;
 }
 
 @media (max-width: 1050px) {
@@ -1293,9 +1298,6 @@ footer {
   }
   .app-shell .activity {
     display: block;
-  }
-  .app-shell .cta {
-    flex-wrap: wrap;
   }
   .app-shell .cta-link {
     display: inline-flex;
