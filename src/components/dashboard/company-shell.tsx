@@ -74,9 +74,8 @@ export function CompanyShell({
   }
 
   return (
-    <div className="min-h-screen bg-[#030817] text-slate-50">
-      <aside className="fixed inset-y-0 left-0 z-10 hidden w-72 overflow-hidden border-r border-white/[0.08] bg-[#040a19]/95 px-5 py-6 shadow-[24px_0_80px_rgba(0,0,0,0.18)] backdrop-blur-xl lg:flex lg:flex-col">
-        <span className="pointer-events-none absolute -top-24 -left-24 size-56 rounded-full bg-blue-600/10 blur-3xl" />
+    <div className="workspace-shell min-h-screen text-slate-50">
+      <aside className="workspace-sidebar fixed inset-y-0 left-0 z-10 hidden w-64 overflow-y-auto px-4 py-6 lg:flex lg:flex-col">
         <Link
           className="relative rounded-2xl p-1 focus-visible:ring-2 focus-visible:ring-blue-400"
           href="/"
@@ -84,8 +83,8 @@ export function CompanyShell({
         >
           <OptivosLogo subtitle="Intelligence de décision" />
         </Link>
-        <nav className="relative mt-11 space-y-1.5" aria-label="Navigation principale">
-          <p className="px-3 text-xs font-bold tracking-[0.22em] text-slate-500 uppercase">
+        <nav className="relative mt-9 space-y-1" aria-label="Navigation principale">
+          <p className="mb-3 px-3 text-[11px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
             Espace de travail
           </p>
           {pilotNavigation.map(([Icon, label, href]) => (
@@ -93,23 +92,20 @@ export function CompanyShell({
               key={label}
               href={navigationHref(label, href)}
               aria-current={isActive(label) ? "page" : undefined}
-              className={`group flex items-center gap-3 rounded-2xl px-3 py-3 text-sm font-medium transition-all duration-200 ${
+              className={`workspace-nav group flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                 isActive(label)
-                  ? "bg-gradient-to-r from-blue-500/20 to-indigo-500/10 text-white shadow-[inset_0_0_0_1px_rgba(96,165,250,0.28),0_8px_24px_rgba(30,64,175,0.10)]"
-                  : "text-slate-400 hover:translate-x-0.5 hover:bg-white/[0.05] hover:text-slate-100"
+                  ? "bg-indigo-400/10 text-indigo-200 ring-1 ring-indigo-400/20"
+                  : "text-slate-400 hover:bg-white/[0.04] hover:text-slate-100"
               }`}
             >
-              <span
-                className={`grid size-8 place-items-center rounded-xl transition ${isActive(label) ? "bg-blue-500/20 text-blue-300" : "bg-white/[0.03] group-hover:bg-white/[0.06]"}`}
-              >
+              <span className="grid size-7 place-items-center">
                 <Icon size={17} strokeWidth={1.8} />
               </span>
               {label}
             </Link>
           ))}
         </nav>
-        <div className="relative mt-auto overflow-hidden rounded-3xl border border-blue-400/15 bg-gradient-to-br from-blue-500/[0.12] to-indigo-500/[0.04] p-4 text-sm text-slate-300 shadow-[inset_0_1px_rgba(255,255,255,0.04)]">
-          <span className="absolute top-0 right-0 size-20 rounded-full bg-blue-400/10 blur-2xl" />
+        <div className="relative mt-auto rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-slate-300">
           <p className="relative flex items-center gap-2 font-semibold text-blue-100">
             <Sparkles size={15} /> Décisions fondées sur les preuves
           </p>
@@ -118,7 +114,7 @@ export function CompanyShell({
           </p>
         </div>
       </aside>
-      <header className="sticky top-0 z-20 border-b border-white/[0.08] bg-[#040a19]/95 px-4 pt-3 pb-2 backdrop-blur-xl lg:hidden">
+      <header className="workspace-mobile-header sticky top-0 z-20 border-b border-white/10 px-4 pt-3 pb-2 lg:hidden">
         <Link
           className="inline-flex rounded-xl focus-visible:ring-2 focus-visible:ring-blue-400"
           href="/"
@@ -150,9 +146,21 @@ export function CompanyShell({
           ))}
         </nav>
       </header>
-      <main className="min-h-screen bg-[radial-gradient(circle_at_72%_-10%,rgba(59,130,246,0.10),transparent_30rem)] px-4 py-6 sm:px-6 lg:ml-72 lg:px-10">
-        {children}
-      </main>
+      <div className="min-w-0 lg:ml-64">
+        <header className="workspace-toolbar hidden items-center justify-between gap-4 px-8 lg:flex">
+          <p className="text-sm text-slate-400">
+            Espace de travail{" "}
+            <span className="mx-3 text-slate-600" aria-hidden="true">
+              /
+            </span>
+            <span className="font-medium text-slate-100">
+              {pilotNavigation.find(([, label]) => isActive(label))?.[1]}
+            </span>
+          </p>
+          <span className="text-xs text-slate-400">Optivos · Intelligence de décision</span>
+        </header>
+        <main className="workspace-content min-h-screen px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+      </div>
     </div>
   );
 }

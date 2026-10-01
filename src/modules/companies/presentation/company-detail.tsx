@@ -115,7 +115,7 @@ export function CompanyDetail({ id }: { id: string }) {
 
   return (
     <div className="mx-auto flex max-w-7xl flex-col gap-6">
-      <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/70 p-6 shadow-2xl shadow-blue-950/20 sm:p-8">
+      <header className="company-summary rounded-xl border border-white/10 bg-slate-900 p-6">
         <Link
           className="mb-5 flex items-center gap-2 text-sm text-blue-300 hover:text-blue-100"
           href="/companies"
@@ -128,7 +128,7 @@ export function CompanyDetail({ id }: { id: string }) {
               <Sparkles size={15} /> Espace entreprise
             </p>
             <div className="mt-3 flex flex-wrap items-center gap-3">
-              <h1 className="font-['Manrope'] text-3xl font-extrabold tracking-tight text-white sm:text-5xl">
+              <h1 className="font-['Manrope'] text-2xl font-bold tracking-tight break-words text-white sm:text-3xl">
                 {companyName}
               </h1>
               <CompanyStatusBadge status={company.status} archived={Boolean(company.deletedAt)} />
@@ -139,10 +139,7 @@ export function CompanyDetail({ id }: { id: string }) {
             </p>
           </div>
           {!company.deletedAt && (
-            <Link
-              href={`/companies/${id}/automation-audit`}
-              className="inline-flex items-center justify-center gap-2 rounded-2xl bg-blue-500 px-5 py-3 text-sm font-bold text-white shadow-lg shadow-blue-500/25 transition hover:bg-blue-400"
-            >
+            <Link href={`/companies/${id}/automation-audit`} className="opt-primary shrink-0">
               Continuer l’audit <ArrowRight size={17} />
             </Link>
           )}
@@ -279,8 +276,8 @@ function sizeLabel(value: string | null): string {
 
 function ExecutiveMetric({ label, value }: { readonly label: string; readonly value: string }) {
   return (
-    <div className="rounded-3xl border border-white/10 bg-slate-900/80 p-5 shadow-xl shadow-slate-950/20">
-      <p className="text-xs font-bold tracking-[0.18em] text-slate-500 uppercase">{label}</p>
+    <div className="rounded-xl border border-white/10 bg-slate-900/80 p-5">
+      <p className="text-xs font-semibold tracking-[0.12em] text-slate-400 uppercase">{label}</p>
       <p className="mt-2 text-lg font-bold text-white">{value}</p>
     </div>
   );
