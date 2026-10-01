@@ -25,6 +25,7 @@ export interface OpportunityDecisionSafety {
 }
 
 export interface ExecutiveAuditResult {
+  organizationId?: string;
   company: { id: string; name: string };
   complete: boolean;
   audit: AssistedAuditReadModel;

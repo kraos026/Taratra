@@ -117,6 +117,52 @@ function input(rules: AnalysisRule[]): AnalysisInput {
 
 describe("BusinessAnalysisEngine", () => {
   const engine = new BusinessAnalysisEngine();
+  it("never cites an unrelated fact as proof of missing knowledge", () => {
+    const source = input([
+      rule("missing_kpi", { operator: "missingKnowledgeTerm", terms: ["kpi"] }),
+    ]);
+    source.facts = [
+      {
+        id: "employees",
+        key: "company.employee_count",
+        domain: "company",
+        value: 10,
+        confidence: 100,
+      },
+    ];
+    const result = engine.analyze(source);
+    expect(result.findings[0]).toMatchObject({ evidenceFactIds: [], confidence: 0 });
+    expect(result.validations).toContainEqual(
+      expect.objectContaining({ code: "missing_evidence", severity: "error" }),
+    );
+  });
+  it("uses the evaluated step lineage and caps confidence at its source map", () => {
+    const source = input([rule("manual_invoice_processing", { operator: "manualInvoice" })]);
+    source.facts.push({
+      id: "unrelated",
+      key: "manual.staff",
+      domain: "hr",
+      value: 100,
+      confidence: 100,
+    });
+    expect(engine.analyze(source).findings[0]).toMatchObject({
+      evidenceFactIds: ["fact"],
+      confidence: 60,
+    });
+  });
+  it("does not assert missing indicators when a source explicitly declares a KPI", () => {
+    const source = input([
+      rule("missing_kpi", { operator: "missingKnowledgeTerm", terms: ["kpi"] }),
+    ]);
+    source.facts.push({
+      id: "declared-kpi",
+      key: "finance.kpi",
+      domain: "finance",
+      value: "Monthly invoice-volume KPI: 85 invoices in the reference month.",
+      confidence: 80,
+    });
+    expect(engine.analyze(source).findings).toEqual([]);
+  });
   it("renders measured actor share and preserves its calculation inputs", () => {
     const source = input([
       {

@@ -33,6 +33,20 @@ function subject(role = "consultant") {
 }
 
 describe("BusinessAnalysisService", () => {
+  it("blocks validation and explains missing evidence without transitioning", async () => {
+    const { service, repo } = subject();
+    repo.detail.mockResolvedValue({
+      validations: [{ severity: "error", code: "missing_evidence" }],
+      findings: [],
+      evidence: [],
+      scores: [],
+    } as never);
+    await expect(service.validate("analysis", 2)).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+      message: expect.stringContaining("complétez les informations source"),
+    });
+    expect(repo.transition).not.toHaveBeenCalled();
+  });
   it("requires a published Process Map", async () =>
     await expect(subject().service.analyze("map")).rejects.toMatchObject({
       code: "VALIDATION_ERROR",

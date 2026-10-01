@@ -91,7 +91,9 @@ export class BusinessAnalysisService {
     const detail = await this.repo.detail(context.organizationId, id);
     if (!detail) throw new BusinessAnalysisNotFoundError();
     if (detail.validations.some((validation) => validation.severity === "error"))
-      throw new BusinessAnalysisValidationError("Blocking analysis validation errors remain");
+      throw new BusinessAnalysisValidationError(
+        "L’analyse contient des points bloquants. Consultez les preuves manquantes dans l’analyse, complétez les informations source puis reconstruisez-la avant validation.",
+      );
     return this.repo.transition(context.organizationId, id, lockVersion, "validated");
   }
 

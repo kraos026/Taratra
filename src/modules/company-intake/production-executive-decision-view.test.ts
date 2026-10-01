@@ -3,6 +3,38 @@ import type { ExecutiveAuditResult } from "../executive-results/application/exec
 import { PatronDecisionCenterPresenter, ProductionExecutiveDecisionViewBuilder } from "./index";
 
 describe("ProductionExecutiveDecisionViewBuilder", () => {
+  it("does not invent causes or promote artifact counts into strong evidence", () => {
+    const result = publishedResult();
+    const view = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result,
+    }).view!;
+    expect(view.rootCausesOrHypotheses).toEqual([]);
+    expect(
+      view.priorityCards.find((card) => card.id.startsWith("finding:"))?.evidenceStrength,
+    ).toBe("LIMITED");
+    expect(
+      view.priorityCards.find((card) => card.id.startsWith("opportunity:"))?.probableCause,
+    ).toContain("n’est pas établie");
+    expect(view.economicPresentation.timeToValueMonths).toBeNull();
+    expect(view.economicPresentation.costOfInaction).toBeNull();
+    expect(view.economicPresentation.breakEvenMonths).toBe(result.roi!.evaluations[0]!.payback);
+  });
+  it("aggregates scoped missing proof into the overview and evidence explanation", () => {
+    const result = publishedResult();
+    result.opportunities[0]!.safety!.evidence = [];
+    const view = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result,
+    }).view!;
+    expect(
+      view.priorityCards.find((card) => card.id.startsWith("opportunity:"))?.recommendationState,
+    ).toBe("NEEDS_MORE_EVIDENCE");
+    expect(view.evidenceExplanation.missingEvidence.join(" ")).toContain("Des preuves vérifiées");
+    expect(PatronDecisionCenterPresenter.build(view).overview.uncertaintyIndicator).toBe(
+      "DECLARED",
+    );
+  });
   it.each([-20, 0])("does not justify automation from gross savings when ROI is %s", (roi) => {
     const result = publishedResult();
     result.roi!.evaluations[0]!.roi = roi;

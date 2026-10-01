@@ -5,6 +5,23 @@ import type {
 
 const uuidPattern = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
 
+export function readableDecisionState(state: string): string {
+  const labels: Record<string, string> = {
+    AUTOMATE_NOW: "Automatiser maintenant",
+    AUTOMATE_AFTER_REMEDIATION: "Automatiser après correction",
+    AUTOMATE_CONDITIONALLY: "Automatiser sous conditions",
+    NEEDS_MORE_EVIDENCE: "Données supplémentaires requises",
+    DEFER: "Reporter",
+    DO_NOT_AUTOMATE: "Ne pas automatiser",
+    FIX_BEFORE_AUTOMATING: "Corriger avant d’automatiser",
+    INVESTIGATE_FIRST: "Investiguer d’abord",
+    HUMAN_DECISION_REQUIRED: "Validation humaine requise",
+    NOT_ECONOMICALLY_JUSTIFIED: "Rentabilité non démontrée",
+    READY: "Analyse publiée",
+  };
+  return labels[state] ?? "État à vérifier";
+}
+
 /** Translate known generated copy only. Never infer a decision, source content or a tool name. */
 export function customerDecisionText(value: string): string {
   return value

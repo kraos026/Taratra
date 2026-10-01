@@ -7,7 +7,7 @@ import type {
 } from "../application/patron-decision-center";
 import { AskAutomateXPanel } from "./ask-automatex-panel";
 import { AlertTriangle, ArrowRight, FileCheck2, ShieldCheck } from "lucide-react";
-import { customerDecisionCenter } from "./customer-decision-copy";
+import { customerDecisionCenter, readableDecisionState } from "./customer-decision-copy";
 
 export function PatronDecisionCenterView({
   center: source,
@@ -457,27 +457,6 @@ function EmptyState({ text }: { readonly text: string }) {
       {text}
     </p>
   );
-}
-
-function readableDecisionState(state: string): string {
-  const labels: Record<string, string> = {
-    AUTOMATE_NOW: "Automatiser maintenant",
-    AUTOMATE_AFTER_REMEDIATION: "Automatiser après correction",
-    AUTOMATE_CONDITIONALLY: "Automatiser sous conditions",
-    NEEDS_MORE_EVIDENCE: "Données supplémentaires requises",
-    DEFER: "Reporter",
-    DO_NOT_AUTOMATE: "Ne pas automatiser",
-    FIX_BEFORE_AUTOMATING: "Corriger avant d’automatiser",
-    INVESTIGATE_FIRST: "Investiguer d’abord",
-    HUMAN_DECISION_REQUIRED: "Validation humaine requise",
-    NOT_ECONOMICALLY_JUSTIFIED: "Rentabilité non démontrée",
-    READY: "Analyse publiée",
-  };
-  if (labels[state]) return labels[state];
-  return state
-    .toLowerCase()
-    .replaceAll("_", " ")
-    .replace(/^\w/, (letter) => letter.toUpperCase());
 }
 
 function readableEconomicState(state: string): string {

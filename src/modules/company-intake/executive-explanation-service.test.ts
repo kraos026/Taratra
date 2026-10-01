@@ -7,7 +7,7 @@ import {
 } from "./index";
 
 describe("ExecutiveExplanationService", () => {
-  it("creates a bounded Northstar explanation without changing authoritative fields", async () => {
+  it("rejects unsupported paraphrased facts without changing authoritative fields", async () => {
     const service = new ExecutiveExplanationService(
       provider({
         headline: "Fix the approval data before automation",
@@ -31,15 +31,51 @@ describe("ExecutiveExplanationService", () => {
       cardId: "opportunity:data-quality",
       language: "en",
     });
-    expect(explanation.source).toBe("PROVIDER");
+    expect(explanation.source).toBe("FALLBACK");
     expect(explanation.decisionState).toBe("FIX_BEFORE_AUTOMATING");
     expect(explanation.economicState).toBe("ECONOMICALLY_JUSTIFIED");
     expect(explanation.evidenceStrength).toBe("MODERATE");
     expect(explanation.validation.valid).toBe(true);
-    expect(explanation.content.whatIsUncertain).toContain(
-      "The approval threshold evidence is still missing.",
+    expect(explanation.content.whatIsUncertain).toEqual(
+      expect.arrayContaining([...view().priorityCards[0]!.uncertainty]),
     );
     expect(explanation.brainRunId).toBe("pilot-scenario");
+  });
+  it("accepts provider selection of already grounded canonical statements", async () => {
+    const input = { view: view(), cardId: "opportunity:data-quality" };
+    const fallback = await new ExecutiveExplanationService().explain(input);
+    const explanation = await new ExecutiveExplanationService(provider(fallback.content)).explain(
+      input,
+    );
+    expect(explanation.source).toBe("PROVIDER");
+    expect(explanation.validation.valid).toBe(true);
+  });
+  it("does not borrow another card's global facts for a selected opportunity", async () => {
+    const source = { ...view(), whatWeKnow: ["Another opportunity saves 90000 EUR."] };
+    const input = { view: source, cardId: "opportunity:human-approval", language: "fr" as const };
+    const fallback = await new ExecutiveExplanationService().explain(input);
+    expect(fallback.content.whatWeKnow.join(" ")).not.toContain("90000");
+    const result = await new ExecutiveExplanationService(
+      provider({ ...fallback.content, whatWeKnow: source.whatWeKnow }),
+    ).explain(input);
+    expect(result.source).toBe("FALLBACK");
+  });
+  it.each([
+    {
+      headline: "Automatisez immédiatement",
+      recommendedNextStep: "Automatisez maintenant sans contrôle humain.",
+    },
+    { whyAutomateXThinksThis: "Le rapport Oracle le prouve." },
+    { economicExplanation: "Le bénéfice annuel est de 20000 EUR." },
+  ])("rejects French reversal, new sources and global numeric borrowing: %j", async (change) => {
+    const input = { view: view(), cardId: "opportunity:human-approval", language: "fr" as const };
+    const fallback = await new ExecutiveExplanationService().explain(input);
+    const explanation = await new ExecutiveExplanationService(
+      provider({ ...fallback.content, ...change }),
+    ).explain(input);
+    expect(explanation.source).toBe("FALLBACK");
+    expect(explanation.content).toEqual(fallback.content);
+    expect(explanation.decisionState).toBe("DO_NOT_AUTOMATE");
   });
 
   it("rejects a decision reversal and returns deterministic fallback", async () => {

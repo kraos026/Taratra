@@ -54,7 +54,7 @@ const input = (): RoiInput => ({
     {
       id: "model",
       code: "automation_economic_impact",
-      version: 1,
+      version: 2,
       formula: { type: "documented" },
       requiredInputs: codes,
       outputs: [],
@@ -71,6 +71,18 @@ const input = (): RoiInput => ({
 });
 describe("RoiEvaluationEngine", () => {
   const engine = new RoiEvaluationEngine();
+  it("preserves V1 catalog arithmetic and selects the latest published model", () => {
+    const value = input();
+    value.models[0]!.version = 1;
+    expect(engine.evaluate(value).scenarios[1]!.evaluations[0]!.metrics).toContainEqual(
+      expect.objectContaining({ code: "annual_hours_saved", value: 160 }),
+    );
+    value.models.push({ ...value.models[0]!, id: "v2", version: 2 });
+    expect(engine.evaluate(value).scenarios[1]!.model.version).toBe(2);
+    expect(engine.evaluate(value).scenarios[1]!.evaluations[0]!.metrics).toContainEqual(
+      expect.objectContaining({ code: "annual_hours_saved", value: 200 }),
+    );
+  });
   it("calculates all deterministic scenarios and metrics", () => {
     const result = engine.evaluate(input());
     expect(result.scenarios.map((item) => item.type)).toEqual([
@@ -80,10 +92,24 @@ describe("RoiEvaluationEngine", () => {
     ]);
     const expected = result.scenarios[1]!.evaluations[0]!;
     expect(expected.metrics).toHaveLength(13);
-    expect(expected.metrics.find((item) => item.code === "annual_hours_saved")?.value).toBe(160);
-    expect(expected.metrics.find((item) => item.code === "annual_cost_saved")?.value).toBe(8000);
+    expect(expected.metrics.find((item) => item.code === "annual_hours_saved")?.value).toBe(200);
+    expect(expected.metrics.find((item) => item.code === "annual_cost_saved")?.value).toBe(10000);
     expect(expected.metrics.find((item) => item.code === "roi_percentage")?.value).toBeCloseTo(
-      553.8462,
+      723.0769,
+    );
+  });
+  it("does not use a finding coverage score as a time-saving percentage", () => {
+    const value = input();
+    const before = engine.evaluate(value).scenarios[1]!.evaluations[0]!;
+    value.opportunities[0]!.automationCoverage = 10;
+    expect(engine.evaluate(value).scenarios[1]!.evaluations[0]!.metrics).toEqual(before.metrics);
+    expect(before.confidence).toBe(80);
+  });
+  it("does not turn a known zero annual frequency into monthly activity", () => {
+    const value = input();
+    value.suppliedAssumptions.annual_frequency = 0;
+    expect(engine.evaluate(value).scenarios[1]!.evaluations[0]!.metrics).toContainEqual(
+      expect.objectContaining({ code: "annual_hours_saved", value: 0 }),
     );
   });
   it("freezes validated scenario factors", () => {

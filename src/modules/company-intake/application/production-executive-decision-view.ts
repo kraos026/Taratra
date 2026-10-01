@@ -42,7 +42,7 @@ export class ProductionExecutiveDecisionViewBuilder {
     const reason = unavailableReasonFor(input.result);
     if (reason) return deepFreeze({ view: null, unavailableReason: reason });
 
-    const result = safeExecutiveOutput(input.result);
+    const result = { ...safeExecutiveOutput(input.result), organizationId: input.tenantId };
     const traceability = traceabilityFor(input);
     const economicState = economicStateFor(result);
     const explanation = evidenceExplanationFor(result);
@@ -73,7 +73,7 @@ export class ProductionExecutiveDecisionViewBuilder {
           (item) => opportunityDecisionSafety(result, item, input.tenantId).contradictions,
         ),
       ),
-      rootCausesOrHypotheses: freeze(rootCausesFor(result)),
+      rootCausesOrHypotheses: freeze([]),
       bottlenecks: freeze(bottlenecksFor(result)),
       criticalIssues: freeze(criticalIssuesFor(result)),
       whatToFixFirst: freeze(whatToFixFirstFor(cards)),
@@ -116,7 +116,7 @@ function cardsFor(
           id: `finding:${finding.id}`,
           title: finding.title,
           problem: finding.description,
-          probableCause: finding.impact,
+          probableCause: "La cause de ce constat n’est pas établie par les preuves publiées.",
           priority: priorityFromSeverity(finding.severity),
           state: "FIX_BEFORE_AUTOMATING",
           economicState,
@@ -157,6 +157,12 @@ function cardsFor(
           whatNotToDo: notActionFor(state),
           nextBestAction: action,
           evidenceReferences: safety.evidenceIds,
+          evidenceStrength:
+            safety.missing.length || safety.contradictions.length
+              ? "INSUFFICIENT"
+              : safety.evidenceIds.length
+                ? "MODERATE"
+                : "INSUFFICIENT",
           uncertainty: [
             ...safety.missing,
             ...safety.contradictions,
@@ -179,14 +185,14 @@ function cardsFor(
             id: `recommendation:${recommendation.id}`,
             title: recommendation.title,
             problem: recommendation.description,
-            probableCause: recommendation.phase,
+            probableCause: "La cause de cette proposition reste à vérifier.",
             priority: priorityFromRecommendation(recommendation.priority),
             state: recommendationStateFor(recommendation, economicState),
             economicState,
             whyItMatters: recommendation.description,
-            whatToDoNow: recommendation.action,
+            whatToDoNow: actionFor(recommendationStateFor(recommendation, economicState)),
             whatNotToDo: notActionFor(recommendationStateFor(recommendation, economicState)),
-            nextBestAction: recommendation.action,
+            nextBestAction: actionFor(recommendationStateFor(recommendation, economicState)),
             evidenceReferences: evidenceFor(result, recommendation.id),
             uncertainty: unknownsFor(result),
             explanation,
@@ -210,6 +216,7 @@ function card(input: {
   readonly whatNotToDo: string | null;
   readonly nextBestAction: string;
   readonly evidenceReferences: readonly string[];
+  readonly evidenceStrength?: ExecutiveEvidenceStrength;
   readonly uncertainty: readonly string[];
   readonly explanation: ExecutiveEvidenceExplanation;
   readonly traceability: ExecutiveTraceability;
@@ -220,7 +227,7 @@ function card(input: {
     executiveSummary: `${input.problem} ${input.whatToDoNow}`.trim(),
     priority: input.priority,
     businessImpact: input.whyItMatters,
-    evidenceStrength: evidenceStrengthFor(input.evidenceReferences, input.uncertainty),
+    evidenceStrength: input.evidenceStrength ?? evidenceStrengthFor(input.evidenceReferences),
     uncertainty: freeze(input.uncertainty),
     problem: input.problem,
     probableCause: input.probableCause,
@@ -231,7 +238,11 @@ function card(input: {
     whatNotToDo: input.whatNotToDo,
     nextBestAction: input.nextBestAction,
     evidenceReferences: freeze(input.evidenceReferences),
-    explanation: input.explanation,
+    explanation: {
+      supportingSources: freeze(input.evidenceReferences),
+      conflictingSources: input.explanation.conflictingSources,
+      missingEvidence: freeze(input.uncertainty),
+    },
     traceability: input.traceability,
   };
 }
@@ -308,8 +319,8 @@ function economicPresentationFor(
     },
     costRange: { min: null, max: null },
     breakEvenMonths: paybacks.length ? Math.min(...paybacks) : null,
-    timeToValueMonths: paybacks.length ? Math.min(...paybacks) : null,
-    costOfInaction: benefits.length ? Math.max(...benefits) : null,
+    timeToValueMonths: null,
+    costOfInaction: null,
     currency: result.roi?.currency ?? null,
     missingEvidence: freeze(unknownsFor(result)),
   };
@@ -343,11 +354,13 @@ function unknownsFor(result: ExecutiveAuditResult): readonly string[] {
   if (!result.opportunities.length) missing.push("Published automation opportunities are empty.");
   if (result.opportunities.some((item) => item.confidence < 50 || item.readiness < 50))
     missing.push("Some opportunities require stronger readiness or confidence evidence.");
-  return freeze(missing);
-}
-
-function rootCausesFor(result: ExecutiveAuditResult): readonly string[] {
-  return result.findings.map((item) => item.impact).filter(Boolean);
+  for (const opportunity of result.opportunities) {
+    const safety = opportunityDecisionSafety(result, opportunity, result.organizationId ?? "");
+    missing.push(...safety.missing.map((item) => `${opportunity.title} : ${item}`));
+    if (!result.roi?.evaluations.some((item) => item.automationOpportunityId === opportunity.id))
+      missing.push(`${opportunity.title} : Le ROI doit être relié à cette opportunité.`);
+  }
+  return freeze([...new Set(missing)]);
 }
 
 function bottlenecksFor(result: ExecutiveAuditResult): readonly string[] {
@@ -408,13 +421,9 @@ function nextActionsFor(
 }
 
 function probableCauseFor(result: ExecutiveAuditResult, problem: string): string {
-  return (
-    result.findings.find(
-      (item) => problem.includes(item.title) || item.description.includes(problem),
-    )?.impact ??
-    result.findings[0]?.impact ??
-    "Cause is derived from the published audit artifacts."
-  );
+  void result;
+  void problem;
+  return "La cause de cette opportunité n’est pas établie par les preuves publiées.";
 }
 
 function decisionStateFor(
@@ -478,13 +487,9 @@ function uncertaintyFor(
   return unknownsFor(result);
 }
 
-function evidenceStrengthFor(
-  evidenceReferences: readonly string[],
-  uncertainty: readonly string[],
-): ExecutiveEvidenceStrength {
+function evidenceStrengthFor(evidenceReferences: readonly string[]): ExecutiveEvidenceStrength {
   if (!evidenceReferences.length) return "INSUFFICIENT";
-  if (uncertainty.length) return "MODERATE";
-  if (evidenceReferences.length >= 3) return "STRONG";
+  // Artifact references establish traceability, not evidence quality.
   return "LIMITED";
 }
 
@@ -518,7 +523,7 @@ function completenessFor(
 ): ExecutiveCompletenessCheck {
   const checks = {
     whatIsWrong: result.findings.length > 0,
-    why: rootCausesFor(result).length > 0,
+    why: cards.length > 0 && cards.every((card) => Boolean(card.probableCause)),
     evidence: cards.length > 0 && cards.every((card) => card.evidenceReferences.length > 0),
     uncertainty: true,
     whatToFix: whatToFixFirstFor(cards).length > 0,

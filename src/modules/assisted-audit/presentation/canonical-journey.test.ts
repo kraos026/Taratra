@@ -2,12 +2,26 @@ import { describe, expect, it } from "vitest";
 import type { AssistedAuditReadModel } from "../application/assisted-audit-model";
 import {
   buildCustomerJourney,
+  customerEvidencePublicationLabel,
   customerJourneyRoutes,
   customerStageLabel,
   journeyProgress,
 } from "./canonical-journey";
 
 describe("canonical customer journey", () => {
+  it("does not equate a company or draft with validated evidence", () => {
+    expect(customerEvidencePublicationLabel()).toBe("État non vérifié");
+    const audit = model("KNOWLEDGE");
+    const knowledge = audit.stages.find((stage) => stage.stage === "KNOWLEDGE")!;
+    expect(customerEvidencePublicationLabel(audit)).toBe("Publication des preuves non confirmée");
+    knowledge.artifact = { id: "knowledge-id", version: 1, status: "draft" };
+    knowledge.status = "COMPLETED";
+    expect(customerEvidencePublicationLabel(audit)).toBe("Publication des preuves non confirmée");
+    knowledge.artifact.status = "ready";
+    expect(customerEvidencePublicationLabel(audit)).toBe("Synthèse validée — preuves à examiner");
+    knowledge.status = "IN_PROGRESS";
+    expect(customerEvidencePublicationLabel(audit)).toBe("Publication des preuves non confirmée");
+  });
   it("projects engine stages into one stable seven-step customer journey", () => {
     const audit = model("BUSINESS_ANALYSIS");
     const journey = buildCustomerJourney(audit);

@@ -186,6 +186,7 @@ export class PrismaExecutiveResultRepository implements ExecutiveResultRepositor
       };
     };
     return {
+      organizationId,
       company: audit.company,
       complete: true,
       audit,

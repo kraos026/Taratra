@@ -37,14 +37,6 @@ type Company = {
   status: string;
 };
 
-type Audit = {
-  id: string;
-  status: string;
-  progressPercentage: number;
-  updatedAt: string;
-  company: { id: string; name: string };
-};
-
 type PagePayload<T> = { items: T[]; total: number };
 
 async function loadPage<T>(url: string): Promise<PagePayload<T>> {
@@ -71,44 +63,41 @@ function initials(name: string): string {
 export function InteractiveDashboard() {
   const router = useRouter();
   const [companies, setCompanies] = useState<PagePayload<Company>>();
-  const [audits, setAudits] = useState<PagePayload<Audit>>();
   const [advancedAudits, setAdvancedAudits] = useState<Map<string, AssistedAuditReadModel>>(
     new Map(),
   );
   const [error, setError] = useState<string>();
 
   useEffect(() => {
-    void Promise.all([
-      loadPage<Company>("/api/companies?page=1&pageSize=3&sortBy=updatedAt&sortOrder=desc"),
-      loadPage<Audit>("/api/audits?page=1&pageSize=100&sortBy=updatedAt&sortOrder=desc"),
-    ])
-      .then(([companyPage, auditPage]) => {
-        setCompanies(companyPage);
-        setAudits(auditPage);
-        return Promise.all(
+    let active = true;
+    void loadPage<Company>("/api/companies?page=1&pageSize=3&sortBy=updatedAt&sortOrder=desc")
+      .then(async (companyPage) => {
+        const rows = await Promise.all(
           companyPage.items.map(async (company) => {
             const response = await fetch(`/api/companies/${company.id}/automation-audit`, {
               cache: "no-store",
             });
             const payload = (await response.json()) as { data?: AssistedAuditReadModel };
-            return [company.id, response.ok ? payload.data : undefined] as const;
+            if (!response.ok || !payload.data || payload.data.company.id !== company.id)
+              throw new Error("L’état canonique de l’audit n’a pas pu être vérifié.");
+            return [company.id, payload.data] as const;
           }),
         );
+        if (!active) return;
+        setCompanies(companyPage);
+        setAdvancedAudits(new Map(rows));
       })
-      .then((rows) => {
-        setAdvancedAudits(
-          new Map(
-            rows.filter((row): row is readonly [string, AssistedAuditReadModel] => Boolean(row[1])),
-          ),
-        );
-      })
-      .catch((reason: unknown) =>
-        setError(reason instanceof Error ? reason.message : "Impossible de charger les données."),
-      );
+      .catch((reason: unknown) => {
+        if (active)
+          setError(reason instanceof Error ? reason.message : "Impossible de charger les données.");
+      });
+    return () => {
+      active = false;
+    };
   }, []);
 
-  const activeAudits = audits?.items.filter((audit) =>
-    ["draft", "in_progress", "completed"].includes(audit.status),
+  const activeAudits = [...advancedAudits.values()].filter(
+    (audit) => audit.currentStage !== "COMPLETED",
   ).length;
   const activeCompany = companies?.items[0];
   const activeModel = activeCompany ? advancedAudits.get(activeCompany.id) : undefined;
@@ -154,7 +143,7 @@ export function InteractiveDashboard() {
             >
               <Icon size={19} />
               <span>{label}</span>
-              {label === "Audit" && activeAudits !== undefined && activeAudits === 1 && <b>1</b>}
+              {label === "Audit" && activeAudits > 0 && <b>{activeAudits}</b>}
             </Link>
           ))}
         </nav>
@@ -268,7 +257,7 @@ export function InteractiveDashboard() {
               </div>
               <div>
                 <p>Mon entreprise</p>
-                <strong>{companies?.items.length ? "Prêt" : "—"}</strong>
+                <strong>{companies?.items.length ? "Dossier créé" : "—"}</strong>
                 <small>Dossier sécurisé</small>
               </div>
             </article>
@@ -281,7 +270,13 @@ export function InteractiveDashboard() {
                 <strong>
                   {activeModel ? customerStatusLabel(activeModel.overallStatus) : "—"}
                 </strong>
-                <small>{audits ? "Depuis vos dossiers accessibles" : "Chargement…"}</small>
+                <small>
+                  {companies
+                    ? "Parcours canonique vérifié"
+                    : error
+                      ? "État indisponible"
+                      : "Chargement…"}
+                </small>
               </div>
             </article>
             <article>
@@ -336,12 +331,16 @@ export function InteractiveDashboard() {
                         <i />
                         {advancedAudit
                           ? customerStatusLabel(advancedAudit.overallStatus)
-                          : "Audit à démarrer"}
+                          : "État non vérifié"}
                       </div>
                       <div className="progress-wrap">
                         <div>
                           <span>Parcours Optivos</span>
-                          <b>{advancedAudit ? currentJourneyLabel(advancedAudit) : "À démarrer"}</b>
+                          <b>
+                            {advancedAudit
+                              ? currentJourneyLabel(advancedAudit)
+                              : "État non vérifié"}
+                          </b>
                         </div>
                         <div className="progress">
                           <i
@@ -388,12 +387,14 @@ export function InteractiveDashboard() {
             <section className="panel activity">
               <div className="panel-head">
                 <div>
-                  <h2>États de décision</h2>
+                  <h2>Comprendre les décisions</h2>
                   <p>Optivos distingue décision, preuve manquante et contrôle humain</p>
                 </div>
               </div>
               <div className="grid gap-2 text-sm text-neutral-600">
-                <p className="empty-state">Automatiser maintenant · après résultat publié</p>
+                <p className="empty-state">
+                  Automatiser maintenant · preuves, ROI et prérequis validés
+                </p>
                 <p className="empty-state">Corriger avant d’automatiser · après analyse</p>
                 <p className="empty-state">
                   Données complémentaires requises · visible dans le ROI

@@ -94,7 +94,9 @@ const SCENARIOS: Record<ScenarioType, { volume: number; cost: number }> = {
 
 export class RoiEvaluationEngine {
   evaluate(input: RoiInput) {
-    const model = input.models.find((item) => item.code === "automation_economic_impact");
+    const model = input.models
+      .filter((item) => item.code === "automation_economic_impact")
+      .sort((a, b) => b.version - a.version)[0];
     const inputErrors = this.validateNumericInputs(input);
     const resolved = this.resolveAssumptions(input);
     let scenarios =
@@ -275,10 +277,15 @@ export class RoiEvaluationEngine {
     factors: { volume: number; cost: number },
     model: RoiModelDefinition,
   ): RoiEvaluationResult {
-    const frequency = base.annual_frequency || base.monthly_frequency * 12;
-    const coverage = opportunity.automationCoverage / 100;
+    const frequency =
+      model.version >= 2
+        ? base.annual_frequency
+        : base.annual_frequency || base.monthly_frequency * 12;
+    // hours_saved_per_occurrence is already a savings estimate. A proportion of
+    // matched business findings is not a measured proportion of working time.
+    const coverageFactor = model.version >= 2 ? 1 : opportunity.automationCoverage / 100;
     const annualHoursSaved =
-      base.hours_saved_per_occurrence * frequency * factors.volume * coverage;
+      base.hours_saved_per_occurrence * frequency * factors.volume * coverageFactor;
     const monthlyHoursSaved = annualHoursSaved / 12;
     const annualCostSaved = annualHoursSaved * base.hourly_cost;
     const monthlyCostSaved = annualCostSaved / 12;
@@ -286,7 +293,7 @@ export class RoiEvaluationEngine {
     const trainingCost = base.training_cost * factors.cost;
     const infrastructureCost = base.infrastructure_cost * factors.cost;
     const maintenanceCost = base.maintenance_cost * factors.cost;
-    const avoidedErrorCost = base.error_cost * frequency * factors.volume * coverage;
+    const avoidedErrorCost = base.error_cost * frequency * factors.volume * coverageFactor;
     const annualBenefit = annualCostSaved + avoidedErrorCost;
     const initialCost = implementationCost + trainingCost + infrastructureCost;
     const annualNetBenefit = annualBenefit - maintenanceCost;
@@ -298,11 +305,14 @@ export class RoiEvaluationEngine {
         : ((annualNetBenefit - initialCost) / initialCost) * 100;
     const monthlyNetBenefit = annualBenefit / 12 - maintenanceCost / 12;
     const payback = monthlyNetBenefit > 0 ? initialCost / monthlyNetBenefit : null;
-    const completeness = assumptions.length ? 100 : 0;
-    const evidenceConfidence = opportunity.evidence.length ? 100 : 0;
-    const confidence = round(
-      opportunity.confidence * 0.5 + evidenceConfidence * 0.25 + completeness * 0.25,
-    );
+    // References and catalog defaults do not upgrade the source's confidence.
+    const confidence = opportunity.evidence.length
+      ? round(
+          (opportunity.confidence *
+            assumptions.filter((item) => item.source === "provided").length) /
+            assumptions.length,
+        )
+      : 0;
     const values: [string, number | null, string, "unbounded" | "not_recovered" | null][] = [
       ["annual_hours_saved", annualHoursSaved, "hours/year", null],
       ["monthly_hours_saved", monthlyHoursSaved, "hours/month", null],
@@ -336,6 +346,10 @@ export class RoiEvaluationEngine {
           factors,
           formula: model.formula,
           inputs: base,
+          savingsBasis:
+            model.version >= 2
+              ? "hours_saved_per_occurrence_assumption_not_finding_coverage"
+              : "legacy_coverage_weighted_estimate",
         },
       })),
       contributions: assumptions.map((item) => ({

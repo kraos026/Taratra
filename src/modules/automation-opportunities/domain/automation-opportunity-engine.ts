@@ -175,7 +175,14 @@ export class AutomationOpportunityEngine {
         const businessImpact = Math.max(...findings.map((item) => SEVERITY[item.severity]));
         const automationCoverage = percent(
           findings.length,
-          input.findings.filter((item) => rule.findingCodes.includes(item.code)).length,
+          // Coverage of findings in the affected processes, not measured time saved.
+          input.scoreDefinitions.some(
+            (definition) => definition.code === "automation_coverage" && definition.version >= 2,
+          )
+            ? input.findings.filter((item) =>
+                findings.some((finding) => finding.processId === item.processId),
+              ).length
+            : findings.length,
         );
         const findingConfidence = average(findings.map((item) => item.confidence));
         const evidenceConfidence = average(evidence.map((item) => item.confidence));
@@ -236,6 +243,11 @@ export class AutomationOpportunityEngine {
                 calculation: {
                   formula: definition.formula,
                   inputs: {
+                    coverageBasis: input.scoreDefinitions.some(
+                      (item) => item.code === "automation_coverage" && item.version >= 2,
+                    )
+                      ? "matched_findings_in_affected_processes"
+                      : "legacy_matched_relevant_findings",
                     findingConfidence,
                     aiConfidence,
                     evidenceConfidence,

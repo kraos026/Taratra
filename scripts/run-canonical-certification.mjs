@@ -41,6 +41,10 @@ const audit = {
   companyName: `${LOCAL_E2E_USERS.tenantA.companyName} ${certificationRunId}`,
   industry: "Business operations services",
   processName: "Manual supplier invoice processing",
+  // Positive LOCAL fixture: explicitly declared measurement, not inferred from
+  // headcount. Missing knowledge remains a blocking negative engine test.
+  kpiStatement:
+    "The finance team tracks a monthly invoice-volume KPI: 85 invoices in the reference month, with 45 manual hours recorded for the same process.",
 };
 
 let appProcess = null;
@@ -619,7 +623,7 @@ function answerFor(question) {
   }
   if (type === "single_choice") return firstOption(question);
   if (type === "multiple_choice") return [firstOption(question)].filter(Boolean);
-  return "Supplier invoice processing is manual: invoices arrive by email, data is copied into a spreadsheet, approval waits on one finance manager, then the data is re-entered into the accounting ERP. Around 85 invoices are handled monthly and roughly 45 hours are spent each month.";
+  return `Supplier invoice processing is manual: invoices arrive by email, data is copied into a spreadsheet, approval waits on one finance manager, then the data is re-entered into the accounting ERP. Around 85 invoices are handled monthly and roughly 45 hours are spent each month. ${audit.kpiStatement}`;
 }
 
 function firstOption(question) {

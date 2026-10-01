@@ -102,6 +102,15 @@ export function currentJourneyLabel(model: AssistedAuditReadModel): string {
   return buildCustomerJourney(model).find((step) => step.current)?.label ?? "Résultats";
 }
 
+export function customerEvidencePublicationLabel(model?: AssistedAuditReadModel): string {
+  if (!model) return "État non vérifié";
+  const knowledge = model.stages.find((stage) => stage.stage === "KNOWLEDGE");
+  return knowledge?.status === "COMPLETED" &&
+    (knowledge.artifact?.status === "ready" || knowledge.artifact?.status === "published")
+    ? "Synthèse validée — preuves à examiner"
+    : "Publication des preuves non confirmée";
+}
+
 export function customerStageLabel(stage: AssistedAuditStage): string {
   const labels: Record<AssistedAuditStage, string> = {
     DISCOVERY: "Compréhension de l’entreprise",

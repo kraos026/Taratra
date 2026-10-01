@@ -394,7 +394,12 @@ function uncertaintyIndicatorFor(
   view: ExecutiveDecisionView,
 ): PatronDecisionCenterOverview["uncertaintyIndicator"] {
   if (view.contradictions.length) return "MATERIAL";
-  if (view.whatWeDoNotKnow.length || view.whatRequiresMoreEvidence.length) return "DECLARED";
+  if (
+    view.whatWeDoNotKnow.length ||
+    view.whatRequiresMoreEvidence.length ||
+    view.priorityCards.some((card) => card.uncertainty.length)
+  )
+    return "DECLARED";
   return "NONE_DECLARED";
 }
 

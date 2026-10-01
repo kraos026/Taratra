@@ -253,7 +253,14 @@ export class BusinessAnalysisEngine {
       validations.push({
         code: "missing_evidence",
         severity: "error",
-        message: "Every finding requires Enterprise Knowledge evidence",
+        message: `Des preuves pertinentes sont requises pour : ${findings
+          .filter((finding) => finding.evidenceFactIds.length === 0)
+          .map((finding) =>
+            finding.rule.evaluationLogic.operator === "missingKnowledgeTerm"
+              ? "indicateurs ou informations non documentés dans les sources"
+              : finding.rule.title,
+          )
+          .join(" ; ")}. Complétez les informations source avant de reconstruire l’analyse.`,
       });
     if (scores.some((score) => !score.calculation.formula))
       validations.push({
@@ -357,16 +364,58 @@ export class BusinessAnalysisEngine {
   }
 
   private toFinding(rule: AnalysisRule, input: AnalysisInput): DetectedFinding {
-    const facts = input.facts.filter((fact) =>
-      `${fact.key} ${fact.domain} ${JSON.stringify(fact.value)}`
-        .toLowerCase()
-        .includes(rule.code.split("_")[0] ?? ""),
+    const logic = rule.evaluationLogic;
+    const operator = logic.operator;
+    const manual = input.nodes.filter((node) => node.executionMode === "manual");
+    const steps = input.nodes.filter((node) => ["step", "decision"].includes(node.type));
+    // Evidence follows the evaluated condition, never the rule name or an arbitrary fact.
+    const relevantNodes =
+      operator === "manualInvoice"
+        ? manual.filter((node) =>
+            /invoice|facture/i.test(
+              `${node.name} ${node.description ?? ""} ${input.processMap.name}`,
+            ),
+          )
+        : operator === "manualDocumentTransfer"
+          ? manual.filter((node) =>
+              /document|paper|papier|file|fichier/i.test(`${node.name} ${node.description ?? ""}`),
+            )
+          : ["approvalCount", "validationStepCount"].includes(String(operator))
+            ? steps.filter((node) => /approv|valid/i.test(node.name))
+            : operator === "undocumentedShare"
+              ? steps.filter((node) => !node.description?.trim())
+              : [
+                    "duplicateManualStep",
+                    "actorManualShare",
+                    "actorManualDurationShare",
+                    "manualHoursMonthly",
+                  ].includes(String(operator))
+                ? manual
+                : [
+                      "missingOwner",
+                      "missingSystem",
+                      "missingApproval",
+                      "validationCode",
+                      "processMetricBelow",
+                    ].includes(String(operator))
+                  ? input.nodes
+                  : [];
+    const linkedIds = new Set(relevantNodes.flatMap((node) => node.factIds));
+    const evidenceFacts = input.facts.filter(
+      (fact) =>
+        linkedIds.has(fact.id) ||
+        (["systemContains", "textContains"].includes(String(operator)) &&
+          includesAny(`${fact.key} ${JSON.stringify(fact.value)}`.toLowerCase(), logic.terms)),
     );
-    const evidenceFacts = facts.length ? facts : input.facts.slice(0, 1);
-    const step = input.nodes.find((node) => this.nodeMatches(rule.code, node)) ?? null;
+    const step = relevantNodes[0] ?? null;
     const confidence = evidenceFacts.length
-      ? round(evidenceFacts.reduce((sum, fact) => sum + fact.confidence, 0) / evidenceFacts.length)
-      : input.processMap.confidence;
+      ? Math.min(
+          input.processMap.confidence,
+          round(
+            evidenceFacts.reduce((sum, fact) => sum + fact.confidence, 0) / evidenceFacts.length,
+          ),
+        )
+      : 0;
     const explanationValues = this.explanationValues(rule, input);
     return {
       identifier: `${rule.code}:${step?.key ?? "process"}`,
@@ -384,7 +433,12 @@ export class BusinessAnalysisEngine {
       businessImpact: rule.recommendationHint ?? rule.description,
       riskPoints: RISK_POINTS[rule.severity],
       evidenceFactIds: evidenceFacts.map((fact) => fact.id),
-      evidence: { ruleVersion: rule.version, processMapId: input.processMap.id, explanationValues },
+      evidence: {
+        ruleVersion: rule.version,
+        processMapId: input.processMap.id,
+        nodeIds: relevantNodes.map((node) => node.id),
+        explanationValues,
+      },
     };
   }
 
@@ -436,11 +490,6 @@ export class BusinessAnalysisEngine {
       default:
         return {};
     }
-  }
-
-  private nodeMatches(code: string, node: AnalysisNode) {
-    const text = `${node.name} ${node.description ?? ""}`.toLowerCase();
-    return code.split("_").some((part) => part.length > 4 && text.includes(part));
   }
 }
 

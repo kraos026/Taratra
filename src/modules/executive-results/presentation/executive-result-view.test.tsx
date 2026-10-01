@@ -4,6 +4,14 @@ import type { ExecutiveAuditResult } from "../application/executive-result-model
 import { ExecutiveResultView } from "./executive-result-view";
 
 describe("Executive Result", () => {
+  it("uses canonical safety states rather than recommendation titles", () => {
+    const html = renderToStaticMarkup(<ExecutiveResultView result={result()} />);
+    expect(html).toContain("Données supplémentaires requises");
+    expect(html).toContain("Même état canonique que le centre de décision");
+    expect(html).not.toContain("Top 3 décisions");
+    expect(html).not.toContain("Automatiser maintenant");
+    expect(html).toContain("ne doivent pas être additionnés");
+  });
   it("offers real feedback and keeps supplementary detail collapsed", () => {
     const html = renderToStaticMarkup(<ExecutiveResultView result={result()} />);
     expect(html).toContain("Donner mon avis");
@@ -58,7 +66,17 @@ function result(): ExecutiveAuditResult {
       currentStage: "COMPLETED",
       nextAction: "VIEW_RESULTS",
       blockingReason: null,
-      stages: [],
+      stages: [
+        {
+          stage: "PROCESS_MAP",
+          label: "Processus",
+          status: "COMPLETED",
+          artifact: artifact("process-map"),
+          candidateArtifacts: [],
+          availableActions: [],
+          blockingReason: null,
+        },
+      ],
     },
     overview: { processes: 1, findings: 2, opportunities: 2, recommendations: 1 },
     process: { id: "process-map", name: "Order processing" },

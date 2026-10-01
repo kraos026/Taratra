@@ -1,5 +1,5 @@
 begin;
-select plan(14);
+select plan(16);
 select has_table('public','roi_model_catalog','ROI model catalog exists');
 select has_table('public','roi_assumption_catalog','ROI assumption catalog exists');
 select has_table('public','roi_evaluation_snapshots','ROI snapshots exist');
@@ -10,7 +10,9 @@ select has_table('public','roi_contributions','ROI contributions exist');
 select has_table('public','roi_metrics','ROI metrics exist');
 select has_table('public','roi_evidence','ROI evidence exists');
 select has_table('public','roi_validations','ROI validations exist');
-select is((select count(*)::integer from public.roi_model_catalog where organization_id is null and published),1,'one published system model');
+select is((select count(distinct code)::integer from public.roi_model_catalog where organization_id is null and published),1,'one published system model across immutable versions');
+select is((select formula_json->>'annualHoursSaved' from public.roi_model_catalog where organization_id is null and code='automation_economic_impact' and version=1),'hoursSavedPerOccurrence * annualFrequency * volumeFactor * automationCoverage','legacy ROI formula is preserved');
+select is((select formula_json->>'annualHoursSaved' from public.roi_model_catalog where organization_id is null and code='automation_economic_impact' and version=2),'hoursSavedPerOccurrence * annualFrequency * volumeFactor','current ROI does not multiply savings by finding coverage');
 select is((select count(*)::integer from public.roi_assumption_catalog where organization_id is null and published),11,'eleven published assumptions');
 select row_security_active('public.roi_evaluation_snapshots'::regclass),'ROI snapshot RLS active';
 select throws_like($$update public.roi_model_catalog set title='Changed' where code='automation_economic_impact'$$,'%immutable%','published model is immutable');

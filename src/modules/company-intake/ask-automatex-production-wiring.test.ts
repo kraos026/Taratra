@@ -46,7 +46,7 @@ describe("Ask AutomateX production wiring", () => {
     expect(response.answer).not.toContain("Benefit range: 0 EUR");
   });
 
-  it("shows evidence labels from the current production projection", async () => {
+  it("shows only evidence scoped to the selected opportunity, not global lineage", async () => {
     const response = await new AskAutomateXService(readModelFrom([publishedResult()])).ask({
       tenantId,
       companyId,
@@ -55,13 +55,8 @@ describe("Ask AutomateX production wiring", () => {
       context: { decisionCardId: "opportunity:opportunity-1" },
     });
 
-    expect(response.supportingEvidence.map((item) => item.label)).toEqual([
-      "process-map-1",
-      "analysis-1",
-      "automation-snapshot-1",
-      "roi-1",
-      "recommendation-portfolio-1",
-    ]);
+    expect(response.supportingEvidence.map((item) => item.label)).toEqual(["evidence-1"]);
+    expect(response.supportingEvidence.map((item) => item.sourceId)).not.toContain("analysis-1");
   });
 
   it("reloads the latest authoritative state for each top-level turn", async () => {

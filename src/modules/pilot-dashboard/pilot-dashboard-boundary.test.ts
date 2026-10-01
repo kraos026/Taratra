@@ -13,6 +13,14 @@ describe("real pilot dashboard", () => {
     );
     expect(dashboard).toContain("/automation-audit");
     expect(dashboard).toContain("advancedAudits");
+    expect(dashboard).not.toContain("/api/audits");
+    expect(dashboard).toContain("État non vérifié");
+    const companies = readFileSync(
+      join(process.cwd(), "src/modules/companies/presentation/companies-list.tsx"),
+      "utf8",
+    );
+    expect(companies).not.toContain('value="Preuves publiées"');
+    expect(companies).toContain("customerEvidencePublicationLabel(company.audit)");
     expect(loader).toContain("AssistedAuditService");
     expect(dashboard).not.toMatch(/Nova Conseil|Clinique Lumi|47|186 h|progress:\s*68/);
   });

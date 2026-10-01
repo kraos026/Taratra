@@ -165,17 +165,79 @@ export class ExecutiveExplanationIntegrityValidator {
     view: ExecutiveDecisionView,
     content: ExecutiveExplanationDraft,
   ): ExecutiveExplanationValidationResult {
+    // The deterministic templates preserve the canonical action, controls and
+    // uncertainty by construction. Source wording must not trigger a heuristic
+    // rejection merely because it mentions a forbidden action or a system name.
+    if (
+      ["en", "fr"].some(
+        (language) =>
+          JSON.stringify(content) ===
+          JSON.stringify(
+            deterministicFallback(card, view, language as ExecutiveExplanationLanguage),
+          ),
+      )
+    )
+      return Object.freeze({ valid: true, issues: Object.freeze([]) });
     const issues: string[] = [];
+    if (![card.nextBestAction, card.whatToDoNow].includes(content.recommendedNextStep))
+      issues.push("canonical next action changed");
+    if (content.whatNotToDo !== card.whatNotToDo)
+      issues.push("canonical control removed or changed");
+    if (
+      [...card.uncertainty, ...view.contradictions].some(
+        (item) => !content.whatIsUncertain.includes(item),
+      )
+    )
+      issues.push("material uncertainty or contradiction omitted");
+    // Keyword checks cannot verify arbitrary factual prose. A provider can
+    // select canonical statements/templates, not introduce unsupported facts.
+    const allowed = canonicalStatements(card, view);
+    if (draftStatements(content).some((statement) => !allowed.has(statement)))
+      issues.push("statement not grounded in canonical card");
     const text = textOf(content);
     if (reversesDecision(card.recommendationState, text)) issues.push("decision reversal");
     if (reversesEconomics(card.economicState, text)) issues.push("economic-state reversal");
     if (removesUncertainty(card, view, text)) issues.push("removed uncertainty");
     if (hidesContradiction(view, card, text)) issues.push("hidden contradiction");
-    if (hasInventedNumbers(view, text)) issues.push("invented financial or numeric value");
+    if (hasInventedNumbers(card, view, text)) issues.push("invented financial or numeric value");
     if (hasUnsupportedCertainty(card, view, text)) issues.push("unsupported certainty");
     if (hasInventedSource(view, text)) issues.push("invented source");
     return Object.freeze({ valid: issues.length === 0, issues: Object.freeze(issues) });
   }
+}
+
+function draftStatements(content: ExecutiveExplanationDraft): string[] {
+  return [
+    content.headline,
+    content.executiveSummary,
+    content.whyThisMatters,
+    content.whyAutomateXThinksThis,
+    ...content.whatWeKnow,
+    ...content.whatIsUncertain,
+    content.whatNotToDo,
+    content.recommendedNextStep,
+    content.economicExplanation,
+    content.whatWouldChangeThisDecision,
+  ].filter((item): item is string => typeof item === "string" && Boolean(item.trim()));
+}
+
+function canonicalStatements(
+  card: ExecutivePriorityCard,
+  view: ExecutiveDecisionView,
+): Set<string> {
+  return new Set([
+    card.title,
+    card.problem,
+    card.probableCause,
+    card.whyItMatters,
+    card.whatToDoNow,
+    card.whatNotToDo ?? "",
+    card.nextBestAction,
+    ...card.uncertainty,
+    ...view.contradictions,
+    ...draftStatements(deterministicFallback(card, view, "en")),
+    ...draftStatements(deterministicFallback(card, view, "fr")),
+  ]);
 }
 
 function boundedInput(
@@ -243,7 +305,11 @@ function deterministicFallback(
       executiveSummary: `${card.problem} ${card.whatToDoNow}`,
       whyThisMatters: card.whyItMatters,
       whyAutomateXThinksThis: `AutomateX s'appuie sur ${card.evidenceStrength.toLowerCase()} preuve(s) et conserve les contradictions visibles.`,
-      whatWeKnow: view.whatWeKnow,
+      whatWeKnow: Object.freeze(
+        card.explanation.supportingSources.map(
+          (source) => `Source liée à cette décision : ${source}`,
+        ),
+      ),
       whatIsUncertain: Object.freeze([...card.uncertainty, ...view.contradictions]),
       whatNotToDo: card.whatNotToDo,
       recommendedNextStep: card.nextBestAction,
@@ -354,7 +420,7 @@ function textOf(content: ExecutiveExplanationDraft): string {
 
 function reversesDecision(state: ExecutiveDecisionState, text: string): boolean {
   const automateNow =
-    /\b(automate immediately|automate now|approve automation immediately|fully automate)\b/i.test(
+    /\b(automate immediately|automate now|approve automation immediately|fully automate|automatise[rz] immédiatement|automatise[rz] maintenant|tout automatiser|sans contrôle humain|sans validation humaine)\b/i.test(
       text,
     );
   if ((state === "DO_NOT_AUTOMATE" || state === "HUMAN_DECISION_REQUIRED") && automateNow)
@@ -367,10 +433,13 @@ function reversesDecision(state: ExecutiveDecisionState, text: string): boolean 
 function reversesEconomics(state: ExecutiveEconomicState, text: string): boolean {
   if (
     (state === "NOT_JUSTIFIED" || state === "INSUFFICIENT_EVIDENCE") &&
-    /\beconomically justified\b/i.test(text)
+    /economically justified|justifié économiquement|rentabilité démontrée/i.test(text)
   )
     return true;
-  if (state === "ECONOMICALLY_JUSTIFIED" && /\bnot economically justified\b/i.test(text))
+  if (
+    state === "ECONOMICALLY_JUSTIFIED" &&
+    /not economically justified|non justifié économiquement/i.test(text)
+  )
     return true;
   return false;
 }
@@ -383,7 +452,7 @@ function removesUncertainty(
   const uncertainty = [...card.uncertainty, ...view.whatWeDoNotKnow];
   if (!uncertainty.length) return false;
   const uncertaintyLanguage =
-    /\b(unknown|uncertain|missing|not know|clarify|more evidence|remains uncertain|needs evidence)\b/i.test(
+    /\b(unknown|uncertain|missing|not know|clarify|more evidence|remains uncertain|needs evidence|inconnu|inconnues|incertain|incertitude|manquant|manquantes|vérifier|preuves supplémentaires)\b/i.test(
       text,
     );
   return !uncertaintyLanguage;
@@ -402,26 +471,20 @@ function hidesContradiction(
   );
 }
 
-function hasInventedNumbers(view: ExecutiveDecisionView, text: string): boolean {
-  const textWithoutIds = text.replace(/\b[a-z][a-z0-9_-]*[-:]\d+(?:\.\d+)?\b/gi, "");
-  const allowed = new Set(
-    [
-      ...numberValues(view.economicPresentation.benefitRange.min),
-      ...numberValues(view.economicPresentation.benefitRange.max),
-      ...numberValues(view.economicPresentation.costRange.min),
-      ...numberValues(view.economicPresentation.costRange.max),
-      ...numberValues(view.economicPresentation.breakEvenMonths),
-      ...numberValues(view.economicPresentation.timeToValueMonths),
-      ...numberValues(view.economicPresentation.costOfInaction),
-    ].map((item) => item.toLowerCase()),
-  );
-  const matches = textWithoutIds.match(/\b\d+(?:[.,]\d+)?\s*(?:%|x|months?|mois|eur|€)?\b/gi) ?? [];
-  return matches.some((match) => !allowed.has(match.trim().toLowerCase()));
-}
-
-function numberValues(value: number | null): readonly string[] {
-  if (value === null) return [];
-  return [String(value), `${value} eur`, `${value} €`, `${value} months`, `${value} mois`];
+function hasInventedNumbers(
+  card: ExecutivePriorityCard,
+  view: ExecutiveDecisionView,
+  text: string,
+): boolean {
+  const stripIds = (value: string) =>
+    value
+      .replace(/\b[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}\b/gi, "")
+      .replace(/\b[a-z][a-z0-9_-]*[-:]\d+(?:\.\d+)?\b/gi, "");
+  const numbers = (value: string) => stripIds(value).match(/\b\d+(?:[.,]\d+)?\b/g) ?? [];
+  // Only numbers in this card's bounded input are admissible, never another
+  // opportunity's global benefit/payback. No financial values are sent otherwise.
+  const allowed = new Set(numbers([...canonicalStatements(card, view)].join(" ")));
+  return numbers(text).some((match) => !allowed.has(match));
 }
 
 function hasUnsupportedCertainty(
@@ -430,7 +493,9 @@ function hasUnsupportedCertainty(
   text: string,
 ): boolean {
   if (![...card.uncertainty, ...view.whatWeDoNotKnow].length) return false;
-  return /\b(definitely|certainly|confirmed|proves|is definitely|without doubt)\b/i.test(text);
+  return /\b(definitely|certainly|confirmed|proves|is definitely|without doubt|certainement|garanti|garantie|prouve|sans aucun doute)\b/i.test(
+    text,
+  );
 }
 
 function hasInventedSource(view: ExecutiveDecisionView, text: string): boolean {
@@ -446,8 +511,12 @@ function hasInventedSource(view: ExecutiveDecisionView, text: string): boolean {
     ].map((item) => item.toLowerCase()),
   );
   const sourceWords =
-    text.match(/\b(?:crm|salesforce|hubspot|shopify|gmail|slack|quickbooks|stripe)\b/gi) ?? [];
-  return sourceWords.some((source) => !known.has(source.toLowerCase()));
+    text.match(/\b(?:crm|salesforce|hubspot|shopify|gmail|slack|quickbooks|stripe|oracle)\b/gi) ??
+    [];
+  const claimedSources = [
+    ...text.matchAll(/(?:rapport|étude|report|study)\s+(?:de\s+|from\s+)?([\p{L}\w-]+)/giu),
+  ].map((match) => match[1]!);
+  return [...sourceWords, ...claimedSources].some((source) => !known.has(source.toLowerCase()));
 }
 
 function nonEmpty(value: unknown, fallback: string): string {

@@ -70,6 +70,14 @@ const input = (): AutomationInput => ({
 });
 describe("AutomationOpportunityEngine", () => {
   const engine = new AutomationOpportunityEngine();
+  it("does not report full coverage when an affected process has unmatched findings", () => {
+    const value = input();
+    value.findings.push({ ...value.findings[0]!, id: "other", code: "missing_kpi" });
+    value.scoreDefinitions.find(
+      (definition) => definition.code === "automation_coverage",
+    )!.version = 2;
+    expect(engine.detect(value).opportunities[0]?.automationCoverage).toBe(50);
+  });
   it("detects a deterministic, fully traced opportunity", () => {
     const result = engine.detect(input());
     expect(result.opportunities).toHaveLength(1);

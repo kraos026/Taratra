@@ -16,9 +16,15 @@ import {
 import { Button } from "@/components/ui/button";
 import type { CompanyPage, CompanyPermissions } from "../domain/company";
 import type { CompanyView } from "./company-view";
+import type { AssistedAuditReadModel } from "@/modules/assisted-audit/application/assisted-audit-model";
+import {
+  currentJourneyLabel,
+  customerEvidencePublicationLabel,
+  customerStatusLabel,
+} from "@/modules/assisted-audit/presentation/canonical-journey";
 
 type ViewPage = Omit<CompanyPage, "items"> & {
-  items: readonly CompanyView[];
+  items: readonly (CompanyView & { audit?: AssistedAuditReadModel })[];
   permissions: CompanyPermissions;
 };
 
@@ -27,7 +33,26 @@ async function fetchCompanies(queryString: string): Promise<ViewPage> {
   const response = await fetch(`/api/companies${suffix}`, { cache: "no-store" });
   if (!response.ok) throw new Error("Impossible de charger votre entreprise.");
   const payload = (await response.json()) as { data: ViewPage };
-  return payload.data;
+  const items = await Promise.all(
+    payload.data.items.map(async (company) => {
+      try {
+        const response = await fetch(`/api/companies/${company.id}/automation-audit`, {
+          cache: "no-store",
+        });
+        const auditPayload = (await response.json()) as { data?: AssistedAuditReadModel };
+        return {
+          ...company,
+          audit:
+            response.ok && auditPayload.data?.company.id === company.id
+              ? auditPayload.data
+              : undefined,
+        };
+      } catch {
+        return { ...company, audit: undefined };
+      }
+    }),
+  );
+  return { ...payload.data, items };
 }
 
 function safePilotQuery(searchParams: URLSearchParams): string {
@@ -260,12 +285,16 @@ export function CompaniesList() {
                     <PilotMetric
                       icon={<CircleGauge size={18} />}
                       label="Audit"
-                      value="Prêt à poursuivre"
+                      value={
+                        company.audit
+                          ? `${currentJourneyLabel(company.audit)} · ${customerStatusLabel(company.audit.overallStatus)}`
+                          : "État non vérifié"
+                      }
                     />
                     <PilotMetric
                       icon={<Building2 size={18} />}
                       label="Données"
-                      value="Preuves publiées"
+                      value={customerEvidencePublicationLabel(company.audit)}
                     />
                   </div>
                 </article>

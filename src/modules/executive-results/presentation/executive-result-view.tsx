@@ -1,5 +1,11 @@
 import Link from "next/link";
-import { customerDecisionText } from "@/modules/company-intake/presentation/customer-decision-copy";
+import {
+  customerDecisionText,
+  customerDecisionCenter,
+  readableDecisionState,
+} from "@/modules/company-intake/presentation/customer-decision-copy";
+import { ProductionExecutiveDecisionViewBuilder } from "@/modules/company-intake/application/production-executive-decision-view";
+import { PatronDecisionCenterPresenter } from "@/modules/company-intake/application/patron-decision-center";
 import type { ReactNode } from "react";
 import {
   AlertTriangle,
@@ -15,7 +21,11 @@ import type { ExecutiveAuditResult } from "../application/executive-result-model
 
 export function ExecutiveResultView({ result }: { readonly result: ExecutiveAuditResult }) {
   const hub = `/companies/${result.company.id}/automation-audit`;
-  if (!result.complete)
+  const projection = new ProductionExecutiveDecisionViewBuilder().build({
+    tenantId: result.organizationId ?? "",
+    result,
+  }).view;
+  if (!projection)
     return (
       <main className="min-h-screen bg-slate-950 px-4 py-10 text-slate-50">
         <section className="mx-auto max-w-4xl rounded-[2rem] border border-amber-400/30 bg-amber-500/10 p-8">
@@ -32,6 +42,15 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
       </main>
     );
 
+  const center = customerDecisionCenter(PatronDecisionCenterPresenter.build(projection));
+  const cards = center.priorityCards;
+  const opportunityCard = (id: string) =>
+    cards.find((card) => card.sourceCardId === `opportunity:${id}`);
+  const recommendationCard = (id: string, title: string) =>
+    cards.find((card) => card.sourceCardId === `recommendation:${id}`) ??
+    (result.opportunities.filter((item) => item.title === title).length === 1
+      ? opportunityCard(result.opportunities.find((item) => item.title === title)!.id)
+      : undefined);
   return (
     <main className="result-experience min-h-screen bg-slate-950 px-4 py-8 text-slate-50 sm:px-6">
       <div className="mx-auto max-w-7xl space-y-7">
@@ -49,7 +68,7 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
                 Synthèse finale pour {brandText(result.company.name)}, fondée uniquement sur les
-                preuves, le ROI et le plan d’action validés.
+                éléments publiés. Les conditions et validations humaines restent applicables.
               </p>
             </div>
             <Link
@@ -64,9 +83,9 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
         <section className="grid gap-4 md:grid-cols-3">
           <HeroCard
             icon={<CheckCircle2 />}
-            label="Actions prioritaires"
-            value={String(result.recommendations.slice(0, 3).length)}
-            text="Top décisions à lire en premier"
+            label="Opportunités qualifiées"
+            value={String(center.overview.automationReadyCount)}
+            text="Même état canonique que le centre de décision"
           />
           <HeroCard
             icon={<CircleDollarSign />}
@@ -84,11 +103,11 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
 
         <section className="grid gap-6 xl:grid-cols-[1.4fr_0.8fr]">
           <div className="space-y-6">
-            <Panel title="Top 3 décisions">
+            <Panel title="Décisions prioritaires">
               <div className="grid gap-4 lg:grid-cols-3">
-                {result.recommendations.slice(0, 3).map((item, index) => (
+                {cards.slice(0, 3).map((item, index) => (
                   <article
-                    key={item.id}
+                    key={item.sourceCardId}
                     className="rounded-3xl border border-white/10 bg-slate-950/70 p-4"
                   >
                     <p className="text-xs font-bold tracking-[0.18em] text-blue-300 uppercase">
@@ -96,13 +115,11 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                     </p>
                     <h3 className="mt-2 text-lg font-bold">{brandText(item.title)}</h3>
                     <p className="mt-3 text-sm font-semibold text-blue-100">
-                      {brandText(item.action)}
+                      {readableDecisionState(item.decisionState)}
                     </p>
-                    <p className="mt-2 text-sm leading-6 text-slate-300">
-                      {brandText(item.description)}
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-300">{item.whatToDoNow}</p>
                     <p className="mt-3 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">
-                      Phase : {phaseLabel(item.phase)}
+                      {item.whatNotToDo ?? "Examiner les preuves avant de valider la conception."}
                     </p>
                   </article>
                 ))}
@@ -138,6 +155,14 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                   >
                     <h3 className="font-bold">{brandText(item.title)}</h3>
                     <p className="mt-2 text-sm text-slate-300">{brandText(item.problem)}</p>
+                    <p className="mt-3 text-sm font-semibold text-amber-100">
+                      {readableDecisionState(
+                        opportunityCard(item.id)?.decisionState ?? "NEEDS_MORE_EVIDENCE",
+                      )}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-300">
+                      {opportunityCard(item.id)?.whatToDoNow}
+                    </p>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                       <State label="Maturité" value={`${item.readiness}%`} />
                       <State label="Confiance" value={`${item.confidence}%`} />
@@ -167,6 +192,16 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-blue-100">{brandText(item.action)}</p>
+                    <p className="mt-2 text-sm font-semibold text-amber-100">
+                      {readableDecisionState(
+                        recommendationCard(item.id, item.title)?.decisionState ??
+                          "NEEDS_MORE_EVIDENCE",
+                      )}
+                    </p>
+                    <p className="mt-2 text-sm text-slate-300">
+                      {recommendationCard(item.id, item.title)?.whatNotToDo ??
+                        "La proposition doit être reliée à ses preuves avant validation."}
+                    </p>
                     <p className="mt-1 text-sm leading-6 text-slate-300">
                       {brandText(item.description)}
                     </p>
@@ -180,7 +215,9 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
             <Panel title="Impact attendu">
               <p className="mb-4 text-sm text-slate-300">
                 Estimations publiées en {result.roi?.currency ?? "devise non disponible"}; ce ne
-                sont pas des gains garantis.
+                sont pas des gains garantis. Des hypothèses peuvent être communes à plusieurs
+                opportunités : ces montants ne doivent pas être additionnés sans vérifier les
+                recouvrements.
               </p>
               <div className="space-y-3">
                 {result.roi?.evaluations.map((item) => (
