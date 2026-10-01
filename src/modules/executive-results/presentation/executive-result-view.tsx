@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { customerDecisionText } from "@/modules/company-intake/presentation/customer-decision-copy";
 import type { ReactNode } from "react";
 import {
   AlertTriangle,
@@ -91,7 +92,7 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                     className="rounded-3xl border border-white/10 bg-slate-950/70 p-4"
                   >
                     <p className="text-xs font-bold tracking-[0.18em] text-blue-300 uppercase">
-                      #{index + 1} · {item.priority}
+                      #{index + 1} · {priorityLabel(item.priority)}
                     </p>
                     <h3 className="mt-2 text-lg font-bold">{brandText(item.title)}</h3>
                     <p className="mt-3 text-sm font-semibold text-blue-100">
@@ -101,7 +102,7 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                       {brandText(item.description)}
                     </p>
                     <p className="mt-3 rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">
-                      Phase : {item.phase}
+                      Phase : {phaseLabel(item.phase)}
                     </p>
                   </article>
                 ))}
@@ -118,7 +119,7 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                     <h3 className="font-bold">{brandText(item.title)}</h3>
                     <p className="mt-2 text-sm text-slate-300">{brandText(item.impact)}</p>
                     <p className="mt-3 rounded-full bg-amber-500/10 px-3 py-1 text-xs text-amber-100">
-                      Sévérité : {item.severity}
+                      Sévérité : {priorityLabel(item.severity)}
                     </p>
                   </article>
                 ))}
@@ -159,10 +160,10 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                     <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-bold">{brandText(item.title)}</h3>
                       <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs text-blue-100">
-                        {item.priority}
+                        {priorityLabel(item.priority)}
                       </span>
                       <span className="rounded-full bg-white/5 px-3 py-1 text-xs text-slate-300">
-                        {item.phase}
+                        {phaseLabel(item.phase)}
                       </span>
                     </div>
                     <p className="mt-2 text-sm text-blue-100">{brandText(item.action)}</p>
@@ -195,12 +196,16 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                         suffix={result.roi!.currency}
                       />
                       <Metric
-                        label="ROI"
+                        label="Retour sur investissement"
                         value={item.roi}
                         special={item.roiSpecialValue}
                         suffix="%"
                       />
-                      <Metric label="Retour" value={item.payback} suffix="mois" />
+                      <Metric
+                        label="Délai estimé de rentabilité"
+                        value={item.payback}
+                        suffix="mois"
+                      />
                     </dl>
                   </article>
                 )) ?? <EmptyState text="ROI non disponible. Aucune valeur n’est inventée." />}
@@ -344,7 +349,9 @@ function Metric({
       label={label}
       value={
         special ??
-        (value === null ? "Données complémentaires requises" : `${value.toFixed(2)} ${suffix}`)
+        (value === null
+          ? "Données complémentaires requises"
+          : `${value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} ${suffix}`)
       }
     />
   );
@@ -359,5 +366,20 @@ function EmptyState({ text }: { readonly text: string }) {
 }
 
 function brandText(value: string): string {
-  return value.replaceAll("AutomateX", "Optivos").replaceAll("AUTOMATEX", "OPTIVOS");
+  return customerDecisionText(value);
+}
+
+function priorityLabel(value: string): string {
+  return (
+    (
+      { critical: "Critique", high: "Haute", medium: "Moyenne", low: "Basse" } as Record<
+        string,
+        string
+      >
+    )[value.toLowerCase()] ?? customerDecisionText(value)
+  );
+}
+
+function phaseLabel(value: string): string {
+  return customerDecisionText(value).replace(/^phase_(\d+)$/i, "$1");
 }

@@ -1659,6 +1659,65 @@ footer {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+.decision-experience {
+  background: transparent;
+}
+.decision-experience .decision-card {
+  padding: 24px;
+  border-radius: 20px;
+  background: #1a2130;
+  border-color: #354057;
+}
+.decision-card-heading {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr);
+  gap: 14px;
+}
+.decision-card-heading > div:last-child {
+  grid-column: 2;
+}
+.decision-card-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  background: #818cf81a;
+  color: #c2ccff;
+  border: 1px solid #818cf833;
+}
+.decision-action-block {
+  margin-top: 20px;
+  padding: 18px;
+  background: #111824;
+  border: 1px solid #39445a;
+  border-radius: 14px;
+}
+.decision-action-number {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+  background: #6366f126;
+  color: #c2ccff;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+.decision-experience .decision-card p,
+.decision-experience .decision-card li,
+.decision-experience .decision-card dd {
+  overflow-wrap: anywhere;
+}
+@media (max-width: 600px) {
+  .decision-experience .decision-card {
+    padding: 16px;
+  }
+  .decision-card-heading > div:last-child {
+    grid-column: 1 / -1;
+  }
+}
 @media (prefers-reduced-motion: reduce) {
   .app-shell *,
   .workspace-shell * {

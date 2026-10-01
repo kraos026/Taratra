@@ -27,6 +27,7 @@ export default async function DecisionCenterPage({
       new PatronDecisionCenterService(new PrismaPatronDecisionCenterReadModel(db)).get({
         userId,
         companyId: id,
+        language: "fr",
       }),
     DOWNSTREAM_READ_TRANSACTION_OPTIONS,
   ).catch((error: unknown) => {

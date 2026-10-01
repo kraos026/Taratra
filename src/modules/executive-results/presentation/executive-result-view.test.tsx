@@ -19,7 +19,9 @@ describe("Executive Result", () => {
       html.indexOf("Second canonical opportunity"),
     );
     expect(html).toContain("Published recommendation");
-    expect(html).toContain("1200.00 EUR");
+    expect(html).toContain(`${(1200).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} EUR`);
+    expect(html).toContain("Retour sur investissement");
+    expect(html).toContain("Délai estimé de rentabilité");
     expect(html).toContain("/process-maps/process-map");
     expect(html).toContain("/roi/roi");
     expect(html).toContain("/recommendations/recommendations");

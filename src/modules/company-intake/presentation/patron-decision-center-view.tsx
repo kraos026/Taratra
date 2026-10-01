@@ -6,15 +6,22 @@ import type {
   PatronDecisionCenterEconomics,
 } from "../application/patron-decision-center";
 import { AskAutomateXPanel } from "./ask-automatex-panel";
+import { AlertTriangle, ArrowRight, FileCheck2, ShieldCheck } from "lucide-react";
+import { customerDecisionCenter } from "./customer-decision-copy";
 
-export function PatronDecisionCenterView({ center }: { readonly center: PatronDecisionCenter }) {
+export function PatronDecisionCenterView({
+  center: source,
+}: {
+  readonly center: PatronDecisionCenter;
+}) {
+  const center = customerDecisionCenter(source);
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-8 text-slate-50">
+    <main className="decision-experience min-h-screen bg-slate-950 px-4 py-6 text-slate-50 sm:px-6">
       <div className="mx-auto flex max-w-7xl flex-col gap-6">
         <header className="rounded-[2rem] border border-white/10 bg-gradient-to-br from-slate-900 via-slate-900 to-blue-950/70 p-6 shadow-2xl shadow-blue-950/20 sm:p-8">
           <Badge className="w-fit bg-blue-500/15 text-blue-200">Centre de décision Optivos</Badge>
           <h1 className="mt-3 font-['Manrope'] text-2xl font-extrabold tracking-tight sm:text-3xl">
-            Centre de décision exécutif
+            Ce que votre audit vous recommande
           </h1>
           <p className="max-w-3xl text-sm text-slate-300">
             Une vue fondée sur les preuves pour décider quoi automatiser en premier, quoi corriger,
@@ -31,6 +38,16 @@ export function PatronDecisionCenterView({ center }: { readonly center: PatronDe
               title="Priorités"
               items={center.topProblems}
               empty="Aucun problème prioritaire n’est encore disponible."
+            />
+            <DecisionSection
+              title="À éclaircir avant de décider"
+              description="Complétez les preuves, vérifiez les incertitudes ou réexaminez la rentabilité avant toute décision."
+              cards={center.priorityCards.filter((card) =>
+                ["NEEDS_MORE_EVIDENCE", "INVESTIGATE_FIRST", "NOT_ECONOMICALLY_JUSTIFIED"].includes(
+                  card.decisionState,
+                ),
+              )}
+              empty="Aucune décision supplémentaire en attente de clarification."
             />
             <DecisionSection
               title="À corriger avant automatisation"
@@ -188,18 +205,28 @@ function DecisionSection({
 }
 
 function DecisionCard({ card }: { readonly card: PatronDecisionCard }) {
+  const summary = card.executiveSummary.endsWith(card.whatToDoNow)
+    ? card.executiveSummary.slice(0, -card.whatToDoNow.length).trim()
+    : card.executiveSummary;
+  const steps = [...new Set(card.whatToDoNow.split(/(?<=\.)\s+/).filter(Boolean))];
+  const Icon = ["AUTOMATE_NOW", "AUTOMATE_CONDITIONALLY"].includes(card.decisionState)
+    ? ShieldCheck
+    : AlertTriangle;
   return (
-    <article className="rounded-xl border border-slate-800 bg-slate-950/60 p-4">
-      <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-        <div>
+    <article className="decision-card rounded-xl border border-slate-800 bg-slate-950/60 p-4">
+      <div className="decision-card-heading">
+        <span className="decision-card-icon">
+          <Icon size={22} aria-hidden />
+        </span>
+        <div className="min-w-0">
           <h3 className="text-lg font-semibold">{brandText(card.title)}</h3>
-          <p className="mt-1 text-sm text-slate-300">{brandText(card.executiveSummary)}</p>
+          <p className="mt-2 text-sm leading-6 text-slate-300">{brandText(summary)}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Badge className={decisionBadgeClass(card.decisionState)}>
             {readableDecisionState(card.decisionState)}
           </Badge>
-          <Badge className="bg-slate-800 text-slate-100">{card.priority}</Badge>
+          <Badge className="bg-slate-800 text-slate-100">{readablePriority(card.priority)}</Badge>
           <Badge className="bg-blue-500/15 text-blue-200">
             Preuves : {readableEvidenceStrength(card.evidenceStrength)}
           </Badge>
@@ -208,31 +235,39 @@ function DecisionCard({ card }: { readonly card: PatronDecisionCard }) {
           </Badge>
         </div>
       </div>
-      <div className="mt-4 grid gap-2 text-sm md:grid-cols-3">
-        <StatePill label="Impact" value={brandText(card.businessImpact)} />
-        <StatePill
-          label="Risque / contrôle"
-          value={brandText(card.whatNotToDo ?? "Aucun blocage publié")}
-        />
-        <StatePill label="Prochaine action" value={brandText(card.whatToDoNow)} />
+      <div className="decision-action-block">
+        <h4 className="flex items-center gap-2 text-sm font-semibold">
+          <ArrowRight size={16} aria-hidden /> Ce que vous pouvez faire maintenant
+        </h4>
+        <ol className="mt-3 space-y-3">
+          {steps.map((step, index) => (
+            <li className="flex items-start gap-3 text-sm leading-6" key={step}>
+              <span className="decision-action-number">{index + 1}</span>
+              <span>{step}</span>
+            </li>
+          ))}
+        </ol>
       </div>
-      <dl className="mt-4 grid gap-3 md:grid-cols-2">
-        <Info label="Pourquoi" value={card.businessImpact} />
-        <Info label="Action recommandée" value={brandText(card.whatToDoNow)} />
-        <Info label="Cause probable" value={brandText(card.probableCause)} />
-        <Info label="ROI & preuves" value={readableRoiState(card.economicState)} />
-      </dl>
       {card.whatNotToDo ? (
         <p className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-100">
-          Ne pas faire : {brandText(card.whatNotToDo)}
+          À éviter : {brandText(card.whatNotToDo)}
         </p>
       ) : null}
       <details className="mt-4 rounded-lg border border-slate-800 bg-slate-900/80 p-3">
         <summary className="cursor-pointer font-semibold text-blue-200">Pourquoi ?</summary>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+          <Info label="Impact et contexte" value={card.businessImpact} />
+          <Info label="Cause probable" value={card.probableCause} />
+        </dl>
         <div className="mt-3 grid gap-3 text-sm text-slate-300 md:grid-cols-2">
           <ListBlock title="Preuves utilisées" items={card.evidenceReferences} />
           <ListBlock title="Incertitudes et contradictions" items={card.uncertainty} />
         </div>
+        <p className="mt-3 flex items-start gap-2 text-xs leading-5 text-slate-400">
+          <FileCheck2 size={16} className="shrink-0" aria-hidden /> Une référence de traçabilité ne
+          prouve pas, à elle seule, qu’une automatisation est sûre. La qualité des preuves et les
+          conditions ci-dessus restent déterminantes.
+        </p>
       </details>
     </article>
   );
@@ -387,15 +422,6 @@ function Info({ label, value }: { readonly label: string; readonly value: string
   );
 }
 
-function StatePill({ label, value }: { readonly label: string; readonly value: string }) {
-  return (
-    <div className="rounded-lg border border-slate-800 bg-slate-900/70 p-3">
-      <p className="text-xs tracking-wide text-slate-400 uppercase">{label}</p>
-      <p className="mt-1 text-slate-100">{value}</p>
-    </div>
-  );
-}
-
 function ListBlock({
   title,
   items,
@@ -444,6 +470,8 @@ function readableDecisionState(state: string): string {
     FIX_BEFORE_AUTOMATING: "Corriger avant d’automatiser",
     INVESTIGATE_FIRST: "Investiguer d’abord",
     HUMAN_DECISION_REQUIRED: "Validation humaine requise",
+    NOT_ECONOMICALLY_JUSTIFIED: "Rentabilité non démontrée",
+    READY: "Analyse publiée",
   };
   if (labels[state]) return labels[state];
   return state
@@ -465,8 +493,11 @@ function readableRoiState(state: string): string {
     STRATEGIC_NON_QUANTIFIED: "Stratégique non quantifié",
     ECONOMICALLY_JUSTIFIED: "Justifié économiquement",
     NOT_YET_AVAILABLE: "Non disponible",
+    POTENTIALLY_JUSTIFIED: "Potentiellement rentable, à confirmer",
+    NOT_JUSTIFIED: "Non justifié économiquement",
+    CURRENCY_NORMALIZATION_REQUIRED: "Devises à harmoniser avant comparaison",
   };
-  return labels[state] ?? readableEconomicState(state);
+  return labels[state] ?? "État économique à préciser";
 }
 
 function readableEvidenceStrength(strength: string): string {
@@ -474,6 +505,8 @@ function readableEvidenceStrength(strength: string): string {
     STRONG: "fortes",
     MODERATE: "moyennes",
     WEAK: "faibles",
+    LIMITED: "limitées",
+    INSUFFICIENT: "insuffisantes",
   };
   return labels[strength] ?? strength.toLowerCase();
 }
@@ -485,7 +518,32 @@ function readableUncertainty(value: string): string {
 }
 
 function readableActionCategory(category: string): string {
-  return readableDecisionState(category);
+  const labels: Record<string, string> = {
+    PROVIDE_EVIDENCE: "Compléter les preuves",
+    ASK_PERSON: "Interroger une personne responsable",
+    UPLOAD_DOCUMENT: "Fournir un document",
+    IMPORT_SYSTEM_DATA: "Importer les données du système",
+    FIX_DATA: "Corriger les données",
+    STANDARDIZE_PROCESS: "Clarifier le processus",
+    CLARIFY_CONTROL: "Préciser le contrôle humain",
+    APPROVE_AUTOMATION_DESIGN: "Examiner la conception proposée",
+    DEFER: "Reporter la décision",
+    DO_NOTHING: "Aucune action requise",
+  };
+  return labels[category] ?? "Action à préciser";
+}
+
+function readablePriority(priority: string): string {
+  return (
+    (
+      {
+        CRITICAL: "Priorité critique",
+        HIGH: "Priorité haute",
+        MEDIUM: "Priorité moyenne",
+        LOW: "Priorité basse",
+      } as Record<string, string>
+    )[priority] ?? "Priorité à préciser"
+  );
 }
 
 function decisionBadgeClass(state: string): string {

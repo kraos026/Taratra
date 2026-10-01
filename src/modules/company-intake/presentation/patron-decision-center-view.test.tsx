@@ -74,9 +74,74 @@ describe("PatronDecisionCenterView", () => {
     );
 
     expect(html).toContain("Pilot Company");
-    expect(html).toContain("Invoice approval delay");
-    expect(html).toContain("Manual invoice reconciliation");
+    expect(html).toContain("Retard de validation des factures");
+    expect(html).toContain("Rapprochement manuel des factures");
     expect(html).not.toContain("decision center is not available yet");
+  });
+
+  it("shows French decisions, readable references and distinct connection checks without raw scores or UUIDs", () => {
+    const view = northstarView();
+    const first = view.priorityCards[0]!;
+    const connectionA = "46590391-d162-4625-bf64-76f0752f40ca";
+    const connectionB = "e02a807a-e66b-433d-acdd-f02d110de93e";
+    const card = {
+      ...first,
+      title: "Automate invoice processing",
+      businessImpact: "Business impact 50; readiness 72.19; confidence 100.",
+      whatToDoNow: `Rendre disponible le connecteur ${connectionA} avant mise en œuvre. Vérifier la connexion et les droits du connecteur ${connectionB}.`,
+      executiveSummary: "Data depends on spreadsheets.",
+      priority: "MEDIUM" as const,
+      evidenceStrength: "LIMITED" as const,
+      evidenceReferences: [connectionA, connectionB],
+    };
+    const source = PatronDecisionCenterPresenter.build({ ...view, priorityCards: [card] });
+    const before = JSON.stringify(source);
+    const html = renderToStaticMarkup(<PatronDecisionCenterView center={source} />);
+    expect(html).toContain("Automatiser le traitement des factures");
+    expect(html).toContain("Les données dépendent de tableaux de calcul.");
+    expect(html).toContain("Priorité moyenne");
+    expect(html).toContain("Preuves : limitées");
+    expect(html).toContain("connexion 1 (nom non renseigné)");
+    expect(html).toContain("connexion 2 (nom non renseigné)");
+    expect(html).toContain("Vérifier la connexion et les droits");
+    expect(html).toContain("contenu non détaillé");
+    expect(html).toContain("Ne pas automatiser avant d’avoir corrigé");
+    expect(html).not.toContain(connectionA);
+    expect(html).not.toContain(connectionB);
+    expect(html).not.toContain("Business impact");
+    expect(html).not.toContain("readiness");
+    expect(html).not.toContain("Do not automate");
+    expect(JSON.stringify(source)).toBe(before);
+  });
+
+  it.each(["NOT_JUSTIFIED", "POTENTIALLY_JUSTIFIED", "CURRENCY_NORMALIZATION_REQUIRED"] as const)(
+    "renders %s without recursive formatting or an English enum",
+    (economicState) => {
+      const view = northstarView();
+      const source = PatronDecisionCenterPresenter.build({
+        ...view,
+        economicReadiness: economicState,
+        economicPresentation: { ...view.economicPresentation, state: economicState },
+        priorityCards: [{ ...view.priorityCards[0]!, economicState }],
+      });
+      const html = renderToStaticMarkup(<PatronDecisionCenterView center={source} />);
+      expect(html).not.toContain(economicState);
+      expect(html).toContain("Corriger avant d’automatiser");
+    },
+  );
+
+  it("keeps missing-evidence and non-profitable decisions visible without promoting them", () => {
+    const view = northstarView();
+    for (const state of ["NEEDS_MORE_EVIDENCE", "NOT_ECONOMICALLY_JUSTIFIED"] as const) {
+      const source = PatronDecisionCenterPresenter.build({
+        ...view,
+        priorityCards: [{ ...view.priorityCards[0]!, recommendationState: state }],
+      });
+      const html = renderToStaticMarkup(<PatronDecisionCenterView center={source} />);
+      expect(html).toContain("À éclaircir avant de décider");
+      expect(html).toContain("Approval master data");
+      expect(html).not.toContain("Automatiser maintenant");
+    }
   });
 });
 
