@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { SUPABASE_ROOT_CA } from "./supabase-tls";
 
 const mocks = vi.hoisted(() => ({ log: vi.fn(), adapter: vi.fn() }));
 vi.mock("@/shared/infrastructure/logger", () => ({ logInfo: mocks.log }));
@@ -30,7 +31,10 @@ describe("database initialization privacy", () => {
     const { getPrismaClient } = await import("./prisma");
     getPrismaClient();
     getPrismaClient();
-    expect(mocks.adapter).toHaveBeenCalledExactlyOnceWith({ connectionString: url });
+    expect(mocks.adapter).toHaveBeenCalledExactlyOnceWith({
+      connectionString: url,
+      ssl: { ca: SUPABASE_ROOT_CA, rejectUnauthorized: true },
+    });
     expect(mocks.log).toHaveBeenCalledExactlyOnceWith({
       action: "database.client.init",
       databaseConnectionMode: "transaction-pooler",

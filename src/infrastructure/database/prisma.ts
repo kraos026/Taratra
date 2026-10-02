@@ -1,6 +1,7 @@
 import { PrismaPg } from "@prisma/adapter-pg";
 import { PrismaClient } from "@/generated/prisma/client";
 import { logInfo } from "@/shared/infrastructure/logger";
+import { databasePoolConfig } from "./supabase-tls";
 
 const globalDatabase = globalThis as unknown as {
   prisma: PrismaClient | undefined;
@@ -13,10 +14,11 @@ function createPrismaClient(): PrismaClient {
     throw new Error("DATABASE_URL is required to initialize Prisma");
   }
 
+  const poolConfig = databasePoolConfig(connectionString);
   logInfo({ action: "database.client.init", ...describeDatabaseConnection(connectionString) });
 
   return new PrismaClient({
-    adapter: new PrismaPg({ connectionString }),
+    adapter: new PrismaPg(poolConfig),
   });
 }
 
