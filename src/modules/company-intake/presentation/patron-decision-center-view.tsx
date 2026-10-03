@@ -114,7 +114,7 @@ function Overview({ center }: { readonly center: PatronDecisionCenter }) {
           <Metric label="À automatiser" value={overview.automationReadyCount} />
           <Metric label="À corriger" value={overview.fixBeforeAutomationCount} />
           <Metric label="À ne pas automatiser" value={overview.doNotAutomateCount} />
-          <Metric label="Données manquantes" value={overview.needsMoreEvidenceCount} />
+          <Metric label="Décisions en attente de preuves" value={overview.needsMoreEvidenceCount} />
           <Metric label="ROI" value={readableEconomicState(overview.economicReadiness)} />
           <div className="rounded-lg border border-blue-900/60 bg-blue-950/40 p-4 sm:col-span-2 xl:col-span-3">
             <p className="text-xs tracking-wide text-slate-400 uppercase">Prochaine action</p>
@@ -123,6 +123,10 @@ function Overview({ center }: { readonly center: PatronDecisionCenter }) {
             </p>
             <p className="mt-2 text-sm text-slate-300">
               Incertitude : {readableUncertainty(overview.uncertaintyIndicator)}
+            </p>
+            <p className="mt-2 text-sm text-slate-300">
+              Un compteur à zéro ne valide pas les hypothèses financières. Vérifiez les prérequis,
+              les sources et les estimations propres à chaque activité avant de décider.
             </p>
           </div>
         </CardContent>
@@ -306,8 +310,16 @@ function Evidence({ center }: { readonly center: PatronDecisionCenter }) {
         <CardContent className="grid gap-4 md:grid-cols-2">
           <ListBlock title="Preuves utilisées" items={center.evidence.supportingSources} />
           <ListBlock title="Données manquantes" items={center.evidence.missingEvidence} />
-          <ListBlock title="Preuves contradictoires" items={center.evidence.conflictingSources} />
-          <ListBlock title="Contradictions importantes" items={center.evidence.contradictions} />
+          <ListBlock
+            title="Preuves contradictoires"
+            items={center.evidence.conflictingSources}
+            empty="Aucune source contradictoire enregistrée ; contrôle des sources à poursuivre."
+          />
+          <ListBlock
+            title="Contradictions importantes"
+            items={center.evidence.contradictions}
+            empty="Aucune contradiction enregistrée ; cela ne prouve pas leur absence."
+          />
         </CardContent>
       </Card>
     </section>
@@ -321,8 +333,8 @@ function Economics({ economics }: { readonly economics: PatronDecisionCenterEcon
         <CardHeader>
           <CardTitle id="economics">Potentiel économique</CardTitle>
           <CardDescription className="text-slate-300">
-            Seuls les résultats économiques validés sont affichés. Une preuve manquante reste une
-            preuve manquante, pas un zéro.
+            Les calculs publiés restent des estimations sous hypothèses, pas des gains vérifiés. Une
+            preuve manquante reste une preuve manquante, pas un zéro.
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-3">
@@ -470,7 +482,7 @@ function readableRoiState(state: string): string {
     ESTIMATED: "Estimé",
     INSUFFICIENT_EVIDENCE: "Données complémentaires requises",
     STRATEGIC_NON_QUANTIFIED: "Stratégique non quantifié",
-    ECONOMICALLY_JUSTIFIED: "Justifié économiquement",
+    ECONOMICALLY_JUSTIFIED: "Estimation positive — hypothèses à vérifier",
     NOT_YET_AVAILABLE: "Non disponible",
     POTENTIALLY_JUSTIFIED: "Potentiellement rentable, à confirmer",
     NOT_JUSTIFIED: "Non justifié économiquement",
@@ -493,7 +505,7 @@ function readableEvidenceStrength(strength: string): string {
 function readableUncertainty(value: string): string {
   if (value === "MATERIAL") return "contradiction importante visible";
   if (value === "DECLARED") return "incertitude déclarée";
-  return "aucune incertitude déclarée";
+  return "aucune incertitude enregistrée — cela ne prouve pas l’absence d’incertitude";
 }
 
 function readableActionCategory(category: string): string {
@@ -560,7 +572,7 @@ function formatMoney(value: number | null, currency: string | null) {
 
 function formatMonths(value: number | null) {
   if (value === null) return "Données complémentaires requises";
-  return `${value} mois`;
+  return `${value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} mois`;
 }
 
 function slug(value: string): string {

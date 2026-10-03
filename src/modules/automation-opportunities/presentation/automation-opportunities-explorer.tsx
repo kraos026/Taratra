@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, ArrowRight, FileSearch, Gauge, ShieldCheck, Sparkles } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { customerDecisionText } from "@/modules/company-intake/presentation/customer-decision-copy";
 
 type Opportunity = {
   id: string;
@@ -54,7 +55,7 @@ export function AutomationOpportunitiesExplorer({
   const filtered = useMemo(
     () =>
       opportunities.filter((item) =>
-        `${item.title} ${item.description} ${item.businessProblem}`
+        brandText(`${item.title} ${item.description} ${item.businessProblem}`)
           .toLowerCase()
           .includes(query.toLowerCase()),
       ),
@@ -79,7 +80,9 @@ export function AutomationOpportunitiesExplorer({
               </h1>
               <p className="mt-4 text-base leading-7 text-slate-300 sm:text-lg">
                 Possibilités d’automatisation issues de votre audit. Leur présence ne signifie pas
-                qu’elles sont approuvées ou économiquement validées.
+                qu’elles sont approuvées ou économiquement validées. Les indices internes ne
+                prouvent ni les gains ni la pertinence de la piste ; vérifiez les preuves propres à
+                l’activité, en particulier sur les anciens audits publiés.
               </p>
             </div>
             <div className="grid grid-cols-3 gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-3 text-center lg:min-w-80 lg:shrink-0">
@@ -89,7 +92,7 @@ export function AutomationOpportunitiesExplorer({
               />
               <HeroMetric label="Total" value={String(opportunities.length)} />
               <HeroMetric
-                label="Confiance"
+                label="Indice interne"
                 value={averageConfidence(opportunities)}
                 muted={!opportunities.length}
               />
@@ -215,7 +218,7 @@ function OpportunityCard({
       <dl className="mt-5 grid grid-cols-2 gap-3">
         <Fact label="Impact" value={scoreLabel(opportunity.businessImpact)} />
         <Fact label="Effort" value={effortLabel(opportunity.implementationEffort)} />
-        <Fact label="Confiance" value={`${Math.round(opportunity.confidence)} %`} />
+        <Fact label="Indice interne" value={`${Math.round(opportunity.confidence)} %`} />
         <Fact label="Preuves liées" value={String(evidenceCount)} />
         <Fact label="ROI" value="À vérifier dans l’évaluation ROI" />
       </dl>
@@ -370,12 +373,23 @@ function effortLabel(value: string): string {
 }
 
 function triggerLabel(value: string): string {
-  return value.replaceAll("_", " ").toLowerCase();
+  const labels: Record<string, string> = {
+    file_uploaded: "Fichier reçu",
+    email_received: "Email reçu",
+    scheduled: "Planifié",
+    manual: "Manuel",
+    webhook: "Événement externe",
+    api: "API",
+    database_event: "Événement de base de données",
+    form_submitted: "Formulaire envoyé",
+    approval: "Approbation",
+  };
+  return labels[value.toLowerCase().replaceAll(" ", "_")] ?? "Déclencheur à préciser";
 }
 
 function impactSentence(opportunity: Opportunity): string {
   const coverage = Math.round(opportunity.automationCoverage);
-  return `Cette opportunité cible un point de friction prioritaire avec une couverture d’automatisation estimée à ${coverage} %.`;
+  return `Le modèle relie cette piste à ${coverage} % des constats concernés. Ce n’est ni un pourcentage de temps économisé, ni une garantie de pertinence ou de réussite.`;
 }
 
 function controlSentence(opportunity: Opportunity, connectorsCount: number): string {
@@ -390,5 +404,5 @@ function controlSentence(opportunity: Opportunity, connectorsCount: number): str
 }
 
 function brandText(value: string): string {
-  return value.replaceAll("AutomateX", "Optivos").replaceAll("AUTOMATEX", "OPTIVOS");
+  return customerDecisionText(value);
 }

@@ -14,7 +14,7 @@ Three scenarios freeze their assumptions and factors:
 
 ## Versioned formulas
 
-- `annual_hours_saved = hours_saved_per_occurrence × annual_frequency × scenario_volume × automation_coverage`
+- Model version >= 2: `annual_hours_saved = hours_saved_per_occurrence × annual_frequency × scenario_volume`. The supplied savings estimate is not multiplied by finding coverage (which is not measured time). Older model versions retain the legacy coverage-weighted formula.
 - `monthly_hours_saved = annual_hours_saved / 12`
 - `annual_cost_saved = annual_hours_saved × hourly_cost`
 - `annual_benefit = annual_cost_saved + avoided_error_cost`
@@ -25,7 +25,9 @@ Three scenarios freeze their assumptions and factors:
 
 Positive benefit with zero initial cost is stored as `special_value = unbounded`; JSON and PostgreSQL never receive Infinity.
 
-Confidence is Automation Opportunity confidence 50%, evidence availability 25%, and assumption completeness 25%.
+Confidence is the source Automation Opportunity confidence multiplied by the fraction of assumptions explicitly supplied, or zero without linked evidence. Catalog defaults and references do not increase confidence. This internal index is not a probability of correctness or a verification of financial assumptions.
+
+Assumptions are shared at scenario level. Equal figures across opportunities are not independent benefits and must not be added without checking overlap. `provided` means supplied, not observed or verified. Avoided error cost is `error_cost × annual_frequency × scenario_volume` (coverage-weighted only for legacy versions); the error cost must be understood as an expected avoidable cost per occurrence, not an incident cost multiplied blindly by every transaction. Published estimates are not authorization to automate.
 
 ## Lifecycle and access
 

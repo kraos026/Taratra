@@ -132,6 +132,11 @@ export function customerDecisionText(value: string): string {
       "Le centre de décision n’est pas encore disponible. Aucune conclusion ne sera inventée sans résultat publié.",
     )
     .replace(/Automate invoice processing/gi, "Automatiser le traitement des factures")
+    .replace(/Invoice Processing/g, "Traitement des factures")
+    .replace(/Email Processing/g, "Traitement des emails")
+    .replace(/Scheduled Reporting/g, "Rapports périodiques")
+    .replace(/Support Ticket Routing/g, "Orientation des demandes de support")
+    .replace(/Database Synchronization/g, "Synchronisation des données")
     .replace(
       /Invoice processing contains manual work\./gi,
       "Le traitement des factures comporte des tâches manuelles.",

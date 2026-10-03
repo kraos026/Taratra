@@ -10,8 +10,8 @@ describe("ExecutiveRoadmap", () => {
         recommendations={[
           {
             id: "r",
-            title: "Invoice",
-            description: "Automate",
+            title: "Automate invoice processing",
+            description: "Reduce repeatable invoice handling.",
             priority: "high",
             category: "quick_wins",
             roadmapPhase: "phase_1",
@@ -25,6 +25,10 @@ describe("ExecutiveRoadmap", () => {
       />,
     );
     expect(html).toContain("Plan d’action Optivos");
+    expect(html).toContain("Automatiser le traitement des factures");
+    expect(html).toContain("Réduire les tâches répétitives");
+    expect(html).toContain("Indice interne");
+    expect(html).not.toContain("Automate invoice");
     expect(html).toContain("Feuille de route exécutive");
     expect(html).toContain("Top 3 à traiter en premier");
     expect(html).toContain("Priorité immédiate");

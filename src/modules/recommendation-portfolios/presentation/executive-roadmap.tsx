@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { customerOutputText } from "@/shared/domain/output-template";
+import { customerDecisionText } from "@/modules/company-intake/presentation/customer-decision-copy";
 
 type Item = {
   id: string;
@@ -40,7 +41,7 @@ export function ExecutiveRoadmap({
   const filtered = useMemo(
     () =>
       recommendations.filter((item) =>
-        `${item.title} ${item.description}`.toLowerCase().includes(query.toLowerCase()),
+        brandText(`${item.title} ${item.description}`).toLowerCase().includes(query.toLowerCase()),
       ),
     [recommendations, query],
   );
@@ -61,7 +62,10 @@ export function ExecutiveRoadmap({
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
                 Les recommandations sont classées par priorité et par phase. Ce classement et les
-                estimations économiques ne constituent pas une autorisation d’automatiser.
+                estimations économiques ne constituent pas une autorisation d’automatiser. Les
+                indices internes ne garantissent pas la pertinence. Les gains restent à vérifier
+                pour chaque activité et ne doivent pas être additionnés sans contrôler les
+                recouvrements.
               </p>
               <p className="mt-3 text-sm font-semibold text-blue-200">
                 Statut du plan : {readableStatus(status)}
@@ -183,7 +187,11 @@ function RecommendationCard({
       </div>
       <p className="mt-3 text-sm leading-6 text-slate-300">{brandText(item.description)}</p>
       <dl className={`mt-4 grid gap-3 text-sm ${compact ? "sm:grid-cols-2" : "sm:grid-cols-4"}`}>
-        <Metric icon={<BadgeCheck size={16} />} label="Confiance" value={`${item.confidence}%`} />
+        <Metric
+          icon={<BadgeCheck size={16} />}
+          label="Indice interne"
+          value={`${item.confidence}%`}
+        />
         <Metric label="Score de priorité" value={String(Math.round(item.priorityScore))} />
         <Metric
           icon={<CircleDollarSign size={16} />}
@@ -306,9 +314,7 @@ function InfoPanel({ label, value }: { readonly label: string; readonly value: s
 }
 
 function brandText(value: string): string {
-  return customerOutputText(value)
-    .replaceAll("AutomateX", "Optivos")
-    .replaceAll("AUTOMATEX", "OPTIVOS");
+  return customerDecisionText(customerOutputText(value));
 }
 
 function EmptyState({ text }: { readonly text: string }) {

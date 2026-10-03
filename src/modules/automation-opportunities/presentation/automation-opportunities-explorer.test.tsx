@@ -27,6 +27,26 @@ const opportunity = (
 });
 
 describe("AutomationOpportunitiesExplorer", () => {
+  it("localizes catalogue output without presenting finding coverage as time saved", () => {
+    const html = renderToStaticMarkup(
+      <AutomationOpportunitiesExplorer
+        opportunities={[
+          opportunity({
+            title: "Automate support ticket routing",
+            description: "Route requests to the correct team.",
+            businessProblem: "Support requests require manual routing.",
+          }),
+        ]}
+        connectors={[]}
+        patterns={[{ id: "p", title: "Support Ticket Routing" }]}
+      />,
+    );
+    expect(html).toContain("Automatiser l’orientation des demandes de support");
+    expect(html).toContain("Fichier reçu");
+    expect(html).toContain("ni un pourcentage de temps économisé");
+    expect(html).not.toContain("Support Ticket Routing");
+    expect(html).not.toContain("Support requests require");
+  });
   it("renders an Optivos executive opportunity page without legacy internal wording", () => {
     const html = renderToStaticMarkup(
       <AutomationOpportunitiesExplorer

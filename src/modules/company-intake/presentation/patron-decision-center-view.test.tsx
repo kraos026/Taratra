@@ -27,7 +27,8 @@ describe("PatronDecisionCenterView", () => {
     expect(html).toContain("Stale approval master data");
     expect(html).toContain("Mandatory exception approval");
     expect(html).toContain("Manual reconciliation");
-    expect(html).toContain("Justifié économiquement");
+    expect(html).toContain("Estimation positive — hypothèses à vérifier");
+    expect(html).not.toContain("Seuls les résultats économiques validés");
     expect(html).toContain("Approval threshold remains uncertain");
     expect(html).toContain("Remediate stale ERP approval data");
     expect(html).toContain("Ce qui est connu");

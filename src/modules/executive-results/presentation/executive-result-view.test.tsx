@@ -4,6 +4,22 @@ import type { ExecutiveAuditResult } from "../application/executive-result-model
 import { ExecutiveResultView } from "./executive-result-view";
 
 describe("Executive Result", () => {
+  it("separates a risk description from the proposed treatment", () => {
+    const value = result();
+    value.findings = [
+      {
+        id: "f",
+        title: "Manual invoice processing",
+        severity: "high",
+        description: "Invoices are processed manually.",
+        impact: "Automate invoice processing",
+      },
+    ];
+    const html = renderToStaticMarkup(<ExecutiveResultView result={value} />);
+    expect(html).toContain("Les factures sont traitées manuellement.");
+    expect(html).toContain("Piste de traitement à examiner");
+    expect(html).not.toContain("Automate invoice processing");
+  });
   it("uses canonical safety states rather than recommendation titles", () => {
     const html = renderToStaticMarkup(<ExecutiveResultView result={result()} />);
     expect(html).toContain("Données supplémentaires requises");

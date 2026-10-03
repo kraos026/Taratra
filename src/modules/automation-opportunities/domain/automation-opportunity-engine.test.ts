@@ -70,6 +70,33 @@ const input = (): AutomationInput => ({
 });
 describe("AutomationOpportunityEngine", () => {
   const engine = new AutomationOpportunityEngine();
+  it("does not turn email dependency into a support process", () => {
+    const value = input();
+    value.rules[0]!.patternCode = "support_ticket_routing";
+    value.patterns[0]!.code = "support_ticket_routing";
+    value.rules[0]!.findingCodes = ["email_dependency", "customer_support_process"];
+    value.findings[0]!.code = "email_dependency";
+    expect(engine.detect(value).opportunities).toHaveLength(0);
+    value.findings[0]!.code = "customer_support_process";
+    expect(engine.detect(value).opportunities).toHaveLength(1);
+    value.findings[0]!.factIds = [];
+    expect(engine.detect(value).opportunities).toHaveLength(0);
+  });
+  it("requires reporting evidence, not merely a missing KPI", () => {
+    const value = input();
+    value.rules[0]!.patternCode = "scheduled_reporting";
+    value.patterns[0]!.code = "scheduled_reporting";
+    value.rules[0]!.findingCodes = ["missing_kpi"];
+    value.findings[0]!.code = "missing_kpi";
+    expect(engine.detect(value).opportunities).toHaveLength(0);
+    value.facts[0]!.value = "Manual monthly reports";
+    expect(engine.detect(value).opportunities).toHaveLength(1);
+    value.facts[0]!.key = "reporting";
+    value.facts[0]!.value = false;
+    expect(engine.detect(value).opportunities).toHaveLength(0);
+    value.facts[0]!.value = "No reports documented";
+    expect(engine.detect(value).opportunities).toHaveLength(0);
+  });
   it("does not report full coverage when an affected process has unmatched findings", () => {
     const value = input();
     value.findings.push({ ...value.findings[0]!, id: "other", code: "missing_kpi" });

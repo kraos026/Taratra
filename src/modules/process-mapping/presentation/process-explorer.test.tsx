@@ -62,6 +62,22 @@ function fixture(): ProcessMapDetail {
 }
 
 describe("ProcessMapView", () => {
+  it("separates the process total from unknown individual step durations", () => {
+    const detail = fixture();
+    detail.nodes[0]!.estimatedDurationMinutes = null;
+    detail.nodes[0]!.attributesJson = {
+      executionMetadataProjection: {
+        processDurationMinutes: 12,
+        durationSemantic: "process_total_minutes_not_step_measurement",
+      },
+    };
+    const html = renderToStaticMarkup(
+      <ProcessMapView detail={detail} selected="a" onSelect={() => {}} />,
+    );
+    expect(html).toContain("Durée de cette étape");
+    expect(html).toContain("Inconnue");
+    expect(html).toContain("12 min — pas une mesure de chaque étape");
+  });
   it("uses readable French responsive cards without an invented graph or readiness claim", () => {
     const detail = fixture();
     const before = JSON.stringify(detail);

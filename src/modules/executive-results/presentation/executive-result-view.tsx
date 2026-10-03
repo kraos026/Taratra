@@ -134,7 +134,10 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                     className="rounded-3xl border border-white/10 bg-slate-950/60 p-4"
                   >
                     <h3 className="font-bold">{brandText(item.title)}</h3>
-                    <p className="mt-2 text-sm text-slate-300">{brandText(item.impact)}</p>
+                    <p className="mt-2 text-sm text-slate-300">{brandText(item.description)}</p>
+                    <p className="mt-2 text-sm text-slate-400">
+                      Piste de traitement à examiner : {brandText(item.impact)}
+                    </p>
                     <p className="mt-3 rounded-full bg-amber-500/10 px-3 py-1 text-xs text-amber-100">
                       Sévérité : {priorityLabel(item.severity)}
                     </p>
@@ -165,7 +168,7 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                     </p>
                     <div className="mt-3 grid grid-cols-2 gap-2 text-sm">
                       <State label="Maturité" value={`${item.readiness}%`} />
-                      <State label="Confiance" value={`${item.confidence}%`} />
+                      <State label="Indice interne" value={`${item.confidence}%`} />
                     </div>
                   </article>
                 ))}

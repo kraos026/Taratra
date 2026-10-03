@@ -351,7 +351,8 @@ export class ProcessMappingEngine {
       return {
         ...node,
         executionMode,
-        estimatedDurationMinutes: perNodeMonthlyMinutes ?? fallbackMinutes,
+        // The interview measures the whole invoice process, not each template step.
+        estimatedDurationMinutes: perNodeMonthlyMinutes,
         actorKnowledgeNodeId: actorNode?.id ?? null,
         departmentKnowledgeNodeId: departmentNode?.id ?? null,
         frequency: projectedFrequency,
@@ -363,7 +364,8 @@ export class ProcessMappingEngine {
             durationSemantic:
               perNodeMonthlyMinutes !== null
                 ? "allocated_monthly_manual_workload_minutes"
-                : "per_execution_minutes",
+                : "process_total_minutes_not_step_measurement",
+            processDurationMinutes: fallbackMinutes,
             source: "knowledge",
             requiresHumanValidation: ambiguousActor,
           },

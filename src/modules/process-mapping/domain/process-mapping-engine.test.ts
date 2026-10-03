@@ -155,6 +155,20 @@ describe("ProcessMappingEngine", () => {
     });
   });
 
+  it("does not duplicate the total invoice duration across individual steps", () => {
+    const build = engine.rebuild(
+      invoiceProcessingPattern,
+      invoiceExecutionFacts.filter((fact) => fact.id !== "manual-hours"),
+      invoiceKnowledgeNodes,
+    );
+    const steps = build.nodes.filter((node) => node.executionMode === "manual");
+    expect(steps.every((node) => node.estimatedDurationMinutes === null)).toBe(true);
+    expect(steps[0]?.attributes?.executionMetadataProjection).toMatchObject({
+      processDurationMinutes: 45,
+      durationSemantic: "process_total_minutes_not_step_measurement",
+    });
+  });
+
   it("leaves fields unknown when source execution facts are absent", () => {
     const build = engine.rebuild(
       invoiceProcessingPattern,

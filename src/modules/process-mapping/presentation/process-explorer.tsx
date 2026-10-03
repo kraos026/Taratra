@@ -36,6 +36,7 @@ export type ProcessMapDetail = {
       executionMetadataProjection?: {
         status?: string;
         durationSemantic?: string;
+        processDurationMinutes?: number | null;
         requiresHumanValidation?: boolean;
       };
     } | null;
@@ -242,13 +243,24 @@ export function ProcessMapView({
                 value={node.executionMode ? auditLabel(node.executionMode) : "Inconnu"}
               />
               <Metadata
-                label="Durée"
+                label={
+                  node.attributesJson?.executionMetadataProjection?.durationSemantic ===
+                  "allocated_monthly_manual_workload_minutes"
+                    ? "Charge mensuelle répartie (estimation)"
+                    : "Durée de cette étape"
+                }
                 value={
                   node.estimatedDurationMinutes
                     ? `${node.estimatedDurationMinutes} min`
                     : "Inconnue"
                 }
               />
+              {node.attributesJson?.executionMetadataProjection?.processDurationMinutes != null ? (
+                <Metadata
+                  label="Durée totale du processus renseignée"
+                  value={`${node.attributesJson.executionMetadataProjection.processDurationMinutes} min — pas une mesure de chaque étape`}
+                />
+              ) : null}
               <Metadata
                 label="Fréquence"
                 value={node.frequency ? auditLabel(node.frequency) : "Inconnue"}

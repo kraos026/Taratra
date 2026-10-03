@@ -166,6 +166,33 @@ export class AutomationOpportunityEngine {
         const evidence = input.facts.filter((fact) =>
           findings.some((finding) => finding.factIds.includes(fact.id)),
         );
+        // A generic email finding does not establish a customer-support process.
+        // Missing KPI documentation does not establish a reporting workload either.
+        if (
+          rule.patternCode === "support_ticket_routing" &&
+          !findings.some(
+            (finding) =>
+              finding.code === "customer_support_process" &&
+              evidence.some((fact) => finding.factIds.includes(fact.id)),
+          )
+        )
+          return [];
+        if (
+          rule.patternCode === "scheduled_reporting" &&
+          !evidence.some(
+            (fact) =>
+              /reporting|rapport|report[_ .-]|reports|tableau de bord/i.test(
+                `${fact.key} ${JSON.stringify(fact.value)}`,
+              ) &&
+              fact.value !== false &&
+              fact.value !== null &&
+              fact.value !== 0 &&
+              !/\b(no|not|none|missing|absent|aucun|pas|inconnu|unknown)\b/i.test(
+                String(fact.value),
+              ),
+          )
+        )
+          return [];
         const complexity = COMPLEXITY[pattern.complexity];
         const connectorAvailability = percent(
           connectors.filter((item) => item.available).length,
