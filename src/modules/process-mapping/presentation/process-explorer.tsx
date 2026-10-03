@@ -249,7 +249,10 @@ export function ProcessMapView({
                     : "Inconnue"
                 }
               />
-              <Metadata label="Fréquence" value={node.frequency ?? "Inconnue"} />
+              <Metadata
+                label="Fréquence"
+                value={node.frequency ? auditLabel(node.frequency) : "Inconnue"}
+              />
               <Metadata
                 label="Acteur"
                 value={node.actorKnowledgeNodeId ? "Relié à la connaissance" : "À valider"}

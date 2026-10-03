@@ -23,6 +23,13 @@ export function auditLabel(value: string): string {
     mixed: "Mixte",
     automatic: "Automatique",
     automated: "Automatisé",
+    daily: "Chaque jour",
+    weekly: "Chaque semaine",
+    monthly: "Chaque mois",
+    yearly: "Chaque année",
+    annually: "Chaque année",
+    hourly: "Chaque heure",
+    ad_hoc: "Selon les besoins",
     organization_health: "Organisation",
     department_health: "Équipes",
     process_health: "Processus",
@@ -54,6 +61,15 @@ export function auditText(value: string): string {
   return customerDecisionText(value)
     .replaceAll("Human bottleneck", "Dépendance à une personne")
     .replaceAll("Single point of failure", "Point de dépendance unique")
+    .replaceAll("High manual workload", "Charge de travail manuelle élevée")
+    .replace(
+      /Estimated manual workload is ([\d.]+) hours per month\./g,
+      "La charge de travail manuelle estimée est de $1 heures par mois.",
+    )
+    .replaceAll(
+      "Reduce high-volume manual work.",
+      "Examiner comment réduire les tâches manuelles répétitives, en conservant les contrôles nécessaires.",
+    )
     .replace(
       /(.+?) performs ([\d.]+)% of manual steps\./g,
       "$1 réalise $2 % des étapes manuelles du modèle.",
