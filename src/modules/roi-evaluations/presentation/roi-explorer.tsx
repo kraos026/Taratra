@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import type { ReactNode } from "react";
 import { AlertTriangle, Calculator, CircleDollarSign, Search, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { customerDecisionText } from "@/modules/company-intake/presentation/customer-decision-copy";
+import type { RoiTrace } from "./roi-trace";
 
 type Evaluation = {
   id: string;
@@ -26,11 +28,13 @@ export function RoiExplorer({
   scenarios,
   evaluations,
   metrics,
+  traces = [],
 }: {
   readonly currency: string;
   readonly scenarios: Scenario[];
   readonly evaluations: Evaluation[];
   readonly metrics: Metric[];
+  readonly traces?: readonly RoiTrace[];
 }) {
   const [scenario, setScenario] = useState("expected");
   const [query, setQuery] = useState("");
@@ -43,7 +47,9 @@ export function RoiExplorer({
     return evaluations.filter(
       (item) =>
         scenarioIds.has(item.scenarioId) &&
-        `${item.title} ${item.description}`.toLowerCase().includes(query.toLowerCase()),
+        `${brandText(item.title)} ${brandText(item.description)}`
+          .toLowerCase()
+          .includes(query.toLowerCase()),
     );
   }, [evaluations, scenarios, scenario, query]);
   const value = (id: string, code: string) =>
@@ -97,17 +103,21 @@ export function RoiExplorer({
             />
             <HeroMetric
               icon={<CircleDollarSign />}
-              label="Confiance moyenne"
+              label="Indice interne moyen"
               value={averageConfidence === null ? "À confirmer" : `${averageConfidence}%`}
             />
           </div>
+          <p className="mt-4 text-sm leading-6 text-slate-300">
+            L’indice interne reflète les sources et hypothèses du modèle. Même à 100 %, il ne
+            garantit ni les gains annoncés ni la réussite d’une automatisation.
+          </p>
         </header>
 
         {primaryEvaluation && (
           <p className="text-sm text-slate-300">
-            Synthèse du scénario probable pour : {brandText(primaryEvaluation.title)}. Les
-            évaluations des différentes opportunités ne doivent pas être additionnées sans vérifier
-            les hypothèses communes et les doubles comptes.
+            Repère économique du scénario probable pour : {brandText(primaryEvaluation.title)}. Ce
+            n’est pas le total de l’audit. Les évaluations des différentes opportunités ne doivent
+            pas être additionnées sans vérifier les hypothèses communes et les doubles comptes.
           </p>
         )}
         <section
@@ -198,10 +208,28 @@ export function RoiExplorer({
               const roi = value(item.id, "roi_percentage");
               const payback = value(item.id, "payback_period");
               const savings = value(item.id, "annual_cost_saved");
+              const benefit = value(item.id, "annual_benefit");
+              const errorPart =
+                savings &&
+                benefit &&
+                !savings.specialValue &&
+                !benefit.specialValue &&
+                savings.value !== null &&
+                benefit.value !== null &&
+                Number.isFinite(savings.value) &&
+                Number.isFinite(benefit.value) &&
+                benefit.value >= savings.value
+                  ? {
+                      value: benefit.value - savings.value,
+                      specialValue: null,
+                      unit: "currency/year",
+                    }
+                  : undefined;
               const cost = value(item.id, "implementation_cost");
               const scenarioType =
                 scenarios.find((scenarioItem) => scenarioItem.id === item.scenarioId)?.type ??
                 "scenario";
+              const trace = traces.find((row) => row.evaluationId === item.id);
               return (
                 <article
                   key={item.id}
@@ -221,6 +249,14 @@ export function RoiExplorer({
                       <p className="text-xs text-slate-400">État ROI</p>
                       <p className="mt-1 font-bold text-blue-100">{roiState(roi)}</p>
                     </div>
+                  </div>
+                  <div className="mt-5 rounded-2xl border border-amber-400/25 bg-amber-500/10 p-4 text-sm leading-6 text-amber-100">
+                    <p className="font-bold">Estimation sous hypothèses — pas un gain constaté</p>
+                    <p>
+                      {trace && trace.assumptions.length > 0 && trace.sharedEvaluationCount > 1
+                        ? `Les hypothèses de ce scénario sont partagées par ${trace.sharedEvaluationCount} évaluations. Des chiffres identiques ne prouvent pas des gains indépendants : ne les additionnez pas.`
+                        : "Vérifiez les hypothèses et les recouvrements avant de comparer ou d’additionner les gains. La pertinence pour cette activité reste à confirmer."}
+                    </p>
                   </div>
                   <dl className="mt-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                     <Metric
@@ -261,19 +297,29 @@ export function RoiExplorer({
                     <Metric label="Retour" metric={payback} />
                     <Metric label="ROI" metric={roi} percent />
                     <Metric
-                      label="Confiance"
+                      label="Indice interne (pas une garantie)"
                       metric={{ value: item.confidence, specialValue: null, unit: "percent" }}
                       percent
                     />
                   </dl>
+                  <div className="mt-4 rounded-2xl border border-amber-400/20 p-4">
+                    <p className="text-sm text-amber-100">
+                      Part attribuée aux erreurs évitées (hypothèse à vérifier)
+                    </p>
+                    <p className="mt-1 font-bold text-white">{formatMetric(errorPart, currency)}</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-400">
+                      Différence entre le bénéfice annuel total et le temps valorisé enregistrés. Ce
+                      n’est pas une mesure des erreurs réellement évitées.
+                    </p>
+                  </div>
+                  <AssumptionTrace trace={trace} currency={currency} />
                   <p className="mt-4 text-sm leading-6 text-slate-300">
                     Le bénéfice annuel total inclut le temps valorisé et le coût des erreurs évitées
-                    selon les hypothèses du modèle. Le coût d’erreur est appliqué à la fréquence et
-                    à la couverture d’automatisation ; ce montant doit être vérifié, il ne prouve
-                    pas qu’une erreur est évitée à chaque occurrence. Le ROI de première année
-                    déduit la maintenance et l’investissement initial (implémentation, formation et
-                    infrastructure). Le délai de retour utilise le bénéfice net mensuel. Ces
-                    estimations ne constituent pas une autorisation d’automatiser.
+                    selon les hypothèses du modèle enregistré. Ce montant doit être vérifié ; il ne
+                    prouve pas qu’une erreur est évitée à chaque occurrence. Le ROI de première
+                    année déduit la maintenance et l’investissement initial (implémentation,
+                    formation et infrastructure). Le délai de retour utilise le bénéfice net
+                    mensuel. Ces estimations ne constituent pas une autorisation d’automatiser.
                   </p>
                 </article>
               );
@@ -366,12 +412,14 @@ function formatMetric(
   if (metric.specialValue) return readableSpecial(metric.specialValue);
   if (metric.value === null || !Number.isFinite(metric.value))
     return "Données complémentaires requises";
-  if (percent || metric.unit === "percent") return `${metric.value.toFixed(1)} %`;
+  if (percent || metric.unit === "percent")
+    return `${metric.value.toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} %`;
   if (metric.unit.includes("currency"))
     return `${metric.value.toLocaleString("fr-FR")} ${currency ?? ""}`.trim();
   if (metric.unit === "hours/year") return `${metric.value.toLocaleString("fr-FR")} h/an`;
   if (metric.unit === "hours/month") return `${metric.value.toLocaleString("fr-FR")} h/mois`;
-  if (metric.unit === "months") return `${metric.value.toFixed(1)} mois`;
+  if (metric.unit === "months")
+    return `${metric.value.toLocaleString("fr-FR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} mois`;
   return `${metric.value.toLocaleString("fr-FR")} ${metric.unit}`;
 }
 
@@ -387,8 +435,10 @@ function readableSpecial(value: string): string {
     STRATEGIC_NON_QUANTIFIED: "Stratégique non quantifié",
     CALCULATED: "Calculé",
     ESTIMATED: "Estimé",
+    unbounded: "Non borné (investissement initial nul)",
+    not_recovered: "Investissement non récupéré selon ces hypothèses",
   };
-  return labels[value] ?? value.replaceAll("_", " ");
+  return labels[value] ?? "État à examiner";
 }
 
 function scenarioLabel(value: string): string {
@@ -397,7 +447,7 @@ function scenarioLabel(value: string): string {
     expected: "Probable",
     optimistic: "Optimiste",
   };
-  return labels[value] ?? value;
+  return labels[value] ?? "Scénario à examiner";
 }
 
 function EvidenceBlock({
@@ -440,12 +490,103 @@ function metricLabel(code: string): string {
     monthly_hours_saved: "Heures économisables par mois",
     monthly_cost_saved: "Gain mensuel",
     maintenance_cost: "Coût de maintenance",
+    training_cost: "Coût de formation",
+    infrastructure_cost: "Coût d’infrastructure",
+    annual_benefit: "Bénéfice annuel sous hypothèses",
+    annual_net_benefit: "Bénéfice annuel net sous hypothèses",
+    confidence: "Indice interne du modèle",
   };
-  return labels[code] ?? code.replaceAll("_", " ");
+  return labels[code] ?? "Métrique supplémentaire à examiner";
 }
 
 function brandText(value: string): string {
-  return value.replaceAll("AutomateX", "Optivos").replaceAll("AUTOMATEX", "OPTIVOS");
+  return customerDecisionText(value);
+}
+
+const assumptionLabels: Record<string, string> = {
+  hourly_cost: "Coût d’une heure de travail",
+  working_days: "Jours de travail par an",
+  working_hours: "Heures de travail par jour",
+  monthly_frequency: "Occurrences par mois",
+  annual_frequency: "Occurrences par an",
+  hours_saved_per_occurrence: "Heures supposées économisées par occurrence",
+  implementation_cost: "Investissement d’implémentation",
+  maintenance_cost: "Maintenance annuelle",
+  training_cost: "Formation",
+  infrastructure_cost: "Infrastructure",
+  error_cost: "Coût d’erreur supposé évitable par occurrence",
+};
+
+function AssumptionTrace({
+  trace,
+  currency,
+}: {
+  readonly trace: RoiTrace | undefined;
+  readonly currency: string;
+}) {
+  return (
+    <details className="mt-5 rounded-2xl border border-white/10 bg-slate-950/50 p-4">
+      <summary className="cursor-pointer font-bold text-blue-200">
+        Comprendre les chiffres et leurs sources
+      </summary>
+      <p className="mt-3 text-sm leading-6 text-slate-300">
+        {trace
+          ? `${trace.sourceReferenceCount} référence(s) source distincte(s) reliée(s) à cette évaluation.`
+          : "Traçabilité détaillée non disponible dans cette vue."}{" "}
+        Une référence liée ne constitue pas à elle seule une preuve du gain financier.
+      </p>
+      {trace && trace.assumptions.length > 0 ? (
+        <dl className="mt-4 grid gap-3 sm:grid-cols-2">
+          {trace.assumptions.map((row) => (
+            <div key={row.code} className="rounded-xl border border-white/10 p-3">
+              <dt className="text-sm text-slate-300">
+                {assumptionLabels[row.code] ?? "Hypothèse supplémentaire"}
+              </dt>
+              <dd className="mt-1 font-semibold text-white">
+                {assumptionValue(row.code, row.value, currency)}
+                <span className="mt-1 block text-xs font-normal text-slate-400">
+                  {row.source === "provided"
+                    ? "Renseignée dans l’évaluation — à vérifier"
+                    : row.source === "catalog_default"
+                      ? "Valeur du catalogue — à vérifier pour cette activité"
+                      : "Origine non confirmée"}
+                </span>
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <p className="mt-3 text-sm text-amber-200">
+          Hypothèses détaillées non disponibles. Ne traitez pas ces montants comme des gains
+          démontrés.
+        </p>
+      )}
+      <p className="mt-4 text-sm leading-6 text-slate-300">
+        Temps valorisé : heures économisables × coût horaire. Le bénéfice total ajoute une part
+        supposée liée aux erreurs évitées. Vérifiez la fréquence réelle des erreurs et leur coût :
+        une erreur évitée à chaque occurrence n’est pas démontrée par ce calcul. Les hypothèses
+        renseignées ne sont pas automatiquement des observations vérifiées.
+      </p>
+    </details>
+  );
+}
+
+function assumptionValue(code: string, value: number | null, currency: string): string {
+  if (value === null || !Number.isFinite(value)) return "Non disponible";
+  const number = value.toLocaleString("fr-FR", { maximumFractionDigits: 4 });
+  if (
+    [
+      "hourly_cost",
+      "implementation_cost",
+      "maintenance_cost",
+      "training_cost",
+      "infrastructure_cost",
+      "error_cost",
+    ].includes(code)
+  )
+    return `${number} ${currency}`;
+  if (["working_hours", "hours_saved_per_occurrence"].includes(code)) return `${number} h`;
+  return number;
 }
 
 function SafeState() {

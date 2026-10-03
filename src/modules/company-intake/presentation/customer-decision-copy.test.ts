@@ -4,6 +4,11 @@ import { customerDecisionText } from "./customer-decision-copy";
 describe("Customer decision copy", () => {
   it.each([
     ["Automate scheduled reporting", "Automatiser les rapports périodiques"],
+    ["Route requests to the correct team.", "Orienter les demandes vers l’équipe concernée."],
+    [
+      "Synchronize governed operational data.",
+      "Synchroniser les données opérationnelles selon les règles de contrôle.",
+    ],
     [
       "Operations depend on manual email handling.",
       "L’activité dépend du traitement manuel des emails.",

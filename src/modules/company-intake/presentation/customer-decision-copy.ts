@@ -196,6 +196,14 @@ export function customerDecisionText(value: string): string {
     )
     .replace(/Manual invoice processing/gi, "Traitement manuel des factures")
     .replace(
+      /Route requests to the correct team\./gi,
+      "Orienter les demandes vers l’équipe concernée.",
+    )
+    .replace(
+      /Synchronize governed operational data\./gi,
+      "Synchroniser les données opérationnelles selon les règles de contrôle.",
+    )
+    .replace(
       /Automate spreadsheet synchronization/gi,
       "Automatiser la synchronisation des tableaux",
     )
