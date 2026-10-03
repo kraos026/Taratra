@@ -117,6 +117,54 @@ function input(rules: AnalysisRule[]): AnalysisInput {
 
 describe("BusinessAnalysisEngine", () => {
   const engine = new BusinessAnalysisEngine();
+  it("treats empty step descriptions as an unproven source gap, not absent procedures", () => {
+    const source = input([
+      {
+        ...rule("missing_documentation", { operator: "undocumentedShare", threshold: 30 }),
+        explanationTemplate: "{share}% of steps have no documentation.",
+      },
+    ]);
+    source.processMap.confidence = 100;
+    source.facts[0]!.confidence = 100;
+    const result = engine.analyze(source);
+    expect(result.findings[0]).toMatchObject({
+      rule: { code: "missing_documentation", severity: "information" },
+      evidenceFactIds: [],
+      confidence: 0,
+      riskPoints: 0,
+      evidence: { interpretation: "source_gap_not_business_absence" },
+    });
+    expect(result.findings[0]!.description).toContain("ne prouve pas l’absence de procédures");
+    expect(result.findings[0]!.description).not.toContain("100%");
+    expect(result.risk.score).toBe(0);
+    expect(result.validations).toContainEqual(
+      expect.objectContaining({ code: "missing_evidence", severity: "error" }),
+    );
+    expect(source.rules[0]!.severity).toBe("medium");
+  });
+  it("keeps a missing-indicator gap blocked without inventing business risk", () => {
+    const result = engine.analyze(
+      input([rule("missing_kpi", { operator: "missingKnowledgeTerm", terms: ["kpi"] })]),
+    );
+    expect(result.findings[0]).toMatchObject({
+      confidence: 0,
+      evidenceFactIds: [],
+      riskPoints: 0,
+      rule: { severity: "information" },
+    });
+    expect(result.validations).toContainEqual(
+      expect.objectContaining({ code: "missing_evidence", severity: "error" }),
+    );
+  });
+  it("does not emit a description gap when descriptions are actually supplied", () => {
+    const source = input([
+      rule("missing_documentation", { operator: "undocumentedShare", threshold: 30 }),
+    ]);
+    source.nodes.forEach((node) => {
+      node.description = "Description de cette étape";
+    });
+    expect(engine.analyze(source).findings).toEqual([]);
+  });
   it("never cites an unrelated fact as proof of missing knowledge", () => {
     const source = input([
       rule("missing_kpi", { operator: "missingKnowledgeTerm", terms: ["kpi"] }),

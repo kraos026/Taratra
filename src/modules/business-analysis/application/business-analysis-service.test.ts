@@ -33,6 +33,19 @@ function subject(role = "consultant") {
 }
 
 describe("BusinessAnalysisService", () => {
+  it("cannot publish an information-only source gap without evidence", async () => {
+    const { service, repo } = subject("owner");
+    repo.detail.mockResolvedValue({
+      validations: [{ severity: "error", code: "missing_evidence" }],
+      findings: [{ id: "gap", severity: "information", confidencePercentage: 0 }],
+      evidence: [],
+      scores: [],
+    } as never);
+    await expect(service.publish("analysis", 2)).rejects.toMatchObject({
+      code: "VALIDATION_ERROR",
+    });
+    expect(repo.transition).not.toHaveBeenCalled();
+  });
   it("blocks validation and explains missing evidence without transitioning", async () => {
     const { service, repo } = subject();
     repo.detail.mockResolvedValue({

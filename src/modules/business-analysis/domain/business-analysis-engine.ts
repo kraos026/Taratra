@@ -366,6 +366,24 @@ export class BusinessAnalysisEngine {
   private toFinding(rule: AnalysisRule, input: AnalysisInput): DetectedFinding {
     const logic = rule.evaluationLogic;
     const operator = logic.operator;
+    // Missing map fields/terms establish a source gap, not an adverse business fact.
+    // Keep the gap visible and publication blocked, without borrowing generic facts
+    // as proof or charging the company risk points for an unknown condition.
+    const sourceGap = operator === "undocumentedShare" || operator === "missingKnowledgeTerm";
+    const gapDescription =
+      operator === "undocumentedShare"
+        ? "Des descriptions d’étapes ne sont pas renseignées dans cette cartographie. Cela ne prouve pas l’absence de procédures dans l’entreprise."
+        : "Les informations recherchées par cette règle ne sont pas documentées dans les sources analysées. Cela ne prouve pas leur absence dans l’entreprise.";
+    const findingRule: AnalysisRule = sourceGap
+      ? {
+          ...rule,
+          title:
+            operator === "undocumentedShare"
+              ? "Descriptions d’étapes à compléter"
+              : "Informations de suivi à préciser",
+          severity: "information",
+        }
+      : rule;
     const manual = input.nodes.filter((node) => node.executionMode === "manual");
     const steps = input.nodes.filter((node) => ["step", "decision"].includes(node.type));
     // Evidence follows the evaluated condition, never the rule name or an arbitrary fact.
@@ -383,7 +401,7 @@ export class BusinessAnalysisEngine {
           : ["approvalCount", "validationStepCount"].includes(String(operator))
             ? steps.filter((node) => /approv|valid/i.test(node.name))
             : operator === "undocumentedShare"
-              ? steps.filter((node) => !node.description?.trim())
+              ? []
               : [
                     "duplicateManualStep",
                     "actorManualShare",
@@ -419,25 +437,28 @@ export class BusinessAnalysisEngine {
     const explanationValues = this.explanationValues(rule, input);
     return {
       identifier: `${rule.code}:${step?.key ?? "process"}`,
-      rule,
-      description: rule.explanationTemplate.replace(
-        /\{([a-zA-Z_][\w]*)\}/g,
-        (token, key: string) =>
-          Object.hasOwn(explanationValues, key) ? String(explanationValues[key]) : token,
-      ),
+      rule: findingRule,
+      description: sourceGap
+        ? gapDescription
+        : rule.explanationTemplate.replace(/\{([a-zA-Z_][\w]*)\}/g, (token, key: string) =>
+            Object.hasOwn(explanationValues, key) ? String(explanationValues[key]) : token,
+          ),
       relatedStepId: step?.id ?? null,
       relatedDepartmentId: step?.departmentId ?? null,
       relatedActorId: step?.actorId ?? null,
       relatedSystemId: step?.systemId ?? null,
       confidence,
-      businessImpact: rule.recommendationHint ?? rule.description,
-      riskPoints: RISK_POINTS[rule.severity],
+      businessImpact: sourceGap
+        ? "Compléter les sources avec une description ou un indicateur réel et vérifiable avant de poursuivre. Ne pas inventer de réponse pour débloquer l’audit."
+        : (rule.recommendationHint ?? rule.description),
+      riskPoints: RISK_POINTS[findingRule.severity],
       evidenceFactIds: evidenceFacts.map((fact) => fact.id),
       evidence: {
         ruleVersion: rule.version,
         processMapId: input.processMap.id,
         nodeIds: relevantNodes.map((node) => node.id),
         explanationValues,
+        ...(sourceGap ? { interpretation: "source_gap_not_business_absence" } : {}),
       },
     };
   }
