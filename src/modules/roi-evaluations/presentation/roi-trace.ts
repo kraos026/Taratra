@@ -2,11 +2,14 @@ export type RoiTrace = {
   evaluationId: string;
   sharedEvaluationCount: number;
   sourceReferenceCount: number;
+  volumeFactor?: number | null;
+  costFactor?: number | null;
   assumptions: { code: string; value: number | null; unit: string; source: string }[];
 };
 
 type Numeric = number | string | { toString(): string };
 type Detail = {
+  scenarios?: readonly { id: string; volumeFactor: Numeric; costFactor: Numeric }[];
   evaluations: readonly { id: string; scenarioId: string }[];
   contributions: readonly {
     evaluationId: string;
@@ -29,6 +32,12 @@ type Detail = {
 export function roiTraces(detail: Detail): RoiTrace[] {
   return detail.evaluations.map((evaluation) => ({
     evaluationId: evaluation.id,
+    volumeFactor: factor(
+      detail.scenarios?.find((row) => row.id === evaluation.scenarioId)?.volumeFactor,
+    ),
+    costFactor: factor(
+      detail.scenarios?.find((row) => row.id === evaluation.scenarioId)?.costFactor,
+    ),
     sharedEvaluationCount: detail.evaluations.filter(
       (other) => other.scenarioId === evaluation.scenarioId,
     ).length,
@@ -58,4 +67,8 @@ export function roiTraces(detail: Detail): RoiTrace[] {
         };
       }),
   }));
+}
+
+function factor(value: Numeric | undefined): number | null {
+  return value !== undefined && Number.isFinite(Number(value)) ? Number(value) : null;
 }

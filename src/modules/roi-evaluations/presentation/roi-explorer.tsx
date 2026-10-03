@@ -529,6 +529,13 @@ function AssumptionTrace({
           : "Traçabilité détaillée non disponible dans cette vue."}{" "}
         Une référence liée ne constitue pas à elle seule une preuve du gain financier.
       </p>
+      <p className="mt-3 text-sm leading-6 text-slate-300">
+        Ajustements enregistrés du scénario : volume et temps ×{" "}
+        {trace?.volumeFactor == null ? "non renseigné" : trace.volumeFactor.toLocaleString("fr-FR")}
+        ; coûts ×{" "}
+        {trace?.costFactor == null ? "non renseigné" : trace.costFactor.toLocaleString("fr-FR")}.
+        Les valeurs ci-dessous sont les hypothèses de base, avant ces ajustements.
+      </p>
       {trace && trace.assumptions.length > 0 ? (
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           {trace.assumptions.map((row) => (

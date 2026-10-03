@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import { roiTraces } from "./roi-trace";
 
 const fixture = () => ({
+  scenarios: [
+    { id: "expected", volumeFactor: "1", costFactor: "1" },
+    { id: "optimistic", volumeFactor: "1.25", costFactor: "0.9" },
+  ],
   evaluations: [
     { id: "a", scenarioId: "expected" },
     { id: "b", scenarioId: "expected" },
@@ -39,11 +43,15 @@ describe("ROI render-only trace", () => {
     const before = JSON.stringify(input);
     expect(roiTraces(input)[0]).toEqual({
       evaluationId: "a",
+      volumeFactor: 1,
+      costFactor: 1,
       sharedEvaluationCount: 2,
       sourceReferenceCount: 1,
       assumptions: [{ code: "hourly_cost", value: 30, unit: "currency/hour", source: "provided" }],
     });
     expect(roiTraces(input)[1]!.assumptions).toEqual([]);
+    expect(roiTraces(input)[2]!.volumeFactor).toBe(1.25);
+    expect(roiTraces(input)[2]!.costFactor).toBe(0.9);
     expect(JSON.stringify(input)).toBe(before);
     expect(JSON.parse(JSON.stringify(roiTraces(input)))).toEqual(roiTraces(input));
   });
