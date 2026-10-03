@@ -28,6 +28,7 @@ import type {
 } from "../application/assisted-audit-model";
 import {
   createActionLock,
+  AuditCommandError,
   performAuditCommandAndRefresh,
   presentNextAction,
   presentProcessCandidateAction,
@@ -103,7 +104,7 @@ export function AutomationAuditHub({ companyId }: { companyId: string }) {
     } catch (caught) {
       setError(
         caught instanceof Error
-          ? customerError(0, caught.message)
+          ? customerError(caught instanceof AuditCommandError ? caught.status : 0, caught.message)
           : "This action could not be completed.",
       );
     } finally {
@@ -397,7 +398,16 @@ function ProcessMapChoice({
               <CardContent className="space-y-4 pt-5">
                 <div>
                   <p className="font-semibold">Cartographie version {candidate.version}</p>
-                  <p className="text-sm text-slate-400">Statut : {candidate.status}</p>
+                  <p className="text-sm text-slate-400">
+                    Statut :{" "}
+                    {candidate.status === "draft"
+                      ? "Brouillon"
+                      : candidate.status === "validated"
+                        ? "Validé"
+                        : candidate.status === "published"
+                          ? "Publié"
+                          : "À vérifier"}
+                  </p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   <Link
@@ -517,10 +527,14 @@ function AuditHubError({ message, onRetry }: { message: string; onRetry: () => v
   );
 }
 
-function customerError(status: number, serverMessage?: string): string {
+export function customerError(status: number, serverMessage?: string): string {
   if (status === 401) return "Connectez-vous pour consulter cet audit.";
   if (status === 403) return "Vous n’avez pas accès à cet audit.";
   if (status === 404) return "Cette entreprise est introuvable dans votre espace.";
+  if (status === 409)
+    return "Ce dossier a changé. Rechargez l’audit avant de reprendre la validation.";
+  if (status === 422)
+    return "La validation est bloquée par des informations ou des preuves manquantes. Ouvrez le détail de cette étape pour consulter les points à compléter. Aucune validation n’a été forcée.";
   if (serverMessage?.toLowerCase().includes("discovery"))
     return "Des informations sur l’entreprise sont nécessaires avant de continuer.";
   return "L’audit n’a pas pu être mis à jour. Réessayez.";
@@ -542,6 +556,10 @@ function customerActionLabel(label: string): string {
     .replaceAll("Continue the interview", "Continuer l’entretien")
     .replaceAll("Start discovery", "Commencer la compréhension")
     .replaceAll("Continue discovery", "Continuer la compréhension")
+    .replaceAll("Validate this process", "Vérifier ce processus")
+    .replaceAll("Approve this process", "Approuver ce processus")
+    .replaceAll("Analyze this process", "Analyser ce processus")
+    .replaceAll("Review this process", "Consulter ce processus")
     .replaceAll("View results", "Voir les résultats");
 }
 

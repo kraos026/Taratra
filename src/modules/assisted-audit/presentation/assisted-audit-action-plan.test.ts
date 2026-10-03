@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import type { AssistedAuditReadModel } from "../application/assisted-audit-model";
 import {
   createActionLock,
+  AuditCommandError,
   performAuditCommand,
   performAuditCommandAndRefresh,
   presentNextAction,
@@ -9,6 +10,29 @@ import {
 } from "./assisted-audit-action-plan";
 
 describe("Assisted Audit presentation action plan", () => {
+  it("preserves the validation refusal status and code without refreshing or retrying", async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue(
+        new Response(
+          JSON.stringify({ error: { code: "VALIDATION_ERROR", message: "Preuve manquante" } }),
+          { status: 422 },
+        ),
+      );
+    const refresh = vi.fn();
+    await expect(
+      performAuditCommandAndRefresh(
+        { url: "/api/analysis/scoped/validate", init: { method: "POST" } },
+        refresh,
+        fetcher,
+      ),
+    ).rejects.toMatchObject({ status: 422, code: "VALIDATION_ERROR" });
+    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(refresh).not.toHaveBeenCalled();
+    expect(new AuditCommandError(422, "VALIDATION_ERROR", "Preuve manquante")).toBeInstanceOf(
+      Error,
+    );
+  });
   it("navigates Discovery to the existing canonical screen", () => {
     expect(presentNextAction(model("DISCOVERY", "START_DISCOVERY"), "company")).toMatchObject({
       kind: "navigate",

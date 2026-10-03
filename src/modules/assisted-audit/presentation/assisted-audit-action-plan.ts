@@ -196,16 +196,31 @@ export function presentProcessCandidateAction(
   };
 }
 
+export class AuditCommandError extends Error {
+  constructor(
+    readonly status: number,
+    readonly code: string,
+    message: string,
+  ) {
+    super(message);
+    this.name = "AuditCommandError";
+  }
+}
+
 export async function performAuditCommand(
   request: AuditCommandRequest,
   fetcher: typeof fetch = fetch,
 ): Promise<void> {
   const response = await fetcher(request.url, request.init);
   const payload = (await response.json().catch(() => null)) as {
-    error?: { message?: string };
+    error?: { message?: string; code?: string };
   } | null;
   if (!response.ok)
-    throw new Error(payload?.error?.message ?? "This action could not be completed.");
+    throw new AuditCommandError(
+      response.status,
+      payload?.error?.code ?? "UNKNOWN",
+      payload?.error?.message ?? "This action could not be completed.",
+    );
 }
 
 export async function performAuditCommandAndRefresh(

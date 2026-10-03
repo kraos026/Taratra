@@ -21,9 +21,41 @@ describe("BusinessFindingsExplorer", () => {
         health={[{ id: "health", dimension: "system_health", score: 80 }]}
       />,
     );
-    expect(html).toContain("Excel dependency");
-    expect(html).toContain("Digitalization");
-    expect(html).toContain("system_health");
-    expect(html).toContain("Search findings");
+    expect(html).toContain("Dépendance aux tableaux Excel");
+    expect(html).toContain("Usage des outils numériques");
+    expect(html).toContain("Outils");
+    expect(html).toContain("Rechercher un constat");
+    expect(html).not.toContain("system_health");
+    expect(html).toContain("pas des gains financiers");
+  });
+
+  it("shows missing evidence without fabricating references or granting approval", () => {
+    const html = renderToStaticMarkup(
+      <BusinessFindingsExplorer
+        findings={[
+          {
+            id: "f",
+            title: "Missing KPI",
+            description: "No KPI evidence is attached to the process.",
+            severity: "medium",
+            category: "measurement",
+            confidencePercentage: 100,
+            businessImpact: "Define a measurable KPI.",
+            evidenceCount: 0,
+          },
+        ]}
+        scores={[]}
+        health={[]}
+        companyId="scoped-company"
+        validations={[{ id: "v", code: "missing_evidence", severity: "error" }]}
+      />,
+    );
+    expect(html).toContain('role="alert"');
+    expect(html).toContain("Au moins un constat n’a pas de preuve pertinente reliée");
+    expect(html).toContain("Aucune référence source reliée");
+    expect(html).toContain('href="/companies/scoped-company/interview"');
+    expect(html).toContain("ce n’est pas une certitude");
+    expect(html).not.toContain("Missing KPI");
+    expect(html).not.toContain("Valider l’analyse");
   });
 });

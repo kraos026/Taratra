@@ -1,9 +1,16 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it, vi } from "vitest";
 import type { AssistedAuditReadModel } from "../application/assisted-audit-model";
-import { AutomationAuditView } from "./automation-audit-hub";
+import { AutomationAuditView, customerError } from "./automation-audit-hub";
 
 describe("AutomationAuditView", () => {
+  it("explains domain refusals without leaking arbitrary backend messages", () => {
+    expect(customerError(422, "password=secret")).toContain("preuves manquantes");
+    expect(customerError(422, "password=secret")).not.toContain("secret");
+    expect(customerError(500, "postgresql://credential")).not.toContain("postgresql");
+    expect(customerError(403)).toContain("pas accès");
+    expect(customerError(409)).toContain("Rechargez");
+  });
   it("renders real accessible progress and readable journey descriptions without a scrolling rail", () => {
     const html = render(model());
     expect(html).toContain('role="progressbar"');
