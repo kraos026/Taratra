@@ -54,18 +54,11 @@ export function RoiExplorer({
   }, [evaluations, scenarios, scenario, query]);
   const value = (id: string, code: string) =>
     metrics.find((item) => item.evaluationId === id && item.code === code);
-  const expectedEvaluations = evaluations.filter((item) =>
-    scenarios.some(
-      (scenarioItem) => scenarioItem.id === item.scenarioId && scenarioItem.type === "expected",
-    ),
-  );
-  const averageConfidence = expectedEvaluations.length
-    ? Math.round(
-        expectedEvaluations.reduce((sum, item) => sum + item.confidence, 0) /
-          expectedEvaluations.length,
-      )
+  const averageConfidence = filtered.length
+    ? Math.round(filtered.reduce((sum, item) => sum + item.confidence, 0) / filtered.length)
     : null;
-  const primaryEvaluation = expectedEvaluations[0] ?? evaluations[0];
+  const primaryEvaluation = filtered[0];
+  const primaryScenario = scenarios.find((item) => item.id === primaryEvaluation?.scenarioId)?.type;
   const summaryMetrics = primaryEvaluation
     ? {
         savings: value(primaryEvaluation.id, "annual_cost_saved"),
@@ -98,8 +91,8 @@ export function RoiExplorer({
             <HeroMetric icon={<Calculator />} label="Scénarios" value={String(scenarios.length)} />
             <HeroMetric
               icon={<TrendingUp />}
-              label="Évaluations"
-              value={String(evaluations.length)}
+              label="Évaluations affichées"
+              value={String(filtered.length)}
             />
             <HeroMetric
               icon={<CircleDollarSign />}
@@ -115,9 +108,10 @@ export function RoiExplorer({
 
         {primaryEvaluation && (
           <p className="text-sm text-slate-300">
-            Repère économique du scénario probable pour : {brandText(primaryEvaluation.title)}. Ce
-            n’est pas le total de l’audit. Les évaluations des différentes opportunités ne doivent
-            pas être additionnées sans vérifier les hypothèses communes et les doubles comptes.
+            Repère économique · {scenarioLabel(primaryScenario ?? "")} ·{" "}
+            {brandText(primaryEvaluation.title)}. Ce n’est pas le total de l’audit. Les évaluations
+            des différentes opportunités ne doivent pas être additionnées sans vérifier les
+            hypothèses communes et les doubles comptes.
           </p>
         )}
         <section
@@ -175,16 +169,16 @@ export function RoiExplorer({
             empty="Aucune métrique économique calculée n’est encore disponible."
           />
           <EvidenceBlock
-            title="Évaluations et confiance du modèle"
-            items={evaluations.map(
-              (item) => `${brandText(item.title)} · confiance ${item.confidence}%`,
+            title="Évaluations et indice interne du modèle"
+            items={filtered.map(
+              (item) => `${brandText(item.title)} · indice interne ${item.confidence}%`,
             )}
             empty="Aucune évaluation économique disponible."
           />
           <EvidenceBlock
             title="Données manquantes"
             items={missingMetrics.map((metric) => metricLabel(metric.code))}
-            empty="Aucune donnée manquante publiée."
+            empty="Aucun champ de calcul manquant n’est signalé. Cela ne signifie pas que les hypothèses ont été vérifiées."
           />
         </section>
 

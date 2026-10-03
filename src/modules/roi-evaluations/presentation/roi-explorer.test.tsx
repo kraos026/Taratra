@@ -2,6 +2,35 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { RoiExplorer } from "./roi-explorer";
 describe("RoiExplorer", () => {
+  it("does not substitute another scenario into an empty probable filter", () => {
+    const html = renderToStaticMarkup(
+      <RoiExplorer
+        currency="EUR"
+        scenarios={[{ id: "optimistic", type: "optimistic" }]}
+        evaluations={[
+          {
+            id: "other",
+            scenarioId: "optimistic",
+            title: "Other scenario",
+            description: "",
+            confidence: 100,
+          },
+        ]}
+        metrics={[
+          {
+            evaluationId: "other",
+            code: "annual_cost_saved",
+            value: 99999,
+            specialValue: null,
+            unit: "currency/year",
+          },
+        ]}
+      />,
+    );
+    expect(html).not.toContain("99 999 EUR");
+    expect(html).not.toContain("Repère économique");
+    expect(html).toContain("ROI non disponible pour ce filtre");
+  });
   it("renders scenario metrics and currency", () => {
     const html = renderToStaticMarkup(
       <RoiExplorer
