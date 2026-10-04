@@ -10,18 +10,26 @@ export default async function AnalysisPage({ params }: { params: Promise<{ id: s
   const { data } = await supabase.auth.getClaims();
   const userId = data?.claims?.sub;
   if (!userId) notFound();
-  const detail = await withAuthenticatedDatabase(userId, async (db) => {
+  const access = await withAuthenticatedDatabase(userId, async (db) => {
     const repository = new PrismaBusinessAnalysisRepository(db);
     const context = await repository.context(userId);
-    return context ? repository.detail(context.organizationId, id) : null;
+    if (!context) return null;
+    const detail = await repository.detail(context.organizationId, id);
+    return detail ? { detail, canEdit: context.role !== "viewer" } : null;
   });
-  if (!detail) notFound();
+  if (!access) notFound();
+  const { detail } = access;
   const evidenceCounts = new Map<string, number>();
   for (const evidence of detail.evidence) {
     evidenceCounts.set(evidence.findingId, (evidenceCounts.get(evidence.findingId) ?? 0) + 1);
   }
   return (
     <BusinessFindingsExplorer
+      rebuild={
+        access.canEdit
+          ? { id: detail.analysis.id, lockVersion: detail.analysis.lockVersion }
+          : undefined
+      }
       findings={detail.findings.map((finding) => ({
         id: finding.id,
         title: finding.title,

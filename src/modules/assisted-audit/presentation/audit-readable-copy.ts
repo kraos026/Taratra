@@ -102,6 +102,10 @@ export function auditText(value: string): string {
 
 export function analysisValidationCopy(code: string): string {
   const messages: Record<string, string> = {
+    source_descriptions_incomplete:
+      "Des descriptions d’étapes ne sont pas renseignées dans la cartographie. Cela ne prouve pas l’absence de procédures dans l’entreprise. Cette lacune ne crée ni risque chiffré ni opportunité ; les constats prouvés peuvent être examinés séparément.",
+    source_indicators_not_documented:
+      "Les indicateurs de suivi ne sont pas documentés dans les sources analysées. Leur existence et leurs valeurs restent inconnues. Aucun reporting, gain ou indicateur n’est inventé ; les décisions restent soumises à leurs propres preuves et hypothèses économiques.",
     missing_evidence:
       "Au moins un constat n’a pas de preuve pertinente reliée. Consultez les constats sans référence source, vérifiez les informations de l’entreprise et de l’entretien, puis faites reconstruire l’analyse à partir de sources complétées. Ne validez pas une information simplement pour débloquer l’audit.",
     source_not_published:

@@ -117,6 +117,24 @@ function input(rules: AnalysisRule[]): AnalysisInput {
 
 describe("BusinessAnalysisEngine", () => {
   const engine = new BusinessAnalysisEngine();
+  it("separates optional source gaps from supported findings and still blocks real missing evidence", () => {
+    const source = input([
+      rule("manual_invoice_processing", { operator: "manualInvoice" }),
+      rule("missing_documentation", { operator: "undocumentedShare", threshold: 30 }),
+      rule("missing_kpi", { operator: "missingKnowledgeTerm", terms: ["kpi"] }),
+    ]);
+    const result = engine.analyze(source);
+    expect(result.findings.map((finding) => finding.rule.code)).toEqual([
+      "manual_invoice_processing",
+    ]);
+    expect(result.findings[0]!.evidenceFactIds).toEqual(["fact"]);
+    expect(result.validations.filter((item) => item.severity === "error")).toEqual([]);
+    expect(result.validations.filter((item) => item.severity === "warning")).toHaveLength(2);
+    source.facts = [];
+    expect(engine.analyze(source).validations).toContainEqual(
+      expect.objectContaining({ code: "missing_evidence", severity: "error" }),
+    );
+  });
   it("treats empty step descriptions as an unproven source gap, not absent procedures", () => {
     const source = input([
       {
@@ -127,33 +145,20 @@ describe("BusinessAnalysisEngine", () => {
     source.processMap.confidence = 100;
     source.facts[0]!.confidence = 100;
     const result = engine.analyze(source);
-    expect(result.findings[0]).toMatchObject({
-      rule: { code: "missing_documentation", severity: "information" },
-      evidenceFactIds: [],
-      confidence: 0,
-      riskPoints: 0,
-      evidence: { interpretation: "source_gap_not_business_absence" },
-    });
-    expect(result.findings[0]!.description).toContain("ne prouve pas l’absence de procédures");
-    expect(result.findings[0]!.description).not.toContain("100%");
+    expect(result.findings).toEqual([]);
     expect(result.risk.score).toBe(0);
     expect(result.validations).toContainEqual(
-      expect.objectContaining({ code: "missing_evidence", severity: "error" }),
+      expect.objectContaining({ code: "source_descriptions_incomplete", severity: "warning" }),
     );
     expect(source.rules[0]!.severity).toBe("medium");
   });
-  it("keeps a missing-indicator gap blocked without inventing business risk", () => {
+  it("retains a missing-indicator gap separately without inventing a business finding", () => {
     const result = engine.analyze(
       input([rule("missing_kpi", { operator: "missingKnowledgeTerm", terms: ["kpi"] })]),
     );
-    expect(result.findings[0]).toMatchObject({
-      confidence: 0,
-      evidenceFactIds: [],
-      riskPoints: 0,
-      rule: { severity: "information" },
-    });
+    expect(result.findings).toEqual([]);
     expect(result.validations).toContainEqual(
-      expect.objectContaining({ code: "missing_evidence", severity: "error" }),
+      expect.objectContaining({ code: "source_indicators_not_documented", severity: "warning" }),
     );
   });
   it("does not emit a description gap when descriptions are actually supplied", () => {
@@ -179,9 +184,9 @@ describe("BusinessAnalysisEngine", () => {
       },
     ];
     const result = engine.analyze(source);
-    expect(result.findings[0]).toMatchObject({ evidenceFactIds: [], confidence: 0 });
+    expect(result.findings).toEqual([]);
     expect(result.validations).toContainEqual(
-      expect.objectContaining({ code: "missing_evidence", severity: "error" }),
+      expect.objectContaining({ code: "source_indicators_not_documented", severity: "warning" }),
     );
   });
   it("uses the evaluated step lineage and caps confidence at its source map", () => {
@@ -276,7 +281,7 @@ describe("BusinessAnalysisEngine", () => {
       rule("human_bottleneck", { operator: "actorManualDurationShare", threshold: 60 }),
     ];
     expect(engine.detectFindings(input(rules)).map((finding) => finding.rule.code)).toHaveLength(
-      18,
+      16,
     );
   });
 

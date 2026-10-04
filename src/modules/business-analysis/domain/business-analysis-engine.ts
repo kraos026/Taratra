@@ -101,7 +101,20 @@ export class BusinessAnalysisEngine {
       scores,
       health,
       risk: this.calculateRisk(findings),
-      validations: this.validate(input, findings, scores),
+      validations: [
+        ...this.validate(input, findings, scores),
+        ...input.rules
+          .filter((rule) => isSourceGap(rule) && this.evaluate(rule.evaluationLogic, input))
+          .map((rule) => ({
+            code:
+              rule.evaluationLogic.operator === "undocumentedShare"
+                ? "source_descriptions_incomplete"
+                : "source_indicators_not_documented",
+            severity: "warning" as const,
+            message:
+              "Information source à compléter ; aucune absence métier ni opportunité n’est déduite de cette lacune.",
+          })),
+      ],
     };
   }
 
@@ -110,14 +123,18 @@ export class BusinessAnalysisEngine {
   }
 
   detectFindings(input: AnalysisInput): DetectedFinding[] {
-    return input.rules
-      .filter((rule) => this.evaluate(rule.evaluationLogic, input))
-      .map((rule) => this.toFinding(rule, input))
-      .sort(
-        (left, right) =>
-          RISK_POINTS[right.rule.severity] - RISK_POINTS[left.rule.severity] ||
-          left.rule.code.localeCompare(right.rule.code),
-      );
+    return (
+      input.rules
+        // Source gaps are retained as validation warnings, never business findings.
+        // They cannot contribute to scores or be consumed as opportunity evidence.
+        .filter((rule) => !isSourceGap(rule) && this.evaluate(rule.evaluationLogic, input))
+        .map((rule) => this.toFinding(rule, input))
+        .sort(
+          (left, right) =>
+            RISK_POINTS[right.rule.severity] - RISK_POINTS[left.rule.severity] ||
+            left.rule.code.localeCompare(right.rule.code),
+        )
+    );
   }
 
   calculateRisk(findings: DetectedFinding[]) {
@@ -366,24 +383,6 @@ export class BusinessAnalysisEngine {
   private toFinding(rule: AnalysisRule, input: AnalysisInput): DetectedFinding {
     const logic = rule.evaluationLogic;
     const operator = logic.operator;
-    // Missing map fields/terms establish a source gap, not an adverse business fact.
-    // Keep the gap visible and publication blocked, without borrowing generic facts
-    // as proof or charging the company risk points for an unknown condition.
-    const sourceGap = operator === "undocumentedShare" || operator === "missingKnowledgeTerm";
-    const gapDescription =
-      operator === "undocumentedShare"
-        ? "Des descriptions d’étapes ne sont pas renseignées dans cette cartographie. Cela ne prouve pas l’absence de procédures dans l’entreprise."
-        : "Les informations recherchées par cette règle ne sont pas documentées dans les sources analysées. Cela ne prouve pas leur absence dans l’entreprise.";
-    const findingRule: AnalysisRule = sourceGap
-      ? {
-          ...rule,
-          title:
-            operator === "undocumentedShare"
-              ? "Descriptions d’étapes à compléter"
-              : "Informations de suivi à préciser",
-          severity: "information",
-        }
-      : rule;
     const manual = input.nodes.filter((node) => node.executionMode === "manual");
     const steps = input.nodes.filter((node) => ["step", "decision"].includes(node.type));
     // Evidence follows the evaluated condition, never the rule name or an arbitrary fact.
@@ -437,28 +436,25 @@ export class BusinessAnalysisEngine {
     const explanationValues = this.explanationValues(rule, input);
     return {
       identifier: `${rule.code}:${step?.key ?? "process"}`,
-      rule: findingRule,
-      description: sourceGap
-        ? gapDescription
-        : rule.explanationTemplate.replace(/\{([a-zA-Z_][\w]*)\}/g, (token, key: string) =>
-            Object.hasOwn(explanationValues, key) ? String(explanationValues[key]) : token,
-          ),
+      rule,
+      description: rule.explanationTemplate.replace(
+        /\{([a-zA-Z_][\w]*)\}/g,
+        (token, key: string) =>
+          Object.hasOwn(explanationValues, key) ? String(explanationValues[key]) : token,
+      ),
       relatedStepId: step?.id ?? null,
       relatedDepartmentId: step?.departmentId ?? null,
       relatedActorId: step?.actorId ?? null,
       relatedSystemId: step?.systemId ?? null,
       confidence,
-      businessImpact: sourceGap
-        ? "Compléter les sources avec une description ou un indicateur réel et vérifiable avant de poursuivre. Ne pas inventer de réponse pour débloquer l’audit."
-        : (rule.recommendationHint ?? rule.description),
-      riskPoints: RISK_POINTS[findingRule.severity],
+      businessImpact: rule.recommendationHint ?? rule.description,
+      riskPoints: RISK_POINTS[rule.severity],
       evidenceFactIds: evidenceFacts.map((fact) => fact.id),
       evidence: {
         ruleVersion: rule.version,
         processMapId: input.processMap.id,
         nodeIds: relevantNodes.map((node) => node.id),
         explanationValues,
-        ...(sourceGap ? { interpretation: "source_gap_not_business_absence" } : {}),
       },
     };
   }
@@ -512,6 +508,12 @@ export class BusinessAnalysisEngine {
         return {};
     }
   }
+}
+
+function isSourceGap(rule: AnalysisRule) {
+  return ["undocumentedShare", "missingKnowledgeTerm"].includes(
+    String(rule.evaluationLogic.operator),
+  );
 }
 
 function clamp(value: number) {

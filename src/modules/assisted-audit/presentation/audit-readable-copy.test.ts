@@ -2,6 +2,15 @@ import { describe, expect, it } from "vitest";
 import { auditLabel, auditText, analysisValidationCopy } from "./audit-readable-copy";
 
 describe("read-only French audit copy", () => {
+  it("distinguishes source completeness from business absence or permission to automate", () => {
+    expect(analysisValidationCopy("source_descriptions_incomplete")).toContain(
+      "ne prouve pas l’absence",
+    );
+    expect(analysisValidationCopy("source_indicators_not_documented")).toContain(
+      "restent inconnues",
+    );
+    expect(analysisValidationCopy("source_indicators_not_documented")).toContain("propres preuves");
+  });
   it("translates known catalog labels without changing arbitrary company names", () => {
     expect(auditLabel("system_health")).toBe("Outils");
     expect(auditLabel("manual")).toBe("Manuel");

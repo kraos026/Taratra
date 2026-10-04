@@ -11,6 +11,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { AnalysisRebuildControl } from "./analysis-rebuild-control";
 
 type Finding = {
   id: string;
@@ -30,12 +31,14 @@ export function BusinessFindingsExplorer({
   health,
   companyId,
   validations = [],
+  rebuild,
 }: {
   findings: Finding[];
   scores: Metric[];
   health: Metric[];
   companyId?: string;
   validations?: { id: string; code: string; severity: string }[];
+  rebuild?: { id: string; lockVersion: number };
 }) {
   const [query, setQuery] = useState("");
   const [severity, setSeverity] = useState("all");
@@ -68,6 +71,7 @@ export function BusinessFindingsExplorer({
           autorisation d’automatiser.
         </p>
       </header>
+      {rebuild && <AnalysisRebuildControl {...rebuild} />}
       <section aria-label="Contrôles de validation" className="space-y-3">
         <h2 className="text-xl font-semibold">Ce qu’il faut vérifier avant de continuer</h2>
         {validations.length === 0 && (

@@ -21,6 +21,7 @@ function subject(role = "consultant") {
       scores: [],
     }),
     transition: vi.fn(),
+    persist: vi.fn().mockResolvedValue({ id: "new-analysis", status: "draft" }),
     list: vi.fn(),
   };
   return {
@@ -33,6 +34,31 @@ function subject(role = "consultant") {
 }
 
 describe("BusinessAnalysisService", () => {
+  it("rebuilds into a separate draft linked to the previous analysis without transitioning it", async () => {
+    const { service, repo } = subject("owner");
+    repo.input.mockResolvedValue({
+      processMap: { status: "published" },
+      nodes: [],
+      facts: [],
+      rules: [],
+    } as never);
+    await expect(service.rebuild("analysis", 2)).resolves.toMatchObject({
+      id: "new-analysis",
+      status: "draft",
+    });
+    expect(repo.input).toHaveBeenCalledWith("org", "map");
+    expect(repo.persist).toHaveBeenCalledWith(
+      "org",
+      "company",
+      "knowledge",
+      "map",
+      "user",
+      expect.anything(),
+      expect.anything(),
+      "analysis",
+    );
+    expect(repo.transition).not.toHaveBeenCalled();
+  });
   it("cannot publish an information-only source gap without evidence", async () => {
     const { service, repo } = subject("owner");
     repo.detail.mockResolvedValue({
