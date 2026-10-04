@@ -3,6 +3,8 @@ import { useMemo, useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { auditLabel } from "@/modules/assisted-audit/presentation/audit-readable-copy";
+import { aiOpportunityText } from "./ai-opportunity-copy";
 
 type Opportunity = {
   id: string;
@@ -41,7 +43,7 @@ export function AiOpportunitiesExplorer({
           (risk === "all" || item.risk === risk) &&
           (capability === "all" ||
             itemCapabilities.some((link) => link.capabilityId === capability)) &&
-          `${item.title} ${item.description} ${item.businessProblem}`
+          `${aiOpportunityText(item.title)} ${aiOpportunityText(item.description)} ${aiOpportunityText(item.businessProblem)}`
             .toLowerCase()
             .includes(query.toLowerCase())
         );
@@ -51,37 +53,44 @@ export function AiOpportunitiesExplorer({
   return (
     <main className="mx-auto max-w-7xl space-y-6 p-6">
       <header>
-        <p className="text-muted-foreground text-sm">Deterministic AI Opportunity Engine</p>
-        <h1 className="text-3xl font-semibold">AI Opportunities Explorer</h1>
+        <p className="text-muted-foreground text-sm">PISTES D’ASSISTANCE</p>
+        <h1 className="text-3xl font-semibold">Les usages de l’IA à examiner</h1>
+        <p className="mt-3 text-sm text-slate-300">
+          Ces pistes proviennent des règles appliquées aux constats de l’analyse. Elles ne sont ni
+          des gains garantis, ni des automatisations autorisées. Vérifiez les données disponibles et
+          les contrôles humains avant de poursuivre.
+        </p>
       </header>
-      <section className="grid gap-3 md:grid-cols-3" aria-label="Filters">
+      <section className="grid gap-3 md:grid-cols-3" aria-label="Filtres">
         <Input
-          aria-label="Search opportunities"
-          placeholder="Search opportunities"
+          aria-label="Rechercher une piste"
+          placeholder="Rechercher une piste"
           value={query}
           onChange={(event) => setQuery(event.target.value)}
         />
         <select
-          aria-label="Filter by risk"
+          aria-label="Filtrer par risque"
           className="bg-background rounded-md border px-3"
           value={risk}
           onChange={(event) => setRisk(event.target.value)}
         >
-          <option value="all">All risks</option>
+          <option value="all">Tous les risques</option>
           {["low", "medium", "high", "critical"].map((value) => (
-            <option key={value}>{value}</option>
+            <option key={value} value={value}>
+              {auditLabel(value)}
+            </option>
           ))}
         </select>
         <select
-          aria-label="Filter by capability"
+          aria-label="Filtrer par usage"
           className="bg-background rounded-md border px-3"
           value={capability}
           onChange={(event) => setCapability(event.target.value)}
         >
-          <option value="all">All capabilities</option>
+          <option value="all">Tous les usages</option>
           {capabilities.map((item) => (
             <option key={item.id} value={item.id}>
-              {item.title}
+              {aiOpportunityText(item.title)}
             </option>
           ))}
         </select>
@@ -90,7 +99,7 @@ export function AiOpportunitiesExplorer({
         {filtered.length === 0 ? (
           <Card>
             <CardContent className="py-8 text-center">
-              No AI opportunities match these filters.
+              Aucune piste ne correspond à ces filtres.
             </CardContent>
           </Card>
         ) : (
@@ -98,37 +107,54 @@ export function AiOpportunitiesExplorer({
             <Card key={item.id}>
               <CardHeader>
                 <div className="flex items-center justify-between gap-3">
-                  <CardTitle>{item.title}</CardTitle>
-                  <Badge>{item.risk}</Badge>
+                  <CardTitle>{aiOpportunityText(item.title)}</CardTitle>
+                  <Badge>Risque : {auditLabel(item.risk)}</Badge>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {links
                     .filter((link) => link.opportunityId === item.id)
                     .map((link) => (
                       <Badge className="border bg-transparent" key={link.capabilityId}>
-                        {titleById.get(link.capabilityId)}
+                        {aiOpportunityText(titleById.get(link.capabilityId) ?? "Usage à préciser")}
                       </Badge>
                     ))}
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p>{item.businessProblem}</p>
-                <p className="text-muted-foreground text-sm">{item.description}</p>
-                <dl className="grid grid-cols-2 gap-3 text-sm md:grid-cols-6">
-                  {[
-                    ["Impact", item.businessImpact],
-                    ["Feasibility", item.feasibility],
-                    ["Data readiness", item.dataReadiness],
-                    ["AI readiness", item.aiReadiness],
-                    ["Complexity", item.technicalComplexity],
-                    ["Confidence", item.confidence],
-                  ].map(([label, value]) => (
-                    <div key={String(label)}>
-                      <dt className="text-muted-foreground">{label}</dt>
-                      <dd className="font-semibold">{Number(value).toFixed(0)}/100</dd>
-                    </div>
-                  ))}
-                </dl>
+                <p>{aiOpportunityText(item.businessProblem)}</p>
+                <p className="text-muted-foreground text-sm">
+                  {aiOpportunityText(item.description)}
+                </p>
+                {item.dataReadiness === 0 && (
+                  <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm">
+                    Données nécessaires à compléter : aucun résultat ni gain de cette piste n’est
+                    démontré à ce stade.
+                  </p>
+                )}
+                <details>
+                  <summary className="cursor-pointer text-sm font-semibold">
+                    Comprendre les indices du moteur
+                  </summary>
+                  <p className="my-3 text-sm text-slate-300">
+                    Ces indices internes ne sont pas des pourcentages de réussite. La confiance dans
+                    les sources ne remplace pas les données manquantes ni la validation humaine.
+                  </p>
+                  <dl className="grid grid-cols-2 gap-3 text-sm md:grid-cols-6">
+                    {[
+                      ["Impact potentiel", item.businessImpact],
+                      ["Faisabilité", item.feasibility],
+                      ["Préparation des données", item.dataReadiness],
+                      ["Préparation aux usages IA", item.aiReadiness],
+                      ["Complexité", item.technicalComplexity],
+                      ["Confiance dans les sources", item.confidence],
+                    ].map(([label, value]) => (
+                      <div key={String(label)}>
+                        <dt className="text-muted-foreground">{label}</dt>
+                        <dd className="font-semibold">{Number(value).toFixed(0)}/100</dd>
+                      </div>
+                    ))}
+                  </dl>
+                </details>
               </CardContent>
             </Card>
           ))
