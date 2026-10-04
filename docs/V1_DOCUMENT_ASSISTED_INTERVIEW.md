@@ -16,6 +16,13 @@ instructions remain inert text. No file renderer, OCR, macro execution, embeddin
 Kimi call or external document processor is used. PDF/XLSX are explicitly unsupported;
 CSV export is an interim path, not an equivalent full-featured Excel reader.
 
+CSV citations identify physical source lines, including ranges for multiline quoted
+cells. Blank physical CSV lines are ignored without shifting citations. Column headings
+must be nonblank and unique (case-insensitive) to avoid ambiguous attribution. A terminal
+TXT newline does not count as another line. Invalid filenames are rejected, never
+silently shortened. Import errors display only application-owned French messages;
+unexpected platform errors use a generic message without document content.
+
 Original files are held only in component memory, not uploaded or stored in browser
 storage. Removing the local document or leaving the page discards this copy. Selected
 excerpts are copied into the draft answer; removing a file does not delete a draft or

@@ -60,6 +60,14 @@ test("document review is local until explicit canonical answer save (mocked answ
   await page.goto(`/companies/${companyId}/interview`);
   const documents = page.getByRole("region", { name: "Documents d’appui" });
   await documents.getByLabel("Choisir un document d’appui").setInputFiles({
+    name: "invalid.csv",
+    mimeType: "text/csv",
+    buffer: Buffer.from('activité,note\nFactures,"non fermé', "utf8"),
+  });
+  await expect(documents.getByRole("status")).toHaveText("CSV invalide : guillemet non fermé.");
+  expect(saves).toHaveLength(0);
+  await expect(page.getByLabel("Réponse", { exact: true })).toHaveValue("");
+  await documents.getByLabel("Choisir un document d’appui").setInputFiles({
     name: "procedure.txt",
     mimeType: "text/plain",
     buffer: Buffer.from(

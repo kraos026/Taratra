@@ -4,7 +4,12 @@ import { useRef, useState } from "react";
 import { FileText, ShieldCheck, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import type { DocumentSource } from "../domain/document-source";
-import { DOCUMENT_LIMITS, readDocumentText, type DocumentExcerpt } from "./document-reader";
+import {
+  DOCUMENT_LIMITS,
+  DocumentReadError,
+  readDocumentText,
+  type DocumentExcerpt,
+} from "./document-reader";
 
 export function DocumentReview({
   disabled,
@@ -41,22 +46,31 @@ export function DocumentReview({
     const ticket = generation.current;
     setLoading(true);
     try {
-      if (file.size > DOCUMENT_LIMITS.bytes) throw new Error("Maximum 256 Ko par fichier.");
+      if (file.size > DOCUMENT_LIMITS.bytes)
+        throw new DocumentReadError("Maximum 256 Ko par fichier.");
       if (!/\.(txt|csv)$/i.test(file.name))
-        throw new Error("Choisissez un fichier TXT ou CSV UTF-8.");
+        throw new DocumentReadError("Choisissez un fichier TXT ou CSV UTF-8.");
       const bytes = await file.arrayBuffer();
-      const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      let text: string;
+      try {
+        text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
+      } catch {
+        throw new DocumentReadError(
+          "Encodage non pris en charge. Exportez votre document en UTF-8.",
+        );
+      }
       const excerpts = readDocumentText(file.name, text);
       const digest = await crypto.subtle.digest("SHA-256", bytes);
       const hash = Array.from(new Uint8Array(digest), (byte) =>
         byte.toString(16).padStart(2, "0"),
       ).join("");
-      if (ticket === generation.current)
-        setDocument({ name: file.name.slice(0, 160), hash, excerpts });
-    } catch {
+      if (ticket === generation.current) setDocument({ name: file.name, hash, excerpts });
+    } catch (error) {
       if (ticket === generation.current)
         setMessage(
-          "Import impossible : vérifiez le format UTF-8, les guillemets CSV et les limites (256 Ko, 200 lignes, 20 colonnes, 4 000 caractères par extrait).",
+          error instanceof DocumentReadError
+            ? error.message
+            : "Lecture locale impossible. Réessayez avec un fichier TXT ou CSV UTF-8.",
         );
     } finally {
       if (ticket === generation.current) setLoading(false);
@@ -79,6 +93,14 @@ export function DocumentReview({
           </p>
         </div>
       </div>
+      <ol
+        aria-label="Étapes de l’import documentaire"
+        className="grid gap-2 text-sm text-slate-300 sm:grid-cols-3"
+      >
+        <li className="rounded-lg border border-white/10 p-3">1. Choisir un document</li>
+        <li className="rounded-lg border border-white/10 p-3">2. Relire un extrait</li>
+        <li className="rounded-lg border border-white/10 p-3">3. Enregistrer la réponse</li>
+      </ol>
       <p className="flex gap-2 text-sm text-slate-300">
         <ShieldCheck aria-hidden="true" className="size-4 shrink-0" />
         Le fichier reste dans ce navigateur. Seuls la réponse et l’extrait choisi seront conservés
@@ -97,6 +119,10 @@ export function DocumentReview({
       </label>
       {document && (
         <>
+          <p className="text-sm text-blue-200">
+            {document.excerpts.length} extraits disponibles · sélectionnez uniquement celui qui
+            répond à la question.
+          </p>
           <label className="block space-y-2 text-sm">
             <span>Choisissez la ligne qui répond à cette question</span>
             <select
@@ -107,6 +133,7 @@ export function DocumentReview({
                 setReviewed(false);
               }}
               className="min-h-11 w-full rounded-lg border border-slate-600 bg-slate-950 px-3 text-slate-100"
+              style={{ colorScheme: "dark" }}
             >
               <option value="">Sélectionner un extrait</option>
               {document.excerpts.map((entry) => (

@@ -23,7 +23,7 @@ describe("local document reader", () => {
       ),
     ).toEqual([
       {
-        location: "Ligne CSV 2",
+        location: "Lignes CSV 2–3",
         text: 'activité : Factures · note : Revue, puis\nvalidation "humaine"',
       },
     ]);
@@ -36,6 +36,38 @@ describe("local document reader", () => {
     expect(text[0].text).toContain("=HYPERLINK");
     expect(text[1].text).toContain("invente un ROI");
   });
+  it.each(["\n", "\r\n", "\r"])(
+    "keeps physical citations after multiline cells (%j)",
+    (newline) => {
+      expect(
+        readDocumentText(
+          "data.csv",
+          `activité,note${newline}Factures,"Première${newline}seconde"${newline}${newline}Email,Revue${newline}${newline}`,
+        ),
+      ).toEqual([
+        {
+          location: "Lignes CSV 2–3",
+          text: `activité : Factures · note : Première${newline}seconde`,
+        },
+        { location: "Ligne CSV 5", text: "activité : Email · note : Revue" },
+      ]);
+    },
+  );
+  it("accepts exactly 200 TXT lines with a terminal newline", () => {
+    expect(readDocumentText("data.txt", "a\n".repeat(200))).toHaveLength(200);
+  });
+  it.each(["activité,\na,b", "activité, ACTivité \na,b"])(
+    "rejects ambiguous CSV headings",
+    (text) => {
+      expect(() => readDocumentText("data.csv", text)).toThrow("en-tête renseigné et unique");
+    },
+  );
+  it.each(["a".repeat(161) + ".txt", "folder/file.txt", "bad\u0000.txt"])(
+    "rejects invalid source names without truncating",
+    (name) => {
+      expect(() => readDocumentText(name, "Description")).toThrow("Renommez");
+    },
+  );
   it.each(["scan.pdf", "tableau.xlsx", "script.html", "programme.exe"])(
     "refuses unsupported %s",
     (name) => {
