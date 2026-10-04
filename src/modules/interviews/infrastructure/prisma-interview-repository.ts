@@ -6,6 +6,7 @@ import type {
   InterviewQuestionDefinition,
 } from "../domain/interview-engine";
 import { InterviewConflictError } from "../domain/interview-errors";
+import { documentSourceSchema } from "../domain/document-source";
 
 export class PrismaInterviewRepository {
   constructor(private readonly db: TransactionClient) {}
@@ -95,12 +96,40 @@ export class PrismaInterviewRepository {
       select: { id: true, code: true },
     });
     const codes = new Map(questions.map((question) => [question.id, question.code]));
+    const decisions = rows.length
+      ? await this.db.interviewDecision.findMany({
+          where: {
+            organizationId,
+            interviewSessionId: sessionId,
+            decision: "answered",
+            questionId: { in: rows.map((row) => row.questionId) },
+          },
+          orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+          select: { questionId: true, factsJson: true },
+        })
+      : [];
+    const sources = new Map<string, ReturnType<typeof documentSourceSchema.safeParse>>();
+    for (const decision of decisions) {
+      if (sources.has(decision.questionId)) continue;
+      const metadata = decision.factsJson;
+      sources.set(
+        decision.questionId,
+        documentSourceSchema.safeParse(
+          metadata && typeof metadata === "object" && !Array.isArray(metadata)
+            ? metadata.documentSource
+            : undefined,
+        ),
+      );
+    }
     return rows.map((row) => ({
       questionId: row.questionId,
       code: codes.get(row.questionId) ?? "",
       value: row.valueJson,
       confidence: row.confidence,
       skipReason: row.skipReason,
+      ...(row.valueJson !== null && sources.get(row.questionId)?.success
+        ? { documentSource: sources.get(row.questionId)!.data }
+        : {}),
     }));
   }
 

@@ -1,5 +1,5 @@
 import pg from "pg";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { performance } from "node:perf_hooks";
 import { mkdirSync, writeFileSync } from "node:fs";
 import { chromium } from "@playwright/test";
@@ -168,21 +168,65 @@ class CanonicalCertification {
     });
     const sessionId = idFrom(view) ?? (await latestId("interview_sessions", "company_id"));
     assertUuid(sessionId, "Interview session");
+    let documentQuestionId = null;
+    let documentSource = null;
 
     for (let i = 0; i < 80; i += 1) {
       if (view?.progress?.readyForProcessMapping || view?.session?.status === "completed") break;
       const question = nextQuestion(view);
       if (!question) break;
+      const value = answerFor(question);
+      const attachDocument =
+        !documentQuestionId &&
+        ["short_text", "long_text"].includes(question.answerType) &&
+        typeof value === "string";
+      if (attachDocument) {
+        documentQuestionId = question.id;
+        documentSource = {
+          fileName: "local-synthetic-interview.txt",
+          sha256: createHash("sha256").update(value).digest("hex"),
+          location: "Ligne 1",
+          excerpt: value,
+          reviewed: true,
+        };
+      }
       view = await api(this.page, `/api/interviews/${sessionId}/answer`, {
         method: "POST",
         body: {
           lockVersion: lockFrom(view) ?? (await lockVersionFor("interview_sessions", sessionId)),
           questionId: question.id,
-          value: answerFor(question),
+          value,
           confidence: "confirmed",
+          ...(attachDocument ? { documentSource } : {}),
         },
       });
     }
+
+    if (!documentQuestionId) throw new Error("Canonical document fixture was not exercised");
+    const readBack = await api(this.page, `/api/interviews/${sessionId}`);
+    const documentedAnswer = readBack.answers?.find(
+      (answer) => answer.questionId === documentQuestionId,
+    );
+    if (JSON.stringify(documentedAnswer?.documentSource) !== JSON.stringify(documentSource)) {
+      // JSONB key order is not significant; compare the explicit contract below.
+      if (
+        !documentedAnswer?.documentSource ||
+        Object.entries(documentSource).some(
+          ([key, value]) => documentedAnswer.documentSource[key] !== value,
+        )
+      )
+        throw new Error("Canonical document provenance did not survive authenticated read-back");
+    }
+    const savedSource = await one(
+      `select facts_json from public.interview_decisions where organization_id = $1 and interview_session_id = $2 and question_id = $3 and decision = 'answered' order by created_at desc, id desc limit 1`,
+      [this.organizationId, sessionId, documentQuestionId],
+    );
+    if (savedSource?.facts_json?.documentSource?.sha256 !== documentSource.sha256)
+      throw new Error(
+        "Canonical document provenance was not persisted in tenant-scoped audit history",
+      );
+    this.results.documentProvenance = "persisted-and-read-back";
+    this.results.documentQuestionId = documentQuestionId;
 
     const completed = await api(this.page, `/api/interviews/${sessionId}/complete`, {
       method: "POST",
@@ -751,12 +795,35 @@ async function tenantUser(label) {
   return row;
 }
 
-async function assertTenantBIsolation(companyId) {
+async function assertTenantBIsolation(companyId, interviewId = null, questionId = null) {
   const context = await browser.newContext({ baseURL: LOCAL_APP_URL });
   try {
     const page = await context.newPage();
     await login(page, LOCAL_E2E_USERS.tenantB);
     await assertForeignCompanyDenied(page.request, companyId);
+    if (interviewId) {
+      const read = await page.request.get(`/api/interviews/${interviewId}`);
+      if (read.status() !== 404)
+        throw new Error("Tenant B can read Tenant A interview/document provenance");
+      const write = await page.request.post(`/api/interviews/${interviewId}/answer`, {
+        data: {
+          lockVersion: 1,
+          questionId,
+          value: "Foreign tenant write must fail",
+          confidence: "uncertain",
+          documentSource: {
+            fileName: "foreign.txt",
+            sha256: "a".repeat(64),
+            location: "Ligne 1",
+            excerpt: "Foreign tenant write must fail",
+            reviewed: true,
+          },
+        },
+      });
+      if (write.status() !== 404)
+        throw new Error("Tenant B foreign interview/document write was not denied with 404");
+      console.log("TENANT B DOCUMENT PROVENANCE READ/WRITE ISOLATION: PASS");
+    }
     console.log("TENANT B AUTHENTICATED API ISOLATION: PASS");
   } finally {
     await context.close();
@@ -872,7 +939,7 @@ async function main() {
     const result = await certification.run();
 
     await assertRefreshPersistence(page, company.id, result);
-    await assertTenantBIsolation(company.id);
+    await assertTenantBIsolation(company.id, result.interviewSessionId, result.documentQuestionId);
     await reportSuccess(result);
   } finally {
     await browser?.close().catch(() => undefined);

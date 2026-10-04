@@ -1,3 +1,5 @@
+import type { DocumentSource } from "./document-source";
+
 export type InterviewConfidence = "validated" | "confirmed" | "uncertain" | "missing";
 export type InterviewCondition =
   | Record<string, never>
@@ -23,6 +25,7 @@ export interface InterviewAnswerValue {
   value: unknown | null;
   confidence: InterviewConfidence;
   skipReason: "irrelevant" | "unknown" | "deferred" | null;
+  documentSource?: DocumentSource;
 }
 
 export interface InterviewProgressResult {

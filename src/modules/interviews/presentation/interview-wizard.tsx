@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { interviewDomainLabel, isInterviewReadOnly, interviewAnswerLabel } from "./interview-copy";
+import { DocumentReview } from "./document-review";
+import type { DocumentSource } from "../domain/document-source";
 
 type Question = {
   id: string;
@@ -32,7 +34,12 @@ type InterviewView = {
       confidencePercentage: number;
     }[];
   };
-  answers: { questionId: string; value: unknown; confidence: string }[];
+  answers: {
+    questionId: string;
+    value: unknown;
+    confidence: string;
+    documentSource?: DocumentSource;
+  }[];
   questions: Question[];
 };
 
@@ -42,6 +49,16 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
   const [confidence, setConfidence] = useState<"confirmed" | "uncertain">("confirmed");
   const [busy, setBusy] = useState(true);
   const [message, setMessage] = useState("");
+  const [sourceAttachment, setSourceAttachment] = useState<{
+    companyId: string;
+    questionId: string;
+    source: DocumentSource;
+  } | null>(null);
+  const documentSource =
+    sourceAttachment?.companyId === companyId &&
+    sourceAttachment.questionId === view?.nextQuestion?.id
+      ? sourceAttachment.source
+      : null;
 
   useEffect(() => {
     fetch(`/api/companies/${companyId}/interviews`)
@@ -86,6 +103,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
       const next = await readView(response);
       setView(next);
       setValue("");
+      setSourceAttachment(null);
       setMessage("Enregistré");
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Une erreur est survenue");
@@ -173,6 +191,31 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
           </CardHeader>
           <CardContent className="space-y-5">
             <AnswerField question={question} value={value} setValue={setValue} />
+            {documentSource && (
+              <div className="rounded-xl border border-blue-400/20 bg-blue-950/20 p-3 text-sm">
+                <p>
+                  Source relue : {documentSource.fileName} · {documentSource.location}
+                </p>
+                <p className="mt-1 text-slate-300">
+                  Relisez votre réponse. La source documente votre déclaration ; elle ne garantit
+                  pas son exactitude.
+                </p>
+                <Button variant="outline" disabled={busy} onClick={() => setSourceAttachment(null)}>
+                  Ne pas joindre cet extrait
+                </Button>
+              </div>
+            )}
+            {["short_text", "long_text"].includes(question.answerType) && (
+              <DocumentReview
+                key={`${companyId}:${question.id}`}
+                disabled={busy}
+                onSelect={(source) => {
+                  setValue(source.excerpt);
+                  setSourceAttachment({ companyId, questionId: question.id, source });
+                  setConfidence("uncertain");
+                }}
+              />
+            )}
             <div className="space-y-2">
               <Label htmlFor="confidence">Niveau de certitude</Label>
               <select
@@ -194,6 +237,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
                     questionId: question.id,
                     value: parseValue(question.answerType, value),
                     confidence,
+                    ...(documentSource ? { documentSource } : {}),
                   })
                 }
               >
@@ -265,6 +309,21 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
                       <p className="text-sm break-words text-slate-300">
                         {interviewAnswerLabel(answer.value)}
                       </p>
+                      {answer.documentSource && (
+                        <details className="mt-2 rounded-lg border border-blue-400/20 p-3 text-sm">
+                          <summary className="cursor-pointer text-blue-300">
+                            Source documentaire relue : {answer.documentSource.fileName} ·{" "}
+                            {answer.documentSource.location}
+                          </summary>
+                          <p className="mt-2 break-words whitespace-pre-wrap text-slate-300">
+                            {answer.documentSource.excerpt}
+                          </p>
+                          <p className="mt-2 text-xs text-slate-400">
+                            Déclaration relue par l’utilisateur, non vérification indépendante du
+                            document.
+                          </p>
+                        </details>
+                      )}
                     </div>
                     {!readOnly && (
                       <Button

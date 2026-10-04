@@ -17,6 +17,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
       input.data.questionId,
       input.data.value,
       input.data.confidence,
+      input.data.documentSource,
     ),
   );
   if (write instanceof Response) return write;

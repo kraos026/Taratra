@@ -1,4 +1,5 @@
 import { InterviewEngine } from "../domain/interview-engine";
+import { documentSourceSchema, type DocumentSource } from "../domain/document-source";
 import {
   InterviewForbiddenError,
   InterviewNotFoundError,
@@ -89,6 +90,7 @@ export class InterviewService {
     questionId: string,
     value: unknown,
     confidence: "confirmed" | "uncertain",
+    documentSource?: DocumentSource,
   ) {
     const context = await this.context();
     this.write(context.role);
@@ -98,6 +100,10 @@ export class InterviewService {
     const question = questions.find((candidate) => candidate.id === questionId);
     if (!question || !this.engine.validateAnswer(question, value))
       throw new InterviewValidationError("Invalid answer for this interview question");
+    if (documentSource && !documentSourceSchema.safeParse(documentSource).success)
+      throw new InterviewValidationError(
+        "Document source requires explicit review and bounded provenance",
+      );
     await this.repo.assertLock(context.organizationId, id, lockVersion, questionId);
     await this.repo.answer(context.organizationId, id, questionId, this.userId, value, confidence);
     await this.repo.decision(
@@ -106,7 +112,7 @@ export class InterviewService {
       questionId,
       "answered",
       "Validated deterministic answer",
-      {},
+      documentSource ? { documentSource, provenanceStatus: "USER_REVIEWED_NOT_AUTHENTICATED" } : {},
     );
     return { organizationId: context.organizationId, companyId: session.companyId };
   }

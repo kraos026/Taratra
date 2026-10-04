@@ -54,6 +54,60 @@ function subject(role = "consultant", hasDiscovery = true) {
 }
 
 describe("InterviewService", () => {
+  it("stores reviewed document provenance in the existing tenant-scoped audit trail without changing answer confidence", async () => {
+    const { service, repo, question } = subject();
+    const source = {
+      fileName: "procedure.txt",
+      sha256: "a".repeat(64),
+      location: "Ligne 1",
+      excerpt: "Revue humaine",
+      reviewed: true as const,
+    };
+    await service.persistAnswer("session", 1, question.id, true, "uncertain", source);
+    expect(repo.answer).toHaveBeenCalledWith(
+      "org",
+      "session",
+      question.id,
+      "user",
+      true,
+      "uncertain",
+    );
+    expect(repo.decision).toHaveBeenCalledWith(
+      "org",
+      "session",
+      question.id,
+      "answered",
+      "Validated deterministic answer",
+      { documentSource: source, provenanceStatus: "USER_REVIEWED_NOT_AUTHENTICATED" },
+    );
+  });
+  it("refuses unreviewed source before any write", async () => {
+    const { service, repo, question } = subject();
+    await expect(
+      service.persistAnswer("session", 1, question.id, true, "confirmed", {
+        fileName: "procedure.txt",
+        sha256: "a".repeat(64),
+        location: "Ligne 1",
+        excerpt: "test",
+        reviewed: false,
+      } as never),
+    ).rejects.toMatchObject({ code: "VALIDATION_ERROR" });
+    expect(repo.answer).not.toHaveBeenCalled();
+    expect(repo.assertLock).not.toHaveBeenCalled();
+  });
+  it("keeps document-assisted answers inaccessible to viewers", async () => {
+    const { service, repo, question } = subject("viewer");
+    await expect(
+      service.persistAnswer("session", 1, question.id, true, "confirmed", {
+        fileName: "procedure.txt",
+        sha256: "a".repeat(64),
+        location: "Ligne 1",
+        excerpt: "test",
+        reviewed: true,
+      }),
+    ).rejects.toMatchObject({ code: "FORBIDDEN" });
+    expect(repo.answer).not.toHaveBeenCalled();
+  });
   it.each(["consultant", "viewer"])("forbids final validation for %s", async (role) => {
     const { service, repo } = subject(role);
     await expect(service.validate("session")).rejects.toMatchObject({ code: "FORBIDDEN" });
