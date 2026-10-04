@@ -35,68 +35,68 @@ export const roiAssumptionFields: {
 }[] = [
   {
     code: "working_days",
-    label: "Working days per year",
-    help: "Typical working days in one year.",
+    label: "Jours travaillés par an",
+    help: "Nombre de jours effectivement travaillés sur une année habituelle.",
     group: "Time and work",
   },
   {
     code: "working_hours",
-    label: "Working hours per day",
-    help: "Typical paid hours in one working day.",
+    label: "Heures travaillées par jour",
+    help: "Durée habituelle d’une journée de travail, en heures.",
     group: "Time and work",
   },
   {
     code: "monthly_frequency",
-    label: "Occurrences per month",
-    help: "How often the process runs in a typical month.",
+    label: "Opérations par mois",
+    help: "Nombre de fois où ce processus est réalisé dans un mois habituel.",
     group: "Time and work",
   },
   {
     code: "annual_frequency",
-    label: "Occurrences per year",
-    help: "How often the process runs in a typical year.",
+    label: "Opérations par an",
+    help: "Nombre de fois où ce processus est réalisé dans une année habituelle. Vérifiez sa cohérence avec le volume mensuel.",
     group: "Time and work",
   },
   {
     code: "hourly_cost",
-    label: "Hourly staff cost",
-    help: "Estimated fully loaded cost for one hour of work.",
+    label: "Coût horaire du personnel",
+    help: "Coût estimé d’une heure de travail, charges comprises, dans la devise choisie.",
     group: "Costs",
   },
   {
     code: "implementation_cost",
-    label: "Implementation cost",
-    help: "One-time cost to implement the automation.",
+    label: "Coût de mise en œuvre",
+    help: "Dépense initiale estimée pour mettre en place l’automatisation, dans la devise choisie.",
     group: "Costs",
   },
   {
     code: "maintenance_cost",
-    label: "Annual maintenance cost",
-    help: "Expected recurring maintenance cost per year.",
+    label: "Coût annuel de maintenance",
+    help: "Dépense récurrente estimée pour la maintenance sur une année.",
     group: "Costs",
   },
   {
     code: "training_cost",
-    label: "Training cost",
-    help: "One-time cost to train the people involved.",
+    label: "Coût de formation",
+    help: "Dépense initiale estimée pour former les personnes concernées.",
     group: "Costs",
   },
   {
     code: "infrastructure_cost",
-    label: "Infrastructure cost",
-    help: "One-time systems or infrastructure cost.",
+    label: "Coût d’infrastructure",
+    help: "Dépense initiale estimée pour les systèmes ou l’infrastructure nécessaires.",
     group: "Costs",
   },
   {
     code: "error_cost",
-    label: "Cost per error",
-    help: "Estimated cost of one avoidable process error.",
+    label: "Coût par erreur",
+    help: "Coût estimé d’une erreur évitable dans ce processus, dans la devise choisie.",
     group: "Costs",
   },
   {
     code: "hours_saved_per_occurrence",
-    label: "Hours saved per occurrence",
-    help: "Estimated time the automation saves each time it runs.",
+    label: "Heures économisables par opération",
+    help: "Temps qui pourrait être économisé à chaque opération, en heures. Ce n’est pas la durée totale du processus ni un gain garanti. Si vous ne le savez pas, indiquez-le.",
     group: "Automation",
   },
 ];
@@ -109,7 +109,8 @@ export function emptyAssumptions(): AssumptionFormState {
 
 export function buildRoiRequest(currency: string, assumptions: AssumptionFormState) {
   const errors: Partial<Record<AssumptionCode | "currency", string>> = {};
-  if (!/^[A-Z]{3}$/.test(currency)) errors.currency = "Enter a three-letter currency code.";
+  if (!/^[A-Z]{3}$/.test(currency))
+    errors.currency = "Saisissez un code de devise à trois lettres.";
   const payload = {} as Record<
     AssumptionCode,
     { status: "known"; value: number } | { status: "unknown" }
@@ -120,7 +121,7 @@ export function buildRoiRequest(currency: string, assumptions: AssumptionFormSta
     else {
       const value = Number(state.value);
       if (state.value.trim() === "" || !Number.isFinite(value) || value < 0)
-        errors[code] = "Enter a non-negative number or choose “I don't know yet”.";
+        errors[code] = "Saisissez un nombre positif ou nul, ou cochez « Je ne sais pas encore ».";
       else payload[code] = { status: "known", value };
     }
   }
@@ -178,10 +179,10 @@ export function RoiAssumptionsForm({
       .then(async (model) => {
         const automation = artifact(model, "AUTOMATION_OPPORTUNITIES");
         if (automation?.id !== opportunityId)
-          throw new Error("This ROI source is not part of the current audit.");
+          throw new Error("Cette source de calcul ne fait pas partie de l’audit actuel.");
         const currentRoi = artifact(model, "ROI");
         if (initialRoiId && !currentRoi)
-          throw new Error("The requested ROI draft is not part of the current audit.");
+          throw new Error("L’estimation demandée ne fait pas partie de l’audit actuel.");
         const detail = currentRoi ? await loadRoi(currentRoi.id) : null;
         return { model, detail };
       })
@@ -230,14 +231,14 @@ export function RoiAssumptionsForm({
       setMessage(
         unknown.length
           ? "Données complémentaires requises. Certaines hypothèses doivent rester visibles avant qu’Optivos puisse publier un ROI complet."
-          : "Assumptions saved. Continue with the next audit action when you are ready.",
+          : "Hypothèses enregistrées. Vous pouvez poursuivre l’audit ; les résultats restent des estimations, pas des gains garantis.",
       );
     } catch (caught) {
       const failure = caught as ApiFailure;
       if (failure.status === 409 || failure.code === "ROI_CONFLICT") {
         setConflict(true);
         setMessage(
-          "These ROI assumptions were updated elsewhere. Reload the latest version before continuing.",
+          "Ces hypothèses ont été modifiées dans une autre session. Rechargez la dernière version avant de poursuivre.",
         );
       } else setMessage(safeMessage(caught));
     } finally {
@@ -266,7 +267,7 @@ export function RoiAssumptionsForm({
   if (loading)
     return (
       <main className="mx-auto max-w-5xl p-6" role="status">
-        Loading ROI assumptions…
+        Chargement des hypothèses économiques…
       </main>
     );
 
@@ -274,17 +275,22 @@ export function RoiAssumptionsForm({
     <main className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6">
       <header className="space-y-2">
         <p className="text-muted-foreground text-sm">Audit Optivos · ROI</p>
-        <h1 className="text-3xl font-semibold">Vos hypothèses ROI</h1>
+        <h1 className="text-3xl font-semibold">Estimer la rentabilité, sans inventer les gains</h1>
         <p className="text-muted-foreground max-w-3xl">
           Les calculs Optivos sont des estimations fondées sur les hypothèses et preuves que vous
           fournissez. Ils ne sont pas des gains garantis.
         </p>
+        <p className="text-muted-foreground max-w-3xl text-sm">
+          Ne renseignez que des données documentées. Une valeur inconnue n’est pas zéro : cochez «
+          Je ne sais pas encore » pour la conserver comme donnée manquante. Le temps total passé sur
+          une opération n’est pas automatiquement du temps économisable.
+        </p>
         <div className="grid gap-2 text-sm sm:grid-cols-2">
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-emerald-900">
-            CALCULATED / ESTIMATED : affiché uniquement quand les données publiées le permettent.
+            Estimation chiffrée : disponible uniquement lorsque les données publiées le permettent.
           </p>
           <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900">
-            INSUFFICIENT_EVIDENCE / STRATEGIC_NON_QUANTIFIED : données complémentaires requises.
+            Estimation non disponible : des données ou des preuves complémentaires sont nécessaires.
           </p>
         </div>
       </header>
@@ -298,18 +304,18 @@ export function RoiAssumptionsForm({
 
       {conflict && (
         <Button type="button" variant="outline" onClick={() => void reload()}>
-          Reload latest version
+          Recharger la dernière version
         </Button>
       )}
 
       <form onSubmit={(event) => void submit(event)} className="space-y-6" aria-busy={saving}>
         <Card>
           <CardHeader>
-            <CardTitle>Currency</CardTitle>
+            <CardTitle>Devise de l’estimation</CardTitle>
           </CardHeader>
           <CardContent>
             <label htmlFor="currency" className="mb-2 block font-medium">
-              Currency code
+              Code de devise
             </label>
             <Input
               id="currency"
@@ -322,7 +328,8 @@ export function RoiAssumptionsForm({
               aria-describedby="currency-help currency-error"
             />
             <p id="currency-help" className="text-muted-foreground mt-2 text-sm">
-              Use the three-letter currency for these assumptions.
+              Utilisez un code de devise à trois lettres, par exemple EUR. Tous les coûts doivent
+              être exprimés dans cette même devise.
             </p>
             {errors.currency && (
               <p id="currency-error" className="mt-1 text-sm text-red-700">
@@ -335,7 +342,13 @@ export function RoiAssumptionsForm({
         {(["Time and work", "Costs", "Automation"] as const).map((group) => (
           <Card key={group}>
             <CardHeader>
-              <CardTitle>{group}</CardTitle>
+              <CardTitle>
+                {group === "Time and work"
+                  ? "Volume et temps de travail"
+                  : group === "Costs"
+                    ? "Coûts à documenter"
+                    : "Temps potentiellement économisable"}
+              </CardTitle>
             </CardHeader>
             <CardContent className="grid gap-5 md:grid-cols-2">
               {roiAssumptionFields
@@ -377,21 +390,25 @@ export function RoiAssumptionsForm({
 
         {!editable && (
           <p role="status" className="rounded-lg border p-4">
-            You have read-only access to these ROI assumptions.
+            Ces hypothèses sont accessibles en lecture seule.
           </p>
         )}
         <div className="flex flex-wrap gap-3">
           {editable && (
             <Button type="submit" disabled={saving}>
               {saving && <Loader2 className="size-4 animate-spin" aria-hidden="true" />}
-              {saving ? "Saving…" : roi ? "Save revised assumptions" : "Calculate ROI draft"}
+              {saving
+                ? "Enregistrement…"
+                : roi
+                  ? "Enregistrer les hypothèses révisées"
+                  : "Créer une estimation provisoire"}
             </Button>
           )}
           <Link
             href={`/companies/${companyId}/automation-audit`}
             className={cn(buttonVariants({ variant: "outline" }))}
           >
-            {next?.label ?? "Return to audit"}
+            {next?.label ?? "Retour à l’audit"}
           </Link>
         </div>
       </form>
@@ -449,7 +466,7 @@ function AssumptionInput({
             })
           }
         />
-        I don&apos;t know yet
+        Je ne sais pas encore
       </label>
       {error && (
         <p id={`${id}-error`} className="text-sm text-red-700">
@@ -528,7 +545,7 @@ async function fetchData<T>(
   } | null;
   if (!response.ok || !payload?.data) {
     const error = new Error(
-      payload?.error?.message ?? "This ROI request could not be completed.",
+      payload?.error?.message ?? "Cette demande d’estimation n’a pas pu aboutir.",
     ) as ApiFailure;
     error.status = response.status;
     error.code = payload?.error?.code;
@@ -550,5 +567,7 @@ function applyDetail(
   setAssumptions(restoreAssumptions(detail));
 }
 function safeMessage(caught: unknown) {
-  return caught instanceof Error ? caught.message : "This ROI request could not be completed.";
+  return caught instanceof Error
+    ? caught.message
+    : "Cette demande d’estimation n’a pas pu aboutir.";
 }

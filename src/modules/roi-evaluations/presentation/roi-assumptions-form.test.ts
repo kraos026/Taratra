@@ -63,6 +63,37 @@ describe("customer ROI assumptions", () => {
     }
   });
 
+  it("explains economic inputs in French without treating process duration as savings", () => {
+    expect(roiAssumptionFields.map(({ label }) => label)).toEqual([
+      "Jours travaillés par an",
+      "Heures travaillées par jour",
+      "Opérations par mois",
+      "Opérations par an",
+      "Coût horaire du personnel",
+      "Coût de mise en œuvre",
+      "Coût annuel de maintenance",
+      "Coût de formation",
+      "Coût d’infrastructure",
+      "Coût par erreur",
+      "Heures économisables par opération",
+    ]);
+    const savings = roiAssumptionFields.find(({ code }) => code === "hours_saved_per_occurrence");
+    expect(savings?.help).toContain("en heures");
+    expect(savings?.help).toContain("pas la durée totale du processus ni un gain garanti");
+  });
+
+  it("keeps French missing-input errors separate from valid zero", () => {
+    const values = emptyAssumptions();
+    values.hourly_cost = { unknown: false, value: "0" };
+    const result = buildRoiRequest("", values);
+    expect(result.success).toBe(false);
+    if (!result.success) {
+      expect(result.errors.currency).toBe("Saisissez un code de devise à trois lettres.");
+      expect(result.errors.training_cost).toContain("Je ne sais pas encore");
+      expect(result.errors.hourly_cost).toBeUndefined();
+    }
+  });
+
   it("keeps known positive, known zero and UNKNOWN distinct", () => {
     const values = emptyAssumptions();
     for (const { code } of roiAssumptionFields) values[code] = { unknown: true, value: "" };
