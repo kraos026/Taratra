@@ -73,7 +73,7 @@ export function AutomationOpportunitiesExplorer({
             <div className="max-w-3xl">
               <p className="flex items-center gap-2 text-xs font-bold tracking-[0.28em] text-blue-300 uppercase">
                 <Sparkles size={16} />
-                Optivos · Priorités d’automatisation
+                Optivos · Pistes d’automatisation
               </p>
               <h1 className="mt-4 font-['Manrope'] text-2xl font-extrabold tracking-tight text-white sm:text-3xl">
                 Opportunités
@@ -86,15 +86,15 @@ export function AutomationOpportunitiesExplorer({
               </p>
             </div>
             <div className="grid grid-cols-3 gap-3 rounded-3xl border border-white/10 bg-white/[0.04] p-3 text-center lg:min-w-80 lg:shrink-0">
-              <HeroMetric
-                label="Top prioritaire"
-                value={String(Math.min(3, opportunities.length))}
-              />
+              <HeroMetric label="À examiner" value={String(Math.min(3, opportunities.length))} />
               <HeroMetric label="Total" value={String(opportunities.length)} />
               <HeroMetric
-                label="Indice interne"
-                value={averageConfidence(opportunities)}
-                muted={!opportunities.length}
+                label="À documenter"
+                value={String(
+                  opportunities.filter(
+                    (item) => !item.decisionState || item.decisionState === "NEEDS_MORE_EVIDENCE",
+                  ).length,
+                )}
               />
             </div>
           </div>
@@ -119,10 +119,10 @@ export function AutomationOpportunitiesExplorer({
               <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-blue-200">
-                    Que faut-il automatiser en premier ?
+                    Que faut-il examiner avant de décider ?
                   </p>
                   <h2 id="top-opportunities" className="text-2xl font-bold text-white">
-                    Top 3 recommandé
+                    Les premières pistes à examiner
                   </h2>
                 </div>
                 {hasValidationWarnings ? (
@@ -131,6 +131,11 @@ export function AutomationOpportunitiesExplorer({
                   </p>
                 ) : null}
               </div>
+              <p className="max-w-3xl text-sm leading-6 text-slate-300">
+                Cet ordre reprend le classement du moteur, pas une autorisation de mise en œuvre.
+                Pour décider, il faut des preuves propres à chaque piste, des systèmes vérifiés, une
+                estimation économique et une revue humaine.
+              </p>
               {topThree.length ? (
                 <div className="grid gap-4 lg:grid-cols-3">
                   {topThree.map((item, index) => (
@@ -169,7 +174,7 @@ export function AutomationOpportunitiesExplorer({
                 </div>
               ) : (
                 <p className="rounded-3xl border border-white/10 bg-slate-900/60 p-5 text-sm text-slate-300">
-                  Toutes les opportunités de ce dossier sont déjà visibles dans le Top 3.
+                  Toutes les opportunités de ce dossier sont déjà affichées ci-dessus.
                 </p>
               )}
             </section>
@@ -205,7 +210,7 @@ function OpportunityCard({
     >
       <div className="flex items-start justify-between gap-4">
         <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-100">
-          Priorité {rank}
+          Piste {rank}
         </span>
         <DecisionBadge value={decisionLabel(opportunity)} />
       </div>
@@ -216,24 +221,46 @@ function OpportunityCard({
       <p className="mt-3 text-sm leading-6 text-slate-400">{brandText(opportunity.description)}</p>
 
       <dl className="mt-5 grid grid-cols-2 gap-3">
-        <Fact label="Impact" value={scoreLabel(opportunity.businessImpact)} />
+        <Fact label="Impact potentiel" value={scoreLabel(opportunity.businessImpact)} />
         <Fact label="Effort" value={effortLabel(opportunity.implementationEffort)} />
-        <Fact label="Indice interne" value={`${Math.round(opportunity.confidence)} %`} />
         <Fact label="Preuves liées" value={String(evidenceCount)} />
         <Fact label="ROI" value="À vérifier dans l’évaluation ROI" />
       </dl>
+      <p className="mt-3 text-xs leading-5 text-slate-400">
+        Les preuves liées documentent les sources ; leur nombre ne démontre pas les gains. L’impact
+        et l’effort sont des indices du modèle, pas des mesures économiques validées.
+      </p>
 
       <div className="mt-5 space-y-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-        <Guidance icon={<Gauge size={16} />} title="Pourquoi c’est important">
-          {impactSentence(opportunity)}
-        </Guidance>
         <Guidance icon={<ShieldCheck size={16} />} title="Contrôles à garder visibles">
           {controlSentence(opportunity, availableConnectors)}
         </Guidance>
         <Guidance icon={<ArrowRight size={16} />} title="Prochaine action">
-          Confirmer les preuves économiques et préparer le plan d’action associé.
+          {evidenceCount === 0
+            ? "Documenter le travail réellement effectué et ses preuves avant d’estimer les gains."
+            : availableConnectors === 0
+              ? "Vérifier les logiciels, les accès et les connexions nécessaires, puis renseigner les hypothèses économiques."
+              : "Vérifier les données et les accès propres à cette piste, puis renseigner ses hypothèses économiques avant de décider."}
         </Guidance>
       </div>
+      <details className="mt-4 rounded-2xl border border-white/10 p-4">
+        <summary className="cursor-pointer text-sm font-semibold text-slate-200">
+          Comprendre les indices du moteur
+        </summary>
+        <p className="mt-3 text-sm leading-6 text-slate-300">
+          Un indice de 100/100 ne signifie ni 100 % de réussite, ni des gains garantis, ni une
+          autorisation d’automatiser.
+        </p>
+        <dl className="mt-3">
+          <Fact
+            label="Confiance dans les sources"
+            value={`${Math.round(opportunity.confidence)}/100`}
+          />
+        </dl>
+        <Guidance icon={<Gauge size={16} />} title="Lien avec les constats">
+          {impactSentence(opportunity)}
+        </Guidance>
+      </details>
 
       <div className="mt-4 flex flex-wrap gap-2">
         {patternTitle ? <Pill>{brandText(patternTitle)}</Pill> : null}
@@ -334,13 +361,6 @@ function availableConnectors(connectors: readonly ConnectorLink[], opportunityId
 
 function evidenceCount(evidence: readonly EvidenceLink[], opportunityId: string): number {
   return evidence.filter((item) => item.opportunityId === opportunityId).length;
-}
-
-function averageConfidence(opportunities: readonly Opportunity[]): string {
-  if (!opportunities.length) return "À confirmer";
-  const average =
-    opportunities.reduce((sum, item) => sum + item.confidence, 0) / opportunities.length;
-  return `${Math.round(average)} %`;
 }
 
 function decisionLabel(opportunity: Opportunity): string {

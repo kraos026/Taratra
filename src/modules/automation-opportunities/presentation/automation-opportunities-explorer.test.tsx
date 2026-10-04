@@ -67,7 +67,7 @@ describe("AutomationOpportunitiesExplorer", () => {
     );
 
     expect(html).toContain("Opportunités");
-    expect(html).toContain("Top 3 recommandé");
+    expect(html).toContain("Les premières pistes à examiner");
     expect(html).toContain("Toutes les opportunités");
     expect(html).toContain("Automatiser maintenant");
     expect(html).toContain("Reporter");
@@ -88,6 +88,36 @@ describe("AutomationOpportunitiesExplorer", () => {
     expect(html).toContain("Votre analyse n’a pas encore généré d’opportunités.");
     expect(html).toContain("Continuer l’audit");
     expect(html).not.toContain("0 €");
+  });
+  it("never turns a high source index into an implementation recommendation", () => {
+    const html = renderToStaticMarkup(
+      <AutomationOpportunitiesExplorer
+        opportunities={[opportunity({ confidence: 100, actions: [], outputs: [] })]}
+        connectors={[]}
+        evidence={[]}
+        patterns={[]}
+      />,
+    );
+    expect(html).not.toContain("Top 3 recommandé");
+    expect(html).not.toContain("Top prioritaire");
+    expect(html).toContain("pas une autorisation de mise en œuvre");
+    expect(html).toContain("Documenter le travail réellement effectué");
+    expect(html).toContain("100/100");
+    expect(html).toContain("ni des gains garantis");
+    expect(html).toContain("Données supplémentaires requises");
+  });
+  it("explains the connector check before economic estimates", () => {
+    const html = renderToStaticMarkup(
+      <AutomationOpportunitiesExplorer
+        opportunities={[opportunity()]}
+        connectors={[]}
+        evidence={[{ opportunityId: "o" }]}
+        patterns={[]}
+      />,
+    );
+    expect(html).toContain("Vérifier les logiciels, les accès et les connexions nécessaires");
+    expect(html).toContain("leur nombre ne démontre pas les gains");
+    expect(html).not.toContain("préparer le plan d’action associé");
   });
 
   it.each([0, 1, 5])(
