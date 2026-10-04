@@ -3,6 +3,23 @@ import { describe, expect, it } from "vitest";
 import { AiOpportunitiesExplorer } from "./ai-opportunities-explorer";
 import { aiOpportunityText } from "./ai-opportunity-copy";
 describe("AiOpportunitiesExplorer", () => {
+  it("keeps filter contrast explicit and returns to the canonical company journey", () => {
+    const html = renderToStaticMarkup(
+      <AiOpportunitiesExplorer
+        companyId="company-test"
+        opportunities={[]}
+        links={[]}
+        capabilities={[]}
+      />,
+    );
+    expect(html).toContain("[color-scheme:dark]");
+    expect(html).toContain("[&amp;&gt;option]:text-slate-100");
+    expect(html).toContain("Niveau de risque");
+    expect(html).toContain("Type d’assistance");
+    expect(html).toContain('href="/companies/company-test/automation-audit"');
+    expect(html).toContain("Poursuivre la revue");
+    expect(html).not.toContain("/publish");
+  });
   it("renders deterministic opportunity metrics and capabilities", () => {
     const html = renderToStaticMarkup(
       <AiOpportunitiesExplorer

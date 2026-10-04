@@ -17,6 +17,7 @@ export default async function AiOpportunitiesPage({ params }: { params: Promise<
   if (!detail) notFound();
   return (
     <AiOpportunitiesExplorer
+      companyId={detail.snapshot.companyId}
       opportunities={detail.opportunities.map((item) => ({
         ...item,
         confidence: Number(item.confidence),

@@ -1,5 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
+import NextLink from "next/link";
+import { ArrowLeft, ArrowRight, Sparkles } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -26,10 +28,12 @@ export function AiOpportunitiesExplorer({
   opportunities,
   links,
   capabilities,
+  companyId,
 }: {
   opportunities: Opportunity[];
   links: Link[];
   capabilities: Capability[];
+  companyId?: string;
 }) {
   const [query, setQuery] = useState("");
   const [risk, setRisk] = useState("all");
@@ -51,50 +55,81 @@ export function AiOpportunitiesExplorer({
     [opportunities, links, query, risk, capability],
   );
   return (
-    <main className="mx-auto max-w-7xl space-y-6 p-6">
-      <header>
-        <p className="text-muted-foreground text-sm">PISTES D’ASSISTANCE</p>
-        <h1 className="text-3xl font-semibold">Les usages de l’IA à examiner</h1>
+    <main className="mx-auto max-w-7xl space-y-6 p-4 text-slate-100 sm:p-6">
+      {companyId && (
+        <NextLink
+          className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm text-sky-200 hover:bg-slate-800 focus-visible:outline-2 focus-visible:outline-sky-400"
+          href={`/companies/${companyId}/automation-audit`}
+        >
+          <ArrowLeft size={16} aria-hidden="true" /> Retour au parcours de l’audit
+        </NextLink>
+      )}
+      <header className="rounded-2xl border border-slate-700 bg-slate-900/80 p-5 sm:p-8">
+        <p className="mb-3 flex items-center gap-2 text-xs font-semibold tracking-widest text-sky-200">
+          <Sparkles size={18} aria-hidden="true" /> PISTES D’ASSISTANCE
+        </p>
+        <h1 className="text-2xl font-semibold sm:text-3xl">Les usages de l’IA à examiner</h1>
         <p className="mt-3 text-sm text-slate-300">
           Ces pistes proviennent des règles appliquées aux constats de l’analyse. Elles ne sont ni
           des gains garantis, ni des automatisations autorisées. Vérifiez les données disponibles et
           les contrôles humains avant de poursuivre.
         </p>
+        <p className="mt-4 border-t border-slate-700 pt-4 text-sm text-slate-300">
+          Votre prochaine étape : examiner ces pistes, puis revenir au parcours pour les valider.
+          L’estimation économique et la décision finale viennent ensuite.
+        </p>
       </header>
-      <section className="grid gap-3 md:grid-cols-3" aria-label="Filtres">
-        <Input
-          aria-label="Rechercher une piste"
-          placeholder="Rechercher une piste"
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-        />
-        <select
-          aria-label="Filtrer par risque"
-          className="bg-background rounded-md border px-3"
-          value={risk}
-          onChange={(event) => setRisk(event.target.value)}
-        >
-          <option value="all">Tous les risques</option>
-          {["low", "medium", "high", "critical"].map((value) => (
-            <option key={value} value={value}>
-              {auditLabel(value)}
-            </option>
-          ))}
-        </select>
-        <select
-          aria-label="Filtrer par usage"
-          className="bg-background rounded-md border px-3"
-          value={capability}
-          onChange={(event) => setCapability(event.target.value)}
-        >
-          <option value="all">Tous les usages</option>
-          {capabilities.map((item) => (
-            <option key={item.id} value={item.id}>
-              {aiOpportunityText(item.title)}
-            </option>
-          ))}
-        </select>
+      <section
+        className="grid gap-4 rounded-2xl border border-slate-700 bg-slate-900 p-4 md:grid-cols-3"
+        aria-label="Filtres"
+      >
+        <label className="space-y-2 text-sm font-medium text-slate-200">
+          <span>Rechercher</span>
+          <Input
+            className="h-11 border-slate-600 bg-slate-950 text-slate-100 placeholder:text-slate-400 focus-visible:ring-sky-400"
+            aria-label="Rechercher une piste"
+            placeholder="Rechercher une piste"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+        </label>
+        <label className="space-y-2 text-sm font-medium text-slate-200">
+          <span>Niveau de risque</span>
+          <select
+            aria-label="Filtrer par risque"
+            className="h-11 w-full rounded-md border border-slate-600 bg-slate-950 px-3 text-slate-100 [color-scheme:dark] outline-none focus-visible:ring-2 focus-visible:ring-sky-400 [&>option]:bg-slate-950 [&>option]:text-slate-100"
+            value={risk}
+            onChange={(event) => setRisk(event.target.value)}
+          >
+            <option value="all">Tous les risques</option>
+            {["low", "medium", "high", "critical"].map((value) => (
+              <option key={value} value={value}>
+                {auditLabel(value)}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-2 text-sm font-medium text-slate-200">
+          <span>Type d’assistance</span>
+          <select
+            aria-label="Filtrer par usage"
+            className="h-11 w-full rounded-md border border-slate-600 bg-slate-950 px-3 text-slate-100 [color-scheme:dark] outline-none focus-visible:ring-2 focus-visible:ring-sky-400 [&>option]:bg-slate-950 [&>option]:text-slate-100"
+            value={capability}
+            onChange={(event) => setCapability(event.target.value)}
+          >
+            <option value="all">Tous les usages</option>
+            {capabilities.map((item) => (
+              <option key={item.id} value={item.id}>
+                {aiOpportunityText(item.title)}
+              </option>
+            ))}
+          </select>
+        </label>
       </section>
+      <p className="text-sm text-slate-300" role="status">
+        {filtered.length} piste{filtered.length > 1 ? "s" : ""} affichée
+        {filtered.length > 1 ? "s" : ""} sur {opportunities.length}
+      </p>
       <section className="space-y-4" aria-live="polite">
         {filtered.length === 0 ? (
           <Card>
@@ -104,9 +139,12 @@ export function AiOpportunitiesExplorer({
           </Card>
         ) : (
           filtered.map((item) => (
-            <Card key={item.id}>
+            <Card
+              key={item.id}
+              className="rounded-2xl border-slate-700 bg-slate-900 shadow-lg dark:border-slate-700 dark:bg-slate-900"
+            >
               <CardHeader>
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-wrap items-center justify-between gap-3">
                   <CardTitle>{aiOpportunityText(item.title)}</CardTitle>
                   <Badge>Risque : {auditLabel(item.risk)}</Badge>
                 </div>
@@ -114,7 +152,10 @@ export function AiOpportunitiesExplorer({
                   {links
                     .filter((link) => link.opportunityId === item.id)
                     .map((link) => (
-                      <Badge className="border bg-transparent" key={link.capabilityId}>
+                      <Badge
+                        className="border border-sky-400/30 bg-sky-400/10 text-sky-200"
+                        key={link.capabilityId}
+                      >
                         {aiOpportunityText(titleById.get(link.capabilityId) ?? "Usage à préciser")}
                       </Badge>
                     ))}
@@ -122,11 +163,11 @@ export function AiOpportunitiesExplorer({
               </CardHeader>
               <CardContent className="space-y-4">
                 <p>{aiOpportunityText(item.businessProblem)}</p>
-                <p className="text-muted-foreground text-sm">
+                <p className="text-sm leading-relaxed text-slate-300">
                   {aiOpportunityText(item.description)}
                 </p>
                 {item.dataReadiness === 0 && (
-                  <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm">
+                  <p className="rounded-xl border border-amber-400/30 bg-amber-500/10 p-3 text-sm text-amber-100">
                     Données nécessaires à compléter : aucun résultat ni gain de cette piste n’est
                     démontré à ce stade.
                   </p>
@@ -160,6 +201,14 @@ export function AiOpportunitiesExplorer({
           ))
         )}
       </section>
+      {companyId && (
+        <NextLink
+          className="flex items-center justify-between gap-3 rounded-xl border border-sky-400/30 bg-sky-500/10 p-4 font-semibold text-sky-100 hover:bg-sky-500/20 focus-visible:outline-2 focus-visible:outline-sky-400"
+          href={`/companies/${companyId}/automation-audit`}
+        >
+          Poursuivre la revue dans le parcours d’audit <ArrowRight size={18} aria-hidden="true" />
+        </NextLink>
+      )}
     </main>
   );
 }
