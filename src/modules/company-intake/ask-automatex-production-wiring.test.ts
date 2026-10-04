@@ -1,4 +1,8 @@
 import { describe, expect, it } from "vitest";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { AskAnswer } from "./presentation/ask-automatex-panel";
+import { attachAuditExplanation, auditExplanationTopics } from "./application/audit-explanation";
 import type {
   AIInterpretationRequest,
   AIInterpretationResult,
@@ -15,6 +19,58 @@ const tenantId = "tenant-a";
 const companyId = "company-a";
 
 describe("Ask AutomateX production wiring", () => {
+  it("adds bounded teaching without changing any authoritative field", async () => {
+    const answer = await new AskAutomateXService(readModelFrom([publishedResult()])).ask({
+      tenantId,
+      companyId,
+      userId: "user-a",
+      question: "What's the ROI?",
+    });
+    const enriched = await attachAuditExplanation(answer, { select: async () => ["ECONOMICS"] });
+    expect(enriched.explanation?.paragraphs).toEqual([auditExplanationTopics.ECONOMICS]);
+    const { explanation, ...canonical } = enriched;
+    expect(explanation?.kind).toBe("BOUNDED_EDUCATIONAL_SUPPORT");
+    expect(canonical).toEqual(answer);
+    const html = renderToStaticMarkup(createElement(AskAnswer, { answer: enriched }));
+    expect(html).toContain("Pour mieux comprendre");
+    expect(html).toContain("ne modifie ni la décision ni les chiffres du moteur");
+    expect(html).not.toContain("BOUNDED_EDUCATIONAL_SUPPORT");
+  });
+  it("keeps the exact canonical response when disabled or failing", async () => {
+    const answer = await new AskAutomateXService(readModelFrom([publishedResult()])).ask({
+      tenantId,
+      companyId,
+      userId: "user-a",
+      question: "What's the ROI?",
+    });
+    expect(await attachAuditExplanation(answer)).toBe(answer);
+    expect(
+      await attachAuditExplanation(answer, {
+        select: async () => {
+          throw new Error("timeout");
+        },
+      }),
+    ).toBe(answer);
+    expect(await attachAuditExplanation(answer, { select: async () => ["EVIDENCE"] })).toBe(answer);
+  });
+  it("does not call the educational selector for out-of-scope requests", async () => {
+    let calls = 0;
+    const answer = await new AskAutomateXService(readModelFrom([publishedResult()])).ask({
+      tenantId,
+      companyId,
+      userId: "user-a",
+      question: "What's the weather?",
+    });
+    expect(
+      await attachAuditExplanation(answer, {
+        select: async () => {
+          calls += 1;
+          return ["ECONOMICS"];
+        },
+      }),
+    ).toBe(answer);
+    expect(calls).toBe(0);
+  });
   it("answers why-not-automate from the production decision-center projection", async () => {
     const service = new AskAutomateXService(readModelFrom([publishedResult()]));
 

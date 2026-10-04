@@ -102,6 +102,10 @@ export interface GroundedAnswerPlan {
 }
 
 export interface AskAutomateXResponse {
+  readonly explanation?: {
+    readonly kind: "BOUNDED_EDUCATIONAL_SUPPORT";
+    readonly paragraphs: readonly string[];
+  };
   readonly answer: string;
   readonly answerStatus: AskAutomateXAnswerStatus;
   readonly intent: AskAutomateXIntent;

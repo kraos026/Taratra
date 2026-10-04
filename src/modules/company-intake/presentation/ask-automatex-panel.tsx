@@ -49,7 +49,9 @@ export function AskAutomateXPanel({ center }: { readonly center: PatronDecisionC
       setPreviousIntent(payload.data.intent);
       setQuestion("");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Ask Optivos is unavailable.");
+      setError(
+        caught instanceof Error ? caught.message : "Ask Optivos est momentanément indisponible.",
+      );
     } finally {
       setLoading(false);
     }
@@ -111,22 +113,35 @@ export function AskAutomateXPanel({ center }: { readonly center: PatronDecisionC
   );
 }
 
-function AskAnswer({ answer }: { readonly answer: AskAutomateXResponse }) {
+export function AskAnswer({ answer }: { readonly answer: AskAutomateXResponse }) {
   return (
     <article className="rounded-xl border border-blue-900/60 bg-slate-950/70 p-4">
       <div className="flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-semibold text-blue-100">
-          {answer.answerStatus.replaceAll("_", " ")}
+          {askStatusLabel(answer.answerStatus)}
         </span>
         {answer.authoritativeDecisionState ? (
           <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-100">
-            {answer.authoritativeDecisionState.replaceAll("_", " ")}
+            {askDecisionLabel(answer.authoritativeDecisionState)}
           </span>
         ) : null}
       </div>
       <p className="mt-3 text-sm leading-6 whitespace-pre-wrap text-slate-100">
         {brandText(answer.answer)}
       </p>
+      {answer.explanation ? (
+        <aside className="mt-4 rounded-lg border border-blue-500/30 bg-blue-500/10 p-3">
+          <h3 className="font-semibold text-blue-100">Pour mieux comprendre</h3>
+          <p className="mt-1 text-xs text-slate-300">
+            Aide pédagogique : ne modifie ni la décision ni les chiffres du moteur.
+          </p>
+          {answer.explanation.paragraphs.map((paragraph) => (
+            <p key={paragraph} className="mt-2 text-sm leading-6 text-slate-200">
+              {paragraph}
+            </p>
+          ))}
+        </aside>
+      ) : null}
       {answer.unknowns.length || answer.contradictions.length ? (
         <div className="mt-4 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3">
           <p className="text-sm font-semibold text-amber-100">
@@ -157,6 +172,32 @@ function AskAnswer({ answer }: { readonly answer: AskAutomateXResponse }) {
 
 function brandText(value: string): string {
   return value.replaceAll("AutomateX", "Optivos").replaceAll("AUTOMATEX", "OPTIVOS");
+}
+
+export function askStatusLabel(value: AskAutomateXResponse["answerStatus"]): string {
+  return {
+    ANSWERED: "Réponse fondée sur l’audit",
+    ANSWERED_WITH_UNCERTAINTY: "Réponse avec incertitudes",
+    INSUFFICIENT_EVIDENCE: "Preuves complémentaires requises",
+    CLARIFICATION_REQUIRED: "Question à préciser",
+    OUT_OF_SCOPE: "Question hors du périmètre de l’audit",
+    PROVIDER_FALLBACK: "Réponse du moteur, sans reformulation IA",
+  }[value];
+}
+
+export function askDecisionLabel(
+  value: NonNullable<AskAutomateXResponse["authoritativeDecisionState"]>,
+): string {
+  return {
+    AUTOMATE_NOW: "Automatiser maintenant",
+    AUTOMATE_CONDITIONALLY: "Automatiser sous conditions",
+    FIX_BEFORE_AUTOMATING: "Corriger avant d’automatiser",
+    INVESTIGATE_FIRST: "Examiner avant de décider",
+    DO_NOT_AUTOMATE: "Ne pas automatiser",
+    NOT_ECONOMICALLY_JUSTIFIED: "Non justifié économiquement",
+    NEEDS_MORE_EVIDENCE: "Données supplémentaires requises",
+    HUMAN_DECISION_REQUIRED: "Décision humaine requise",
+  }[value];
 }
 
 function suggestedAskQuestions(center: PatronDecisionCenter): readonly string[] {

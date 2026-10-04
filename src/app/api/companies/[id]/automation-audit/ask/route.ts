@@ -2,6 +2,8 @@ import { z } from "zod";
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { createClient } from "@/infrastructure/supabase/server";
 import { AskAutomateXService } from "@/modules/company-intake/application/ask-automatex";
+import { attachAuditExplanation } from "@/modules/company-intake/application/audit-explanation";
+import { createKimiAuditExplanationSelector } from "@/modules/company-intake/infrastructure/kimi-audit-explanation";
 import { PrismaAskAutomateXReadModel } from "@/modules/company-intake/infrastructure/prisma-ask-automatex-read-model";
 import { logError, logInfo } from "@/shared/infrastructure/logger";
 import { apiError, apiSuccess } from "@/shared/presentation/api-response";
@@ -128,13 +130,17 @@ export async function POST(
         answerStatus: answer.answerStatus,
       });
 
-      return { kind: "ok" as const, answer };
+      return { kind: "ok" as const, answer, tenantId: membership.organizationId };
     });
 
     if (response.kind === "forbidden") return apiError("FORBIDDEN", "Tenant context required", 403);
     if (response.kind === "not-found")
       return apiError("COMPANY_NOT_FOUND", "Company not found", 404);
-    return apiSuccess(response.answer);
+    const answer = await attachAuditExplanation(
+      response.answer,
+      createKimiAuditExplanationSelector(process.env, response.tenantId),
+    );
+    return apiSuccess(answer);
   } catch (caught) {
     logError({
       action: "ask_automatex_failed",
