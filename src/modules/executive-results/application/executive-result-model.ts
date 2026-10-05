@@ -49,6 +49,8 @@ export interface ExecutiveAuditResult {
       automationOpportunityId?: string;
       title: string;
       annualBenefit: number | null;
+      /** Published implementation metric; absent in legacy read models. */
+      implementationCost?: number | null;
       roi: number | null;
       roiSpecialValue: string | null;
       payback: number | null;

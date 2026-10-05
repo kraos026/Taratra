@@ -343,7 +343,14 @@ function Economics({ economics }: { readonly economics: PatronDecisionCenterEcon
             label="Potentiel annuel"
             value={formatRange(economics.benefitRange, economics.currency)}
           />
-          <Info label="Coût estimé" value={formatRange(economics.costRange, economics.currency)} />
+          <Info
+            label="Coût de mise en œuvre estimé"
+            value={formatRange(economics.costRange, economics.currency)}
+          />
+          <p className="text-sm text-slate-300">
+            Fourchette des coûts publiés par évaluation, pas un total à additionner. Formation,
+            infrastructure et maintenance restent à examiner dans le ROI.
+          </p>
           <Info label="Seuil de rentabilité" value={formatMonths(economics.breakEvenMonths)} />
           <Info label="Temps avant valeur" value={formatMonths(economics.timeToValueMonths)} />
           <Info

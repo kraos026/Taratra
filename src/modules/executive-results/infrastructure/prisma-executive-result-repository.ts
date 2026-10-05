@@ -221,6 +221,7 @@ export class PrismaExecutiveResultRepository implements ExecutiveResultRepositor
           automationOpportunityId: item.automationOpportunityId,
           title: item.title,
           annualBenefit: number(metric(item.id, "annual_benefit")?.value),
+          implementationCost: number(metric(item.id, "implementation_cost")?.value),
           roi: number(metric(item.id, "roi_percentage")?.value),
           roiSpecialValue: metric(item.id, "roi_percentage")?.specialValue ?? null,
           payback: number(metric(item.id, "payback_period")?.value),

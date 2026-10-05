@@ -3,6 +3,43 @@ import type { ExecutiveAuditResult } from "../executive-results/application/exec
 import { PatronDecisionCenterPresenter, ProductionExecutiveDecisionViewBuilder } from "./index";
 
 describe("ProductionExecutiveDecisionViewBuilder", () => {
+  it("projects published implementation costs as a range, not a portfolio sum", () => {
+    const result = publishedResult();
+    const evaluation = result.roi!.evaluations[0]!;
+    evaluation.implementationCost = 1000;
+    result.roi!.evaluations.push({
+      ...evaluation,
+      id: "roi-evaluation-2",
+      implementationCost: 2000,
+    });
+    const view = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result,
+    }).view!;
+    expect(view.economicPresentation.costRange).toEqual({ min: 1000, max: 2000 });
+  });
+  it.each([undefined, null, NaN, Infinity, -1])(
+    "keeps absent or invalid implementation cost unknown: %s",
+    (cost) => {
+      const result = publishedResult();
+      result.roi!.evaluations[0]!.implementationCost = cost;
+      const view = new ProductionExecutiveDecisionViewBuilder().build({
+        tenantId: "tenant-a",
+        result,
+      }).view!;
+      expect(view.economicPresentation.costRange).toEqual({ min: null, max: null });
+    },
+  );
+  it("preserves an explicit zero implementation cost without changing decisions", () => {
+    const result = publishedResult();
+    const builder = new ProductionExecutiveDecisionViewBuilder();
+    const before = builder.build({ tenantId: "tenant-a", result }).view!;
+    result.roi!.evaluations[0]!.implementationCost = 0;
+    const after = builder.build({ tenantId: "tenant-a", result }).view!;
+    expect(after.economicPresentation.costRange).toEqual({ min: 0, max: 0 });
+    expect(after.priorityCards).toEqual(before.priorityCards);
+    expect(after.economicReadiness).toEqual(before.economicReadiness);
+  });
   it("does not invent causes or promote artifact counts into strong evidence", () => {
     const result = publishedResult();
     const view = new ProductionExecutiveDecisionViewBuilder().build({

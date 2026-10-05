@@ -311,13 +311,21 @@ function economicPresentationFor(
 ): ExecutiveDecisionView["economicPresentation"] {
   const benefits = result.roi?.evaluations.map((item) => item.annualBenefit).filter(isNumber) ?? [];
   const paybacks = result.roi?.evaluations.map((item) => item.payback).filter(isNumber) ?? [];
+  const costs =
+    result.roi?.evaluations
+      .map((item) => item.implementationCost)
+      .filter((value): value is number => isNumber(value) && value >= 0) ?? [];
   return {
     state,
     benefitRange: {
       min: benefits.length ? Math.min(...benefits) : null,
       max: benefits.length ? Math.max(...benefits) : null,
     },
-    costRange: { min: null, max: null },
+    // A range of published per-evaluation costs, never a portfolio sum.
+    costRange: {
+      min: costs.length ? Math.min(...costs) : null,
+      max: costs.length ? Math.max(...costs) : null,
+    },
     breakEvenMonths: paybacks.length ? Math.min(...paybacks) : null,
     timeToValueMonths: null,
     costOfInaction: null,

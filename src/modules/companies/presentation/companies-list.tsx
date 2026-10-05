@@ -167,6 +167,14 @@ export function CompaniesList() {
             </p>
           </div>
           <div className="flex flex-wrap gap-3">
+            {!loading && !error && result?.items.length && result.permissions.canWrite ? (
+              <Link
+                href="/companies/new"
+                className="inline-flex items-center gap-2 rounded-2xl border border-blue-300/30 px-5 py-3 text-sm font-bold text-blue-100 transition hover:bg-blue-500/10"
+              >
+                <Plus size={17} aria-hidden="true" /> Créer un nouveau dossier
+              </Link>
+            ) : null}
             {primaryCompany ? (
               <Link
                 href={`/companies/${primaryCompany.id}/automation-audit`}

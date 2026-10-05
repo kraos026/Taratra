@@ -53,6 +53,9 @@ describe("PatronDecisionCenterView", () => {
     expect(html).toContain("Seuil de rentabilité");
     expect(html).toContain("Données complémentaires requises");
     expect(html).not.toContain(">0 EUR<");
+    expect(html).toContain("Coût de mise en œuvre estimé");
+    expect(html).toContain("pas un total à additionner");
+    expect(html).toContain("infrastructure et maintenance restent à examiner dans le ROI");
   });
 
   it("renders decision cards with keyboard-accessible Why drill-downs", () => {
