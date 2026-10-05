@@ -178,7 +178,11 @@ export function RoiExplorer({
           <EvidenceBlock
             title="Données manquantes"
             items={missingMetrics.map((metric) => metricLabel(metric.code))}
-            empty="Aucun champ de calcul manquant n’est signalé. Cela ne signifie pas que les hypothèses ont été vérifiées."
+            empty={
+              metrics.length === 0
+                ? "Aucune métrique n’a été calculée. Les données manquantes ne peuvent pas être déduites de cette vue : revenez aux hypothèses du parcours d’audit pour les compléter."
+                : "Aucun champ de calcul manquant n’est signalé. Cela ne signifie pas que les hypothèses ont été vérifiées."
+            }
           />
         </section>
 

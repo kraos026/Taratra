@@ -2,6 +2,16 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { RoiExplorer } from "./roi-explorer";
 describe("RoiExplorer", () => {
+  it("does not equate absent calculations with complete assumptions", () => {
+    const html = renderToStaticMarkup(
+      <RoiExplorer currency="EUR" scenarios={[]} evaluations={[]} metrics={[]} />,
+    );
+    expect(html).toContain("Aucune métrique n’a été calculée");
+    expect(html).toContain("revenez aux hypothèses du parcours d’audit");
+    expect(html).toContain("Données complémentaires requises");
+    expect(html).not.toContain("Aucun champ de calcul manquant");
+    expect(html).not.toContain("0 EUR");
+  });
   it("does not substitute another scenario into an empty probable filter", () => {
     const html = renderToStaticMarkup(
       <RoiExplorer
