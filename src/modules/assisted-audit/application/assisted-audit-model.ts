@@ -53,6 +53,7 @@ export type AssistedAuditAction =
 
 export interface AssistedAuditArtifactReference {
   id: string;
+  name?: string;
   version: number;
   status: string;
   lockVersion?: number;

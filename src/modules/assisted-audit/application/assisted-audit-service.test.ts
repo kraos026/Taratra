@@ -44,8 +44,8 @@ describe("AssistedAuditService", () => {
   });
 
   it("never selects between multiple Process Map lineages", async () => {
-    const first = { ...record("map-a", "draft"), lineageKey: "pattern-a" };
-    const second = { ...record("map-b", "published"), lineageKey: "pattern-b" };
+    const first = { ...record("map-a", "draft"), lineageKey: "pattern-a", name: "Commandes" };
+    const second = { ...record("map-b", "published"), lineageKey: "pattern-b", name: "Factures" };
     const result = await evaluate({ processMaps: [first, second] });
     expect(result).toMatchObject({
       currentStage: "PROCESS_MAP",
@@ -54,7 +54,10 @@ describe("AssistedAuditService", () => {
     });
     expect(
       result.stages.find((stage) => stage.stage === "PROCESS_MAP")?.candidateArtifacts,
-    ).toEqual([expect.objectContaining({ id: "map-a" }), expect.objectContaining({ id: "map-b" })]);
+    ).toEqual([
+      expect.objectContaining({ id: "map-a", name: "Commandes" }),
+      expect.objectContaining({ id: "map-b", name: "Factures" }),
+    ]);
   });
 
   it("recognizes an explicit Process Map choice only from its real downstream artifact", async () => {

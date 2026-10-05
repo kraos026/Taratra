@@ -136,8 +136,20 @@ describe("AutomationAuditView", () => {
       status: "AMBIGUOUS",
       artifact: null,
       candidateArtifacts: [
-        { id: "real-candidate-a", version: 1, status: "published", lockVersion: 1 },
-        { id: "real-candidate-b", version: 2, status: "draft", lockVersion: 3 },
+        {
+          id: "real-candidate-a",
+          name: "Traitement des commandes",
+          version: 1,
+          status: "published",
+          lockVersion: 1,
+        },
+        {
+          id: "real-candidate-b",
+          name: "Invoice Processing",
+          version: 2,
+          status: "draft",
+          lockVersion: 3,
+        },
       ],
       availableActions: ["SELECT_PROCESS_MAP"],
       blockingReason: "Select a process",
@@ -146,6 +158,12 @@ describe("AutomationAuditView", () => {
     expect(html).toContain("Aucun processus n’est sélectionné automatiquement");
     expect(html).toContain("/process-maps/real-candidate-a");
     expect(html).toContain("/process-maps/real-candidate-b");
+    expect(html).toContain("Traitement des commandes");
+    expect(html).toContain("Traitement des factures");
+    expect(html).toContain('href="#process-choice-title"');
+    expect(html).not.toContain("Cette étape n’est pas disponible");
+    delete ambiguous.stages[3]!.candidateArtifacts[0]!.name;
+    expect(render(ambiguous)).toContain("Processus à examiner");
   });
 
   it("renders viewer and consultant restrictions without enabled mutation buttons", () => {

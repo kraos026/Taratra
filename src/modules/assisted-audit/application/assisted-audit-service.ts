@@ -338,6 +338,7 @@ function permissionReason(role: AssistedAuditRole, action: AssistedAuditAction):
 function reference(record: AssistedAuditRecord): AssistedAuditArtifactReference {
   return {
     id: record.id,
+    ...(record.name === undefined ? {} : { name: record.name }),
     version: record.version,
     status: record.status,
     ...(record.lockVersion === undefined ? {} : { lockVersion: record.lockVersion }),

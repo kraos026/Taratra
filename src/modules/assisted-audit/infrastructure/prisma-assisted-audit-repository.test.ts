@@ -76,7 +76,10 @@ describe("PrismaAssistedAuditRepository", () => {
       },
     ]);
     db.processMap.findMany.mockResolvedValue([
-      versioned("process-map", "published", { processPatternId: "pattern" }),
+      versioned("process-map", "published", {
+        processPatternId: "pattern",
+        name: "Traitement des factures",
+      }),
     ]);
     db.analysisSnapshot.findMany.mockResolvedValue([
       { ...versioned("analysis", "published"), processMapId: "process-map" },
@@ -91,6 +94,7 @@ describe("PrismaAssistedAuditRepository", () => {
     );
     const result = await new PrismaAssistedAuditRepository(asDb(db)).read("user", "company");
     expect(result).toMatchObject({
+      processMaps: [{ id: "process-map", name: "Traitement des factures" }],
       knowledge: { id: "knowledge" },
       analysis: { id: "analysis" },
       recommendations: { id: "recommendations" },

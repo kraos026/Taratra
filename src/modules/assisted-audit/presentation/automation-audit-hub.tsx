@@ -37,6 +37,7 @@ import {
 } from "./assisted-audit-action-plan";
 import { buildCustomerJourney, customerStatusLabel, journeyProgress } from "./canonical-journey";
 import { JourneyProgressRing } from "./journey-progress-ring";
+import { auditText } from "./audit-readable-copy";
 
 export function AutomationAuditHub({ companyId }: { companyId: string }) {
   const [model, setModel] = useState<AssistedAuditReadModel | null>(null);
@@ -397,7 +398,12 @@ function ProcessMapChoice({
             <Card key={candidate.id} className="opt-card">
               <CardContent className="space-y-4 pt-5">
                 <div>
-                  <p className="font-semibold">Cartographie version {candidate.version}</p>
+                  <h3 className="font-semibold">
+                    {candidate.name?.trim()
+                      ? auditText(candidate.name.trim())
+                      : "Processus à examiner"}
+                  </h3>
+                  <p className="text-sm text-slate-400">Cartographie version {candidate.version}</p>
                   <p className="text-sm text-slate-400">
                     Statut :{" "}
                     {candidate.status === "draft"
@@ -439,6 +445,15 @@ function ActionControl({
   compact?: boolean;
 }) {
   if (!action) return null;
+  if (action.kind === "selection")
+    return (
+      <div className="space-y-3">
+        <p>Examinez les processus ci-dessous, puis choisissez celui à analyser en premier.</p>
+        <a className={buttonVariants({ variant: "outline" })} href={action.href}>
+          Voir les processus à choisir
+        </a>
+      </div>
+    );
   if (action.kind === "navigate")
     return (
       <Link className={buttonVariants({ size: compact ? "sm" : "lg" })} href={action.href}>

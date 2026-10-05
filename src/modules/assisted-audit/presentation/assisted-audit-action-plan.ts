@@ -11,6 +11,7 @@ export interface AuditCommandRequest {
 }
 
 export type AuditActionPresentation =
+  | { kind: "selection"; label: string; description: string; href: string }
   | { kind: "navigate"; label: string; description: string; href: string }
   | { kind: "command"; label: string; description: string; request: AuditCommandRequest }
   | { kind: "unavailable"; label: string; description: string };
@@ -147,7 +148,8 @@ export function presentNextAction(
       ? { kind: "navigate", ...text, href: `/companies/${companyId}/automation-audit/results` }
       : { kind: "unavailable", ...text };
   }
-  if (action === "SELECT_PROCESS_MAP") return { kind: "unavailable", ...text };
+  if (action === "SELECT_PROCESS_MAP")
+    return { kind: "selection", ...text, href: "#process-choice-title" };
   if (action === "ENTER_ROI_ASSUMPTIONS") {
     const opportunity = artifact(model, "AUTOMATION_OPPORTUNITIES");
     const roi = artifact(model, "ROI");

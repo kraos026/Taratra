@@ -60,7 +60,7 @@ export class PrismaAssistedAuditRepository implements AssistedAuditRepositoryPor
             status: { not: "archived" },
           },
           orderBy: [{ processPatternId: "asc" }, { versionNumber: "desc" }],
-          select: { ...lifecycleSelect, processPatternId: true },
+          select: { ...lifecycleSelect, processPatternId: true, name: true },
         })
       : [];
     const canonicalMaps = latestProcessMapVersions(processMaps);
@@ -150,6 +150,7 @@ export class PrismaAssistedAuditRepository implements AssistedAuditRepositoryPor
       knowledge: knowledge ? knowledgeRecord(knowledge) : null,
       processMaps: processMaps.map((item) => ({
         ...versionedRecord(item),
+        name: item.name,
         lineageKey: item.processPatternId,
       })),
       selectedProcessMapId: selectedProcessMap?.id ?? null,

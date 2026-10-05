@@ -10,6 +10,12 @@ import {
 } from "./assisted-audit-action-plan";
 
 describe("Assisted Audit presentation action plan", () => {
+  it("guides explicit process selection without inventing a command or an unavailable state", () => {
+    expect(presentNextAction(model("PROCESS_MAP", "SELECT_PROCESS_MAP"), "company")).toMatchObject({
+      kind: "selection",
+      href: "#process-choice-title",
+    });
+  });
   it("preserves the validation refusal status and code without refreshing or retrying", async () => {
     const fetcher = vi
       .fn()
