@@ -7,7 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { interviewDomainLabel, isInterviewReadOnly, interviewAnswerLabel } from "./interview-copy";
+import {
+  interviewDomainLabel,
+  isInterviewReadOnly,
+  interviewAnswerLabel,
+  interviewChoiceLabel,
+  interviewErrorLabel,
+} from "./interview-copy";
 import { DocumentReview } from "./document-review";
 import type { DocumentSource } from "../domain/document-source";
 
@@ -307,7 +313,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
                     <div className="min-w-0 flex-1">
                       <p className="font-medium">{answeredQuestion?.prompt ?? "Question"}</p>
                       <p className="text-sm break-words text-slate-300">
-                        {interviewAnswerLabel(answer.value)}
+                        {interviewAnswerLabel(answer.value, answeredQuestion)}
                       </p>
                       {answer.documentSource && (
                         <details className="mt-2 rounded-lg border border-blue-400/20 p-3 text-sm">
@@ -389,7 +395,7 @@ function AnswerField({
                   )
                 }
               />
-              {choice}
+              {interviewChoiceLabel(question.code, choice)}
             </label>
           );
         })}
@@ -420,7 +426,7 @@ function AnswerField({
         <option value="">Sélectionner</option>
         {question.options.map((option) => (
           <option key={String(option)} value={String(option)}>
-            {String(option)}
+            {interviewChoiceLabel(question.code, String(option))}
           </option>
         ))}
       </select>
@@ -473,7 +479,9 @@ async function readView(response: Response): Promise<InterviewView> {
     error?: { message?: string };
   };
   if (!response.ok || !payload.data)
-    throw new Error(payload.error?.message ?? "Impossible de charger l’entretien");
+    throw new Error(
+      interviewErrorLabel(payload.error?.message ?? "Impossible de charger l’entretien"),
+    );
   return payload.data;
 }
 

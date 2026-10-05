@@ -71,6 +71,7 @@ describe("Interview wizard regression gates", () => {
     expect(html.match(/checked=""/g)).toHaveLength(2);
     for (const option of ["email", "telephone", "website"])
       expect(html).toContain(`value="${option}"`);
+    for (const label of ["E-mail", "Téléphone", "Site internet"]) expect(html).toContain(label);
   });
 
   it("requires completion before presenting explicit validation", () => {
@@ -78,6 +79,46 @@ describe("Interview wizard regression gates", () => {
     const completed = render("completed");
     expect(completed).toContain("Valider l’entretien et continuer");
     expect(completed).not.toContain("Terminer l’entretien");
+  });
+
+  it("shows a French single choice while retaining its canonical value", () => {
+    prepare("in_progress", true);
+    const view = state.values[0] as {
+      nextQuestion: { code: string; answerType: string; options: string[] };
+    };
+    view.nextQuestion = {
+      ...view.nextQuestion,
+      code: "finance.invoice_mode",
+      answerType: "single_choice",
+      options: ["manual", "mixed", "automatic"],
+    };
+    const html = renderToStaticMarkup(createElement(InterviewWizard, { companyId: "company-1" }));
+    expect(html).toContain('value="manual">Manuel</option>');
+    expect(html).toContain('value="mixed">Partiellement automatisé</option>');
+    expect(html).toContain('value="automatic">Automatique</option>');
+  });
+
+  it("uses the same choice labels in the persisted review", () => {
+    prepare("in_progress");
+    const view = state.values[0] as { answers: unknown[] };
+    view.answers = [
+      { questionId: "question-1", value: ["email", "website"], confidence: "confirmed" },
+    ];
+    const html = renderToStaticMarkup(createElement(InterviewWizard, { companyId: "company-1" }));
+    expect(html).toContain("E-mail, Site internet");
+  });
+
+  it("submits untranslated multiple-choice values", async () => {
+    prepare("in_progress", true);
+    const request = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) });
+    vi.stubGlobal("fetch", request);
+    const action = findAction(
+      InterviewWizard({ companyId: "company-1" }),
+      "Enregistrer et continuer",
+    );
+    await action!();
+    const options = request.mock.calls[0][1] as { body: string };
+    expect(JSON.parse(options.body).value).toEqual(["email", "website"]);
   });
 
   it.each([

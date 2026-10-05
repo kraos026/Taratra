@@ -45,3 +45,11 @@ The same metrics are persisted by domain in `interview_progress`.
 
 Controllers validate input and delegate to `InterviewService`; adaptive decisions remain in
 `InterviewEngine`.
+
+### French choice presentation
+
+The wizard labels the system order-channel and invoice-mode choices in French, both in the
+answer controls and the saved-answer review. Labels are scoped to question code and choice
+answer type: canonical option values submitted to the API remain unchanged, free-text answers
+are not translated, and unknown catalogue choices remain visible as supplied. The Discovery
+prerequisite error is explained in French at the UI boundary without changing the server guard.
