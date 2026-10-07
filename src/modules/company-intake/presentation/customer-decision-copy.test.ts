@@ -3,6 +3,26 @@ import { customerDecisionText } from "./customer-decision-copy";
 
 describe("Customer decision copy", () => {
   it.each([
+    ["Human bottleneck", "Dépendance à une personne"],
+    ["Single point of failure", "Point de dépendance unique"],
+    ["High manual workload", "Charge de travail manuelle élevée"],
+    [
+      "Estimated manual workload is 45 hours per month.",
+      "La charge de travail manuelle estimée est de 45 heures par mois.",
+    ],
+    [
+      "Finance carries 72.5% of manual duration.",
+      "Finance concentre 72.5 % de la durée manuelle du modèle.",
+    ],
+    [
+      "Finance performs 100% of manual steps.",
+      "Finance réalise 100 % des étapes manuelles du modèle.",
+    ],
+    ["Add coverage and delegation.", "Prévoir un relais et définir les responsabilités déléguées."],
+    [
+      "Redistribute or automate the bottleneck.",
+      "Examiner la répartition du travail et les tâches pouvant être assistées, sans retirer les contrôles humains.",
+    ],
     ["Automate scheduled reporting", "Automatiser les rapports périodiques"],
     ["Route requests to the correct team.", "Orienter les demandes vers l’équipe concernée."],
     [

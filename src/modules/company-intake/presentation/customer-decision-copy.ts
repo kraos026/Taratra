@@ -27,6 +27,37 @@ export function customerDecisionText(value: string): string {
   return value
     .replaceAll("AutomateX", "Optivos")
     .replaceAll("AUTOMATEX", "OPTIVOS")
+    .replaceAll("Human bottleneck", "Dépendance à une personne")
+    .replaceAll("Single point of failure", "Point de dépendance unique")
+    .replaceAll("High manual workload", "Charge de travail manuelle élevée")
+    .replace(
+      /Estimated manual workload is ([\d.]+) hours per month\./g,
+      "La charge de travail manuelle estimée est de $1 heures par mois.",
+    )
+    .replaceAll(
+      "Reduce high-volume manual work.",
+      "Examiner comment réduire les tâches manuelles répétitives, en conservant les contrôles nécessaires.",
+    )
+    .replace(
+      /(.+?) performs ([\d.]+)% of manual steps\./g,
+      "$1 réalise $2 % des étapes manuelles du modèle.",
+    )
+    .replace(
+      /(.+?) carries ([\d.]+)% of manual duration\./g,
+      "$1 concentre $2 % de la durée manuelle du modèle.",
+    )
+    .replaceAll(
+      "Add coverage and delegation.",
+      "Prévoir un relais et définir les responsabilités déléguées.",
+    )
+    .replaceAll(
+      "Redistribute or automate the bottleneck.",
+      "Examiner la répartition du travail et les tâches pouvant être assistées, sans retirer les contrôles humains.",
+    )
+    .replaceAll(
+      "Assess a governed system.",
+      "Évaluer un outil avec des responsabilités et des contrôles définis.",
+    )
     .replace(
       /Business impact [\d.]+; readiness [\d.]+; confidence [\d.]+\./g,
       "L’impact, la préparation et la confiance sont évalués par l’audit. Ces scores internes ne sont pas des gains financiers.",
