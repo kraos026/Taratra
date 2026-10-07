@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { AssistedAuditReadModel } from "../application/assisted-audit-model";
 import {
+  availableAuditInsights,
   buildCustomerJourney,
   customerEvidencePublicationLabel,
   customerJourneyRoutes,
@@ -9,6 +10,24 @@ import {
 } from "./canonical-journey";
 
 describe("canonical customer journey", () => {
+  it("offers earlier published insight without inventing completion or exposing future/draft work", () => {
+    const audit = model("ROI");
+    const analysis = audit.stages.find((stage) => stage.stage === "BUSINESS_ANALYSIS")!;
+    analysis.artifact = { id: "scoped-analysis", version: 1, status: "published" };
+    const before = structuredClone(audit);
+    expect(availableAuditInsights(audit).map((item) => item.href)).toEqual([
+      "/analysis/scoped-analysis",
+    ]);
+    expect(audit).toEqual(before);
+    analysis.artifact.status = "draft";
+    expect(availableAuditInsights(audit)).toEqual([]);
+    analysis.artifact.status = "published";
+    analysis.status = "BLOCKED";
+    expect(availableAuditInsights(audit)).toEqual([]);
+    analysis.status = "COMPLETED";
+    audit.currentStage = "INTERVIEW";
+    expect(availableAuditInsights(audit)).toEqual([]);
+  });
   it("does not equate a company or draft with validated evidence", () => {
     expect(customerEvidencePublicationLabel()).toBe("État non vérifié");
     const audit = model("KNOWLEDGE");

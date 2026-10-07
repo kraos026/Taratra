@@ -2,8 +2,81 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { ExecutiveAuditResult } from "../application/executive-result-model";
 import { ExecutiveResultView } from "./executive-result-view";
+import { attributableEvaluation, repeatedEstimates } from "./result-economics";
 
 describe("Executive Result", () => {
+  it.each([
+    ["Factures fournisseurs", "Le contrôle des montants bloque la validation."],
+    ["Demandes clients", "Les demandes attendent une affectation à une équipe."],
+    ["Suivi des stocks", "Les quantités déclarées ne correspondent pas au relevé."],
+  ])("grounds the brief in the current dossier for %s, not a shared example", (title, problem) => {
+    const value = result();
+    value.findings = [
+      {
+        id: "current-finding",
+        title,
+        description: problem,
+        severity: "critical",
+        impact: "Vérifier la source et les contrôles",
+      },
+    ];
+    const html = renderToStaticMarkup(<ExecutiveResultView result={value} />);
+    const brief = html.split('aria-labelledby="decision-brief-title"')[1]!.split("</section>")[0]!;
+    expect(brief).toContain(title);
+    expect(brief).toContain(problem);
+    expect(brief).toContain("Corriger avant d’automatiser");
+    const heading = brief.split('id="decision-brief-title"')[1]!.split("</h2>")[0]!;
+    expect(heading).toContain(title);
+    expect(heading).not.toContain("First canonical opportunity");
+    // Dossier-wide warnings remain visible, including other opportunities in this audit.
+    expect(brief).toContain("Les preuves et prérequis doivent être reliés");
+    expect(brief).not.toContain("1200");
+    expect(brief).toContain("/analysis/analysis");
+  });
+  it("does not attribute economics by matching titles or duplicate opportunity associations", () => {
+    const value = result();
+    const evaluation = value.roi!.evaluations[0]!;
+    expect(attributableEvaluation(value, evaluation)).toBe(true);
+    delete evaluation.automationOpportunityId;
+    expect(attributableEvaluation(value, evaluation)).toBe(false);
+    const html = renderToStaticMarkup(<ExecutiveResultView result={value} />);
+    expect(html).toContain("Estimation non attribuable");
+    expect(html).not.toContain(`${(1200).toLocaleString("fr-FR")} EUR`);
+    evaluation.automationOpportunityId = "other-company-opportunity";
+    expect(attributableEvaluation(value, evaluation)).toBe(false);
+    evaluation.automationOpportunityId = "first";
+    value.roi!.evaluations.push({ ...evaluation, id: "duplicate" });
+    expect(attributableEvaluation(value, evaluation)).toBe(false);
+  });
+
+  it("flags identical estimates without changing them or concluding they are independent savings", () => {
+    const value = result();
+    expect(repeatedEstimates(value)).toBe(false);
+    value.roi!.evaluations.push({
+      ...value.roi!.evaluations[0]!,
+      id: "second-evaluation",
+      automationOpportunityId: "second",
+    });
+    const before = structuredClone(value);
+    expect(repeatedEstimates(value)).toBe(true);
+    const html = renderToStaticMarkup(<ExecutiveResultView result={value} />);
+    expect(html).toContain("Plusieurs pistes affichent les mêmes estimations");
+    expect(html).toContain("ni une erreur de calcul");
+    expect(value).toEqual(before);
+    value.roi!.evaluations[1]!.annualBenefit = 3000;
+    expect(repeatedEstimates(value)).toBe(false);
+  });
+
+  it("keeps special economic states and invalid numbers readable without inventing values", () => {
+    const value = result();
+    value.roi!.evaluations[0]!.roiSpecialValue = "unbounded";
+    value.roi!.evaluations[0]!.annualBenefit = Number.NaN;
+    const html = renderToStaticMarkup(<ExecutiveResultView result={value} />);
+    expect(html).toContain("Ratio non borné");
+    expect(html).not.toContain("unbounded");
+    expect(html).not.toContain("NaN");
+    expect(html).toContain("Données complémentaires requises");
+  });
   it("separates a risk description from the proposed treatment", () => {
     const value = result();
     value.findings = [
@@ -121,6 +194,7 @@ function result(): ExecutiveAuditResult {
       evaluations: [
         {
           id: "evaluation",
+          automationOpportunityId: "first",
           title: "First canonical opportunity",
           annualBenefit: 1200,
           roi: 150,

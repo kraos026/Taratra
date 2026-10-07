@@ -3,6 +3,7 @@ import type {
   AssistedAuditStage,
   AssistedAuditStageStatus,
 } from "../application/assisted-audit-model";
+import { assistedAuditStages } from "../application/assisted-audit-model";
 
 export type CustomerJourneyStep = {
   readonly key:
@@ -125,6 +126,47 @@ export function customerStageLabel(stage: AssistedAuditStage): string {
     COMPLETED: "Résultats disponibles",
   };
   return labels[stage];
+}
+
+/** Earlier published work can be inspected without completing or approving later stages. */
+export function availableAuditInsights(model: AssistedAuditReadModel) {
+  const currentIndex = assistedAuditStages.indexOf(model.currentStage);
+  const destinations = {
+    PROCESS_MAP: {
+      path: "process-maps",
+      label: "Votre processus",
+      benefit: "Voir les étapes et les contrôles décrits.",
+    },
+    BUSINESS_ANALYSIS: {
+      path: "analysis",
+      label: "Vos premiers constats",
+      benefit: "Examiner les frictions relevées et leurs sources, avant de chiffrer des gains.",
+    },
+    AUTOMATION_OPPORTUNITIES: {
+      path: "automation-opportunities",
+      label: "Vos pistes à examiner",
+      benefit: "Comprendre les prérequis et les contrôles de chaque piste.",
+    },
+    ROI: {
+      path: "roi",
+      label: "Vos hypothèses économiques",
+      benefit: "Vérifier ce qui est estimé et ce qui reste à renseigner.",
+    },
+  };
+  return model.stages.flatMap((stage) => {
+    if (
+      !stage.artifact ||
+      stage.artifact.status !== "published" ||
+      stage.status !== "COMPLETED" ||
+      assistedAuditStages.indexOf(stage.stage) > currentIndex ||
+      !(stage.stage in destinations)
+    )
+      return [];
+    const destination = destinations[stage.stage as keyof typeof destinations];
+    return [
+      { ...destination, href: `/${destination.path}/${stage.artifact.id}`, stage: stage.stage },
+    ];
+  });
 }
 
 export function customerStatusLabel(status: AssistedAuditStageStatus): string {

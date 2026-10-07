@@ -8,6 +8,7 @@ import type {
 import { AskAutomateXPanel } from "./ask-automatex-panel";
 import { AlertTriangle, ArrowRight, FileCheck2, ShieldCheck } from "lucide-react";
 import { customerDecisionCenter, readableDecisionState } from "./customer-decision-copy";
+import { DecisionBrief } from "./decision-brief";
 
 export function PatronDecisionCenterView({
   center: source,
@@ -29,6 +30,7 @@ export function PatronDecisionCenterView({
           </p>
         </header>
 
+        <DecisionBrief center={center} />
         <Overview center={center} />
         <ExecutiveSummary center={center} />
 

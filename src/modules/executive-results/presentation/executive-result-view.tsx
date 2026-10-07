@@ -18,6 +18,8 @@ import { buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { PilotFeedbackDialog } from "@/modules/pilot-feedback/presentation/pilot-feedback-dialog";
 import type { ExecutiveAuditResult } from "../application/executive-result-model";
+import { DecisionBrief } from "@/modules/company-intake/presentation/decision-brief";
+import { attributableEvaluation, repeatedEstimates } from "./result-economics";
 
 export function ExecutiveResultView({ result }: { readonly result: ExecutiveAuditResult }) {
   const hub = `/companies/${result.company.id}/automation-audit`;
@@ -79,6 +81,8 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
             </Link>
           </div>
         </header>
+
+        <DecisionBrief center={center} />
 
         <section className="grid gap-4 md:grid-cols-3">
           <HeroCard
@@ -222,6 +226,16 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                 opportunités : ces montants ne doivent pas être additionnés sans vérifier les
                 recouvrements.
               </p>
+              {repeatedEstimates(result) && (
+                <p
+                  role="status"
+                  className="mb-4 rounded-xl border border-amber-400/30 bg-amber-500/10 p-4 text-sm text-amber-100"
+                >
+                  Plusieurs pistes affichent les mêmes estimations. Vérifiez les hypothèses propres
+                  à chacune et les recouvrements ; cela ne démontre ni des gains indépendants ni une
+                  erreur de calcul.
+                </p>
+              )}
               <div className="space-y-3">
                 {result.roi?.evaluations.map((item) => (
                   <article
@@ -229,24 +243,32 @@ export function ExecutiveResultView({ result }: { readonly result: ExecutiveAudi
                     className="rounded-3xl border border-white/10 bg-slate-950/60 p-4"
                   >
                     <h3 className="font-bold">{brandText(item.title)}</h3>
-                    <dl className="mt-3 grid gap-2">
-                      <Metric
-                        label="Bénéfice annuel"
-                        value={item.annualBenefit}
-                        suffix={result.roi!.currency}
-                      />
-                      <Metric
-                        label="Retour sur investissement"
-                        value={item.roi}
-                        special={item.roiSpecialValue}
-                        suffix="%"
-                      />
-                      <Metric
-                        label="Délai estimé de rentabilité"
-                        value={item.payback}
-                        suffix="mois"
-                      />
-                    </dl>
+                    {attributableEvaluation(result, item) ? (
+                      <dl className="mt-3 grid gap-2">
+                        <Metric
+                          label="Bénéfice annuel"
+                          value={item.annualBenefit}
+                          suffix={result.roi!.currency}
+                        />
+                        <Metric
+                          label="Retour sur investissement"
+                          value={item.roi}
+                          special={item.roiSpecialValue}
+                          suffix="%"
+                        />
+                        <Metric
+                          label="Délai estimé de rentabilité"
+                          value={item.payback}
+                          suffix="mois"
+                        />
+                      </dl>
+                    ) : (
+                      <p className="mt-3 text-sm text-amber-100">
+                        Estimation non attribuable : cette évaluation doit être reliée sans
+                        ambiguïté à une opportunité de ce dossier avant d’afficher ses montants
+                        comme ses gains.
+                      </p>
+                    )}
                   </article>
                 )) ?? <EmptyState text="ROI non disponible. Aucune valeur n’est inventée." />}
               </div>
@@ -388,10 +410,13 @@ function Metric({
     <State
       label={label}
       value={
-        special ??
-        (value === null
-          ? "Données complémentaires requises"
-          : `${value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} ${suffix}`)
+        special
+          ? special === "unbounded"
+            ? "Ratio non borné — coût nul déclaré, hypothèse à vérifier"
+            : "État de calcul à vérifier"
+          : value === null || !Number.isFinite(value)
+            ? "Données complémentaires requises"
+            : `${value.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} ${suffix}`
       }
     />
   );

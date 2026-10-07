@@ -35,7 +35,12 @@ import {
   type AuditActionPresentation,
   type AuditCommandRequest,
 } from "./assisted-audit-action-plan";
-import { buildCustomerJourney, customerStatusLabel, journeyProgress } from "./canonical-journey";
+import {
+  availableAuditInsights,
+  buildCustomerJourney,
+  customerStatusLabel,
+  journeyProgress,
+} from "./canonical-journey";
 import { JourneyProgressRing } from "./journey-progress-ring";
 import { auditText } from "./audit-readable-copy";
 
@@ -170,6 +175,7 @@ export function AutomationAuditView({
     icon: journeyIcon(step.key),
   }));
   const activeStep = clientSteps.find((step) => step.status !== "COMPLETED") ?? clientSteps.at(-1);
+  const insights = availableAuditInsights(model);
 
   return (
     <main className="audit-experience opt-container space-y-5" aria-labelledby="audit-title">
@@ -306,59 +312,103 @@ export function AutomationAuditView({
         </aside>
       </div>
 
-      <section aria-labelledby="audit-progress-title" className="pb-4">
-        <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
-          <div>
-            <p className="opt-eyebrow">Chemin de décision</p>
-            <h2 id="audit-progress-title" className="font-['Manrope'] text-lg font-bold text-white">
-              De la compréhension à la décision
-            </h2>
-          </div>
-          {activeStep && (
-            <p className="text-sm text-slate-300">
-              Étape actuelle : <strong className="text-white">{activeStep.label}</strong>
+      {!auditComplete && (
+        <section
+          aria-labelledby="early-value-title"
+          className="rounded-2xl border border-blue-400/20 bg-slate-900/60 p-5"
+        >
+          <h2 id="early-value-title" className="text-lg font-bold text-white">
+            Votre audit apporte de la valeur étape par étape
+          </h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Commencez par un processus qui vous pose problème. Vous pouvez examiner ses premiers
+            constats dès que l’analyse est publiée, sans attendre le ROI ou le plan final. Aucune
+            étape de validation n’est sautée.
+          </p>
+          {insights.length > 0 ? (
+            <ul className="mt-4 grid gap-3 sm:grid-cols-2">
+              {insights.map((insight) => (
+                <li key={insight.stage} className="rounded-xl border border-white/10 p-4">
+                  <Link
+                    href={insight.href}
+                    className="font-semibold text-blue-200 underline underline-offset-4"
+                  >
+                    {insight.label}
+                  </Link>
+                  <p className="mt-2 text-sm text-slate-300">{insight.benefit}</p>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mt-3 text-sm text-slate-400">
+              Pas encore de livrable publié à examiner. La prochaine action ci-dessus permet de
+              préparer les premières preuves ; aucune conclusion n’est anticipée.
             </p>
           )}
-        </div>
-        <ol className="journey-step-grid">
-          {clientSteps.map((step, index) => (
-            <li
-              key={step.label}
-              aria-current={step.current ? "step" : undefined}
-              className={cn(
-                "journey-step",
-                step.current && "journey-step-current",
-                step.status === "COMPLETED" && "journey-step-complete",
-              )}
-              style={{ animationDelay: `${index * 45}ms` }}
-              title={step.description}
-            >
-              <div>
-                <div
-                  className={cn(
-                    "journey-step-icon grid size-9 shrink-0 place-items-center rounded-xl bg-slate-800 text-slate-400",
-                    step.current && "bg-blue-500 text-white",
-                    step.status === "COMPLETED" && "bg-emerald-500/15 text-emerald-300",
-                  )}
-                >
-                  {step.icon}
-                </div>
-                <div className="mt-3 min-w-0">
-                  <span className="text-[10px] font-bold tracking-widest text-slate-600">
-                    0{index + 1}
-                  </span>
-                  <h3 className="text-sm font-bold text-white">{step.label}</h3>
-                  <p className="journey-step-description">{step.description}</p>
-                  <div className="mt-1 flex items-center gap-1.5">
-                    <StatusIcon status={step.status} />
-                    <StatusText status={step.status} current={step.current} />
+        </section>
+      )}
+
+      <details className="pb-4">
+        <summary className="cursor-pointer rounded-xl border border-white/10 px-4 py-3 font-semibold text-blue-200 focus-visible:outline-2 focus-visible:outline-blue-400">
+          Voir le parcours détaillé et l’avancement
+        </summary>
+        <section aria-labelledby="audit-progress-title" className="pt-4">
+          <div className="mb-4 flex flex-col justify-between gap-2 sm:flex-row sm:items-end">
+            <div>
+              <p className="opt-eyebrow">Chemin de décision</p>
+              <h2
+                id="audit-progress-title"
+                className="font-['Manrope'] text-lg font-bold text-white"
+              >
+                De la compréhension à la décision
+              </h2>
+            </div>
+            {activeStep && (
+              <p className="text-sm text-slate-300">
+                Étape actuelle : <strong className="text-white">{activeStep.label}</strong>
+              </p>
+            )}
+          </div>
+          <ol className="journey-step-grid">
+            {clientSteps.map((step, index) => (
+              <li
+                key={step.label}
+                aria-current={step.current ? "step" : undefined}
+                className={cn(
+                  "journey-step",
+                  step.current && "journey-step-current",
+                  step.status === "COMPLETED" && "journey-step-complete",
+                )}
+                style={{ animationDelay: `${index * 45}ms` }}
+                title={step.description}
+              >
+                <div>
+                  <div
+                    className={cn(
+                      "journey-step-icon grid size-9 shrink-0 place-items-center rounded-xl bg-slate-800 text-slate-400",
+                      step.current && "bg-blue-500 text-white",
+                      step.status === "COMPLETED" && "bg-emerald-500/15 text-emerald-300",
+                    )}
+                  >
+                    {step.icon}
+                  </div>
+                  <div className="mt-3 min-w-0">
+                    <span className="text-[10px] font-bold tracking-widest text-slate-600">
+                      0{index + 1}
+                    </span>
+                    <h3 className="text-sm font-bold text-white">{step.label}</h3>
+                    <p className="journey-step-description">{step.description}</p>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      <StatusIcon status={step.status} />
+                      <StatusText status={step.status} current={step.current} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
+              </li>
+            ))}
+          </ol>
+        </section>
+      </details>
 
       {ambiguity && (
         <ProcessMapChoice

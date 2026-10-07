@@ -7,8 +7,55 @@ import {
 } from "../index";
 import type { ExecutiveAuditResult } from "../../executive-results/application/executive-result-model";
 import { PatronDecisionCenterView } from "./patron-decision-center-view";
+import { DecisionBrief } from "./decision-brief";
+import { customerDecisionCenter } from "./customer-decision-copy";
 
 describe("PatronDecisionCenterView", () => {
+  it("provides one grounded brief using published priority, not financial potential, without changing the projection", () => {
+    const view = northstarView();
+    const base = view.priorityCards[0]!;
+    const center = customerDecisionCenter(
+      PatronDecisionCenterPresenter.build({
+        ...view,
+        priorityCards: [
+          {
+            ...base,
+            id: "low",
+            priority: "LOW",
+            title: "Piste financière",
+            problem: "Piste de faible priorité",
+            whatToDoNow: "Examiner plus tard",
+          },
+          {
+            ...base,
+            id: "critical",
+            priority: "CRITICAL",
+            title: "Contrôle bloquant",
+            problem: "Le seuil d’approbation est contradictoire.",
+            whatToDoNow: "Faire vérifier le seuil par son responsable",
+            uncertainty: ["Deux valeurs incompatibles restent à vérifier"],
+            recommendationState: "INVESTIGATE_FIRST",
+          },
+        ],
+      }),
+    );
+    const before = structuredClone(center);
+    const html = renderToStaticMarkup(<DecisionBrief center={center} />);
+    expect(html).toContain("Contrôle bloquant");
+    expect(html).not.toContain("Piste financière");
+    expect(html).toContain("Le seuil d’approbation est contradictoire.");
+    expect(html).toContain("Faire vérifier le seuil par son responsable");
+    expect(html).toContain("Deux valeurs incompatibles");
+    expect(html).toContain("Investiguer d’abord");
+    expect(html).toContain("Ce n’est pas un classement des gains");
+    expect(center).toEqual(before);
+    expect(
+      renderToStaticMarkup(<DecisionBrief center={{ ...center, status: "ANALYSIS_INCOMPLETE" }} />),
+    ).toBe("");
+    expect(renderToStaticMarkup(<DecisionBrief center={{ ...center, sourceView: null }} />)).toBe(
+      "",
+    );
+  });
   it("puts the decisions before optional conversational help", () => {
     const html = renderToStaticMarkup(
       <PatronDecisionCenterView center={PatronDecisionCenterPresenter.build(northstarView())} />,

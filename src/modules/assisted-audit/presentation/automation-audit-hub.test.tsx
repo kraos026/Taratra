@@ -229,6 +229,21 @@ describe("AutomationAuditView", () => {
     expect(html).not.toContain("Start company discovery");
     expect(html).toContain('aria-current="step"');
   });
+
+  it("shows early published work while keeping the long journey optional and final results gated", () => {
+    const value = model({ currentStage: "ROI", nextAction: "ENTER_ROI_ASSUMPTIONS" });
+    const analysis = value.stages.find((stage) => stage.stage === "BUSINESS_ANALYSIS")!;
+    analysis.status = "COMPLETED";
+    analysis.artifact = { id: "earlier-analysis", version: 1, status: "published" };
+    const html = render(value);
+    expect(html).toContain('href="/analysis/earlier-analysis"');
+    expect(html).toContain("Vos premiers constats");
+    expect(html).toContain("Aucune étape de validation n’est sautée");
+    expect(html).toMatch(/<details[^>]*><summary[^>]*>Voir le parcours détaillé/);
+    expect(html).not.toContain('href="/companies/company-id/automation-audit/results"');
+    analysis.artifact.status = "draft";
+    expect(render(value)).not.toContain('href="/analysis/earlier-analysis"');
+  });
 });
 
 function render(value: AssistedAuditReadModel) {
