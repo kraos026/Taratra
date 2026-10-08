@@ -11,6 +11,36 @@ import { DecisionBrief } from "./decision-brief";
 import { customerDecisionCenter } from "./customer-decision-copy";
 
 describe("PatronDecisionCenterView", () => {
+  it("keeps each catalog connector with its repeated verification and disclaimer", () => {
+    const view = northstarView();
+    const verification =
+      "Identifier l’outil réellement utilisé et son responsable, puis vérifier la connexion et les droits d’accès.";
+    const disclaimer = "Aucune connexion réelle n’est attestée par ce rapprochement.";
+    const guidance = ["Excel", "CSV", "Microsoft 365"].map(
+      (title) => `Connecteur proposé au catalogue : « ${title} ». ${verification} ${disclaimer}`,
+    );
+    const humanControl =
+      "Conserver une validation humaine pour les décisions financières, sensibles ou réglementées.";
+    const center = PatronDecisionCenterPresenter.build({
+      ...view,
+      priorityCards: [
+        { ...view.priorityCards[0]!, whatToDoNow: [...guidance, humanControl].join(" ") },
+      ],
+    });
+    const before = JSON.stringify(center);
+    const html = renderToStaticMarkup(<PatronDecisionCenterView center={center} />);
+    const blocks = [...html.matchAll(/<div class="decision-action-block">([\s\S]*?)<\/ol>/g)];
+    const block = blocks.find((item) => item[1]!.includes("Connecteur proposé au catalogue"))![1]!;
+    const steps = [...block.matchAll(/<li\b[^>]*>([\s\S]*?)<\/li>/g)].map((item) => item[1]!);
+    expect(steps).toHaveLength(4);
+    for (const [index, title] of ["Excel", "CSV", "Microsoft 365"].entries()) {
+      expect(steps[index]).toContain(`« ${title} »`);
+      expect(steps[index]).toContain(verification);
+      expect(steps[index]).toContain(disclaimer);
+    }
+    expect(steps[3]).toContain(humanControl);
+    expect(JSON.stringify(center)).toBe(before);
+  });
   it("provides one grounded brief using published priority, not financial potential, without changing the projection", () => {
     const view = northstarView();
     const base = view.priorityCards[0]!;

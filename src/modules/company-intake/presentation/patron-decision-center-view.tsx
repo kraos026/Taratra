@@ -214,7 +214,14 @@ function DecisionCard({ card }: { readonly card: PatronDecisionCard }) {
   const summary = card.executiveSummary.endsWith(card.whatToDoNow)
     ? card.executiveSummary.slice(0, -card.whatToDoNow.length).trim()
     : card.executiveSummary;
-  const steps = [...new Set(card.whatToDoNow.split(/(?<=\.)\s+/).filter(Boolean))];
+  // Catalog prerequisites contain several sentences. Keep each label with its own
+  // verification and disclaimer; sentence-level deduplication loses that association.
+  const steps = card.whatToDoNow.includes("Connecteur proposé au catalogue :")
+    ? card.whatToDoNow
+        .split(/\s+(?=Connecteur proposé au catalogue :|Conserver une validation humaine)/)
+        .map((step) => step.trim())
+        .filter(Boolean)
+    : [...new Set(card.whatToDoNow.split(/(?<=\.)\s+/).filter(Boolean))];
   const Icon = ["AUTOMATE_NOW", "AUTOMATE_CONDITIONALLY"].includes(card.decisionState)
     ? ShieldCheck
     : AlertTriangle;
@@ -247,7 +254,7 @@ function DecisionCard({ card }: { readonly card: PatronDecisionCard }) {
         </h4>
         <ol className="mt-3 space-y-3">
           {steps.map((step, index) => (
-            <li className="flex items-start gap-3 text-sm leading-6" key={step}>
+            <li className="flex items-start gap-3 text-sm leading-6" key={`${index}:${step}`}>
               <span className="decision-action-number">{index + 1}</span>
               <span>{step}</span>
             </li>
