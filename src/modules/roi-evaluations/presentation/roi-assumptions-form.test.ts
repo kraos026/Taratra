@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import {
   buildRoiRequest,
+  buildActivityRoiRequest,
+  restoreActivityForms,
   canEditRoi,
   emptyAssumptions,
   restoreAssumptions,
@@ -37,6 +39,92 @@ function validRequest() {
 }
 
 describe("customer ROI assumptions", () => {
+  it("starts new activities blank instead of copying common or neighbouring values", () => {
+    const sources = [
+      { id: "a", title: "Factures" },
+      { id: "b", title: "Rapports" },
+    ];
+    const forms = restoreActivityForms(null, sources)!;
+    forms[0]!.assumptions.hourly_cost.value = "42";
+    expect(forms[1]!.assumptions.hourly_cost.value).toBe("");
+    expect(restoreActivityForms(detail(), sources)).toBeNull();
+  });
+
+  it("serializes separate inputs with UNKNOWN common fields, preserving known zero", () => {
+    const forms = restoreActivityForms(null, [
+      { id: "a", title: "Factures" },
+      { id: "b", title: "Rapports" },
+    ])!;
+    for (const form of forms)
+      for (const field of roiAssumptionFields)
+        form.assumptions[field.code] = { unknown: true, value: "" };
+    forms[0]!.assumptions.hourly_cost = { unknown: false, value: "42" };
+    forms[1]!.assumptions.hourly_cost = { unknown: false, value: "0" };
+    const result = buildActivityRoiRequest("EUR", forms);
+    expect(result.success).toBe(true);
+    if (!result.success) return;
+    expect(result.data.activities.map((row) => row.assumptions.hourly_cost)).toEqual([
+      { status: "known", value: 42 },
+      { status: "known", value: 0 },
+    ]);
+    expect(Object.values(result.data.assumptions).every((row) => row.status === "unknown")).toBe(
+      true,
+    );
+  });
+
+  it("restores exact activity inputs after serialization, including UNKNOWN", () => {
+    const sources = [
+      { id: "a", title: "Factures" },
+      { id: "b", title: "Rapports" },
+    ];
+    const forms = restoreActivityForms(null, sources)!;
+    for (const form of forms)
+      for (const field of roiAssumptionFields)
+        form.assumptions[field.code] = { unknown: true, value: "" };
+    forms[0]!.assumptions.hourly_cost = { unknown: false, value: "42" };
+    const result = buildActivityRoiRequest("EUR", forms);
+    if (!result.success) throw new Error("Invalid test fixture");
+    const stored = detail();
+    stored.snapshot.provenanceJson = {
+      activityInputs: result.data.activities.map((row) => ({
+        opportunityId: row.opportunityId,
+        assumptionInputs: Object.entries(row.assumptions).map(([code, value]) => ({
+          code,
+          ...value,
+        })),
+      })),
+    };
+    expect(restoreActivityForms(JSON.parse(JSON.stringify(stored)), sources)).toEqual(forms);
+    expect(() => restoreActivityForms(stored, sources.slice(0, 1))).toThrow();
+  });
+
+  it("requires every activity to be explicit and reports errors in its own scope", () => {
+    const forms = restoreActivityForms(null, [
+      { id: "a", title: "Factures" },
+      { id: "b", title: "Rapports" },
+    ])!;
+    for (const field of roiAssumptionFields)
+      forms[0]!.assumptions[field.code] = { unknown: true, value: "" };
+    const result = buildActivityRoiRequest("EUR", forms);
+    expect(result.success).toBe(false);
+    if (result.success) return;
+    expect(result.activityErrors.a).toBeUndefined();
+    expect(result.activityErrors.b?.hourly_cost).toContain("Je ne sais pas encore");
+  });
+
+  it("keeps published estimates read-only even if actions exist", () => {
+    const published = detail();
+    published.snapshot.status = "published";
+    expect(canEditRoi(auditModel(["ENTER_ROI_ASSUMPTIONS"]), published)).toBe(false);
+  });
+
+  it("rejects corrupt activity provenance without restoring common values", () => {
+    const stored = detail();
+    stored.snapshot.provenanceJson = {
+      activityInputs: [{ opportunityId: "a", assumptionInputs: [] }],
+    };
+    expect(() => restoreActivityForms(stored, [{ id: "a", title: "Factures" }])).toThrow();
+  });
   it("exposes every real public assumption without financial defaults", () => {
     expect(roiAssumptionFields.map(({ code }) => code)).toEqual([
       "working_days",

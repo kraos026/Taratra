@@ -365,6 +365,7 @@ class CanonicalCertification {
   }
 
   async roi() {
+    if (process.argv.includes("--activity-roi")) return this.activityRoi();
     const built = await api(
       this.page,
       `/api/automation-opportunities/${this.results.automationOpportunitySnapshotId}/roi`,
@@ -394,6 +395,123 @@ class CanonicalCertification {
     await this.validatePublish("roi", "roi_evaluation_snapshots", id);
     await expectStatus("roi_evaluation_snapshots", id, "published");
     this.results.roiId = id;
+    this.logStage("ROI", id);
+  }
+
+  async activityRoi() {
+    const sourceId = this.results.automationOpportunitySnapshotId;
+    const source = await api(this.page, `/api/automation-opportunities/${sourceId}`);
+    if (!source.opportunities?.length)
+      throw new Error("Activity ROI requires canonical source opportunities");
+    const values = {
+      hourly_cost: 38,
+      working_days: 220,
+      working_hours: 7.5,
+      monthly_frequency: 85,
+      annual_frequency: 1020,
+      hours_saved_per_occurrence: 0.45,
+      implementation_cost: 12500,
+      maintenance_cost: 1800,
+      training_cost: 1500,
+      infrastructure_cost: 900,
+      error_cost: 120,
+    };
+    const path = `/companies/${this.companyId}/automation-audit/roi/${sourceId}`;
+    await this.page.goto(path);
+    await this.page.getByText("Une estimation propre à chaque activité", { exact: true }).waitFor();
+    await this.page.getByLabel("Code de devise", { exact: true }).fill("EUR");
+    for (const [index] of source.opportunities.entries()) {
+      await this.page.getByRole("button", { name: new RegExp(`^${index + 1}\\.`) }).click();
+      for (const [code, value] of Object.entries(values)) {
+        const ownValue =
+          code === "annual_frequency"
+            ? value + index * 120
+            : code === "monthly_frequency"
+              ? value + index * 10
+              : value;
+        await this.page.locator(`#assumption-${code}`).fill(String(ownValue));
+      }
+    }
+    await this.page
+      .getByRole("button", { name: "Créer une estimation provisoire", exact: true })
+      .click();
+    await this.page.getByText(/Hypothèses enregistrées/).waitFor();
+    const initialId = await latestId("roi_evaluation_snapshots", "company_id");
+    const initial = await api(this.page, `/api/roi/${initialId}`);
+    const inputs = initial.snapshot.provenanceJson.activityInputs;
+    if (inputs?.length !== source.opportunities.length || initial.assumptions.length !== 0)
+      throw new Error("Activity ROI frozen provenance or scope is invalid");
+    const expectedScenario = initial.scenarios.find((row) => row.type === "expected");
+    for (const [index, opportunity] of source.opportunities.entries()) {
+      const evaluation = initial.evaluations.find(
+        (row) =>
+          row.scenarioId === expectedScenario.id && row.automationOpportunityId === opportunity.id,
+      );
+      const metric = initial.metrics.find(
+        (row) => row.evaluationId === evaluation?.id && row.code === "annual_hours_saved",
+      );
+      if (!metric || Number(metric.value) !== (1020 + index * 120) * 0.45)
+        throw new Error("Activity-specific hours did not survive database persistence");
+    }
+    await this.page.reload();
+    await this.page.getByText("Une estimation propre à chaque activité", { exact: true }).waitFor();
+    for (const [index] of source.opportunities.entries()) {
+      await this.page.getByRole("button", { name: new RegExp(`^${index + 1}\\.`) }).click();
+      if (
+        (await this.page.locator("#assumption-annual_frequency").inputValue()) !==
+        String(1020 + index * 120)
+      )
+        throw new Error("Activity ROI form refresh lost its own inputs");
+    }
+    const rebuilt = await api(this.page, `/api/roi/${initialId}/rebuild`, {
+      method: "POST",
+      status: [200, 201],
+      body: { lockVersion: initial.snapshot.lockVersion },
+    });
+    const id = idFrom(rebuilt);
+    assertUuid(id, "Activity ROI rebuild");
+    const detail = await api(this.page, `/api/roi/${id}`);
+    if (JSON.stringify(detail.snapshot.provenanceJson.activityInputs) !== JSON.stringify(inputs))
+      throw new Error("Activity ROI rebuild lost frozen inputs");
+    const signature = (data) =>
+      data.evaluations
+        .map((evaluation) => ({
+          opportunity: evaluation.automationOpportunityId,
+          scenario: data.scenarios.find((row) => row.id === evaluation.scenarioId).type,
+          metrics: data.metrics
+            .filter((row) => row.evaluationId === evaluation.id)
+            .map((row) => [row.code, row.value, row.specialValue])
+            .sort(),
+        }))
+        .sort((a, b) =>
+          `${a.opportunity}:${a.scenario}`.localeCompare(`${b.opportunity}:${b.scenario}`),
+        );
+    if (JSON.stringify(signature(initial)) !== JSON.stringify(signature(detail)))
+      throw new Error("Activity ROI rebuild changed canonical calculations");
+    await this.validatePublish("roi", "roi_evaluation_snapshots", id);
+    await expectStatus("roi_evaluation_snapshots", id, "published");
+    await this.page.goto(path);
+    await this.page
+      .getByText("Ces hypothèses sont accessibles en lecture seule.", { exact: true })
+      .waitFor();
+    if (!(await this.page.getByLabel("Code de devise", { exact: true }).isDisabled()))
+      throw new Error("Published activity ROI form is editable");
+    const foreignContext = await browser.newContext({ baseURL: LOCAL_APP_URL });
+    try {
+      const foreignPage = await foreignContext.newPage();
+      await login(foreignPage, LOCAL_E2E_USERS.tenantB);
+      if (
+        (await foreignPage.request.get(`/api/roi/${id}`)).status() !== 404 ||
+        (
+          await foreignPage.request.post(`/api/roi/${id}/rebuild`, { data: { lockVersion: 1 } })
+        ).status() !== 404
+      )
+        throw new Error("Tenant B activity ROI read/rebuild isolation failed");
+    } finally {
+      await foreignContext.close();
+    }
+    this.results.roiId = id;
+    console.log("ACTIVITY ROI FORM / DB REFRESH / REBUILD / PUBLISHED READONLY / TENANT B: PASS");
     this.logStage("ROI", id);
   }
 
