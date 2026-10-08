@@ -17,6 +17,36 @@ export function isInterviewReadOnly(status: string): boolean {
   return status === "validated" || status === "archived";
 }
 
+/** Readiness is a server gate, not a guarantee that every answer is reliable. */
+export function interviewReviewSummary(
+  questions: { id: string; code: string }[],
+  answers: { questionId: string; value: unknown; confidence: string }[],
+  progress: { missingMandatory: string[]; readyForProcessMapping: boolean },
+) {
+  const byQuestion = new Map(answers.map((answer) => [answer.questionId, answer]));
+  const pending = questions.filter((question) => {
+    const answer = byQuestion.get(question.id);
+    return (
+      progress.missingMandatory.includes(question.code) ||
+      (answer && (answer.value == null || !["confirmed", "validated"].includes(answer.confidence)))
+    );
+  });
+  const pendingCount = pending.length;
+  const message = progress.readyForProcessMapping
+    ? "Les critères de passage à la suite sont remplis. Cela ne garantit pas l’exactitude de chaque réponse."
+    : progress.missingMandatory.length > 0
+      ? `${progress.missingMandatory.length} information(s) obligatoire(s) restent à renseigner.`
+      : "Les réponses obligatoires sont renseignées, mais le seuil de confiance requis pour poursuivre n’est pas atteint.";
+  return { pendingCount, message };
+}
+
+export function interviewConfidenceLabel(value: unknown, confidence: string): string {
+  if (value == null || confidence === "missing") return "Information non renseignée";
+  if (confidence === "validated") return "Réponse validée";
+  if (confidence === "confirmed") return "Réponse déclarée confirmée";
+  return "Réponse incertaine · à confirmer";
+}
+
 const choiceLabels: Record<string, Record<string, string>> = {
   "operations.order_channels": {
     email: "E-mail",

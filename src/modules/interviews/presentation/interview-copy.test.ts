@@ -5,9 +5,62 @@ import {
   interviewErrorLabel,
   interviewDomainLabel,
   isInterviewReadOnly,
+  interviewReviewSummary,
+  interviewConfidenceLabel,
 } from "./interview-copy";
 
 describe("Interview presentation", () => {
+  it("keeps uncertainty visible even when the server allows progression", () => {
+    const summary = interviewReviewSummary(
+      [
+        { id: "hr", code: "hr.lifecycle" },
+        { id: "time", code: "finance.time" },
+      ],
+      [
+        { questionId: "hr", value: "À confirmer", confidence: "uncertain" },
+        { questionId: "time", value: null, confidence: "missing" },
+      ],
+      { missingMandatory: [], readyForProcessMapping: true },
+    );
+    expect(summary.pendingCount).toBe(2);
+    expect(summary.message).toContain("ne garantit pas");
+  });
+
+  it("counts missing required answers once and excludes ineligible saved answers", () => {
+    const summary = interviewReviewSummary(
+      [{ id: "required", code: "required" }],
+      [
+        { questionId: "required", value: null, confidence: "missing" },
+        { questionId: "ineligible", value: "Ancienne réponse", confidence: "uncertain" },
+      ],
+      { missingMandatory: ["required"], readyForProcessMapping: false },
+    );
+    expect(summary.pendingCount).toBe(1);
+    expect(summary.message).toContain("restent à renseigner");
+    expect(
+      interviewReviewSummary([{ id: "required", code: "required" }], [], {
+        missingMandatory: ["required"],
+        readyForProcessMapping: false,
+      }).pendingCount,
+    ).toBe(1);
+  });
+
+  it("explains a confidence blocker without inventing missing required answers", () => {
+    expect(
+      interviewReviewSummary([], [], {
+        missingMandatory: [],
+        readyForProcessMapping: false,
+      }).message,
+    ).toContain("seuil de confiance");
+  });
+
+  it("never presents a missing, uncertain or unknown status as confirmed", () => {
+    expect(interviewConfidenceLabel(false, "confirmed")).toBe("Réponse déclarée confirmée");
+    expect(interviewConfidenceLabel(0, "validated")).toBe("Réponse validée");
+    expect(interviewConfidenceLabel(null, "confirmed")).toBe("Information non renseignée");
+    for (const status of ["uncertain", "unexpected"])
+      expect(interviewConfidenceLabel("À vérifier", status)).toContain("incertaine");
+  });
   it("uses business labels without exposing technical domain codes", () => {
     expect(
       ["company", "operations", "finance", "software", "hr"].map(interviewDomainLabel),

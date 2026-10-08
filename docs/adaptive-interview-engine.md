@@ -32,6 +32,12 @@ factors: validated/confirmed `1`, uncertain `0.5`, missing `0`. A session is rea
 Mapping when every eligible mandatory item is answered and overall confidence is at least 80%.
 The same metrics are persisted by domain in `interview_progress`.
 
+Readiness is a progression gate, not a guarantee that each answer is reliable. The review
+uses the existing server gate without changing its threshold. It separately counts eligible
+uncertain/missing saved answers (including optional answers) and unanswered mandatory questions,
+displays each answer's declared confidence, and retains these warnings in validated/read-only
+reviews. Passing the gate or validating the interview does not demonstrate an economic gain.
+
 ## API and UI
 
 - `POST /api/companies/:id/interviews`

@@ -108,6 +108,47 @@ describe("Interview wizard regression gates", () => {
     expect(html).toContain("E-mail, Site internet");
   });
 
+  it.each(["in_progress", "completed", "validated"])(
+    "shows uncertain and missing answers in the %s review without claiming universal reliability",
+    (status) => {
+      prepare(status);
+      const view = state.values[0] as {
+        answers: unknown[];
+        questions: unknown[];
+        progress: { confidencePercentage: number };
+      };
+      view.progress.confidencePercentage = 90;
+      view.questions.push({
+        id: "time",
+        code: "finance.time",
+        prompt: "Durée ?",
+        mandatory: false,
+      });
+      view.answers = [
+        { questionId: "question-1", value: ["email"], confidence: "uncertain" },
+        { questionId: "time", value: null, confidence: "missing" },
+      ];
+      const html = renderToStaticMarkup(createElement(InterviewWizard, { companyId: "company-1" }));
+      expect(html).not.toContain("suffisamment fiables");
+      expect(html).toContain("2 information(s) restent à confirmer ou à compléter");
+      expect(html).toContain("Réponse incertaine · à confirmer");
+      expect(html).toContain("Information non renseignée");
+      expect(html).toContain("Cela ne garantit pas l’exactitude de chaque réponse");
+    },
+  );
+
+  it("keeps the server readiness blocker when completeness alone is insufficient", () => {
+    prepare("in_progress");
+    const view = state.values[0] as {
+      progress: { confidencePercentage: number; readyForProcessMapping: boolean };
+    };
+    view.progress.confidencePercentage = 50;
+    view.progress.readyForProcessMapping = false;
+    const html = renderToStaticMarkup(createElement(InterviewWizard, { companyId: "company-1" }));
+    expect(html).toContain("seuil de confiance requis");
+    expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Terminer l’entretien<\/button>/);
+  });
+
   it("submits untranslated multiple-choice values", async () => {
     prepare("in_progress", true);
     const request = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ data: {} }) });

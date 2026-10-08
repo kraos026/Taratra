@@ -84,4 +84,24 @@ describe("InterviewEngine", () => {
     expect(engine.validateAnswer(questions[1]!, -1)).toBe(false);
     expect(engine.validateAnswer(questions[1]!, 12)).toBe(true);
   });
+
+  it("allows overall readiness above 80 percent while retaining an uncertain answer", () => {
+    const catalogue = Array.from({ length: 5 }, (_, index) => ({
+      ...questions[0]!,
+      id: `q${index}`,
+      code: `q${index}`,
+      condition: {},
+    }));
+    const answers = catalogue.map((question, index) => ({
+      questionId: question.id,
+      code: question.code,
+      value: false,
+      confidence: index === 0 ? ("uncertain" as const) : ("confirmed" as const),
+      skipReason: null,
+    }));
+    const result = engine.calculateProgress(catalogue, {}, answers);
+    expect(result.confidencePercentage).toBe(90);
+    expect(result.readyForProcessMapping).toBe(true);
+    expect(answers[0]!.confidence).toBe("uncertain");
+  });
 });

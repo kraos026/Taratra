@@ -13,6 +13,8 @@ import {
   interviewAnswerLabel,
   interviewChoiceLabel,
   interviewErrorLabel,
+  interviewReviewSummary,
+  interviewConfidenceLabel,
 } from "./interview-copy";
 import { DocumentReview } from "./document-review";
 import type { DocumentSource } from "../domain/document-source";
@@ -134,6 +136,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
 
   const question = view.nextQuestion;
   const readOnly = isInterviewReadOnly(view.session.status);
+  const review = interviewReviewSummary(view.questions, view.answers, view.progress);
   return (
     <main className="mx-auto max-w-5xl space-y-5 text-slate-50">
       <header className="space-y-2">
@@ -156,10 +159,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
 
       <section aria-label="Progression globale" className="grid gap-4 sm:grid-cols-3">
         <Metric label="Réponses enregistrées" value={String(view.answers.length)} />
-        <Metric
-          label="Informations à confirmer"
-          value={String(view.progress.missingMandatory.length)}
-        />
+        <Metric label="Informations à confirmer" value={String(review.pendingCount)} />
         <Metric
           label="Suite de l’audit"
           value={
@@ -278,11 +278,14 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
             <CardTitle>Revue de l’entretien</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <p>
-              {view.progress.readyForProcessMapping
-                ? "Toutes les informations obligatoires sont suffisamment fiables."
-                : `${view.progress.missingMandatory.length} information(s) obligatoire(s) restent à confirmer.`}
-            </p>
+            <p>{review.message}</p>
+            {review.pendingCount > 0 && (
+              <p className="rounded-xl border border-amber-400/30 bg-amber-950/20 p-3 text-amber-200">
+                {review.pendingCount} information(s) restent à confirmer ou à compléter. Ces limites
+                restent à prendre en compte dans la suite de l’audit ; aucun gain n’est démontré par
+                la seule validation de l’entretien.
+              </p>
+            )}
             {readOnly ? (
               <Link
                 className="opt-primary inline-flex min-h-11 items-center rounded-xl px-4 py-3 text-sm font-semibold"
@@ -314,6 +317,9 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
                       <p className="font-medium">{answeredQuestion?.prompt ?? "Question"}</p>
                       <p className="text-sm break-words text-slate-300">
                         {interviewAnswerLabel(answer.value, answeredQuestion)}
+                      </p>
+                      <p className="mt-1 text-xs text-blue-200">
+                        {interviewConfidenceLabel(answer.value, answer.confidence)}
                       </p>
                       {answer.documentSource && (
                         <details className="mt-2 rounded-lg border border-blue-400/20 p-3 text-sm">
