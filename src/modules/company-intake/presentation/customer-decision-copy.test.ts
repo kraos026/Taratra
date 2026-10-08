@@ -3,6 +3,35 @@ import { customerDecisionText } from "./customer-decision-copy";
 
 describe("Customer decision copy", () => {
   it.each([
+    ["Manual invoice processing", "sur une facture récente"],
+    ["Email dependency", "les échanges nécessaires"],
+    ["Excel dependency", "la source de référence"],
+    ["Missing documentation", "faire vérifier cette procédure"],
+    ["Missing KPI", "relever une valeur de départ"],
+  ])(
+    "provides verification steps for the known finding %s, not invented facts",
+    (finding, step) => {
+      const review = customerDecisionText(`Review finding: ${finding}`);
+      expect(review).toContain(step);
+      expect(customerDecisionText(`Fix or validate this issue before automating: ${finding}`)).toBe(
+        review,
+      );
+      expect(customerDecisionText(`Review finding: ${finding}.`)).toBe(review);
+      expect(review).not.toContain("Examiner le constat");
+      expect(review).not.toMatch(/\d/);
+    },
+  );
+  it("does not invent a tailored action for an unrecognized finding", () => {
+    expect(customerDecisionText("Review finding: Custom customer issue")).toBe(
+      "Examiner le constat : Custom customer issue",
+    );
+    expect(customerDecisionText("Review finding: constructor")).toBe(
+      "Examiner le constat : constructor",
+    );
+    expect(customerDecisionText("This company")).toBe("Cette entreprise");
+    expect(customerDecisionText("This company sells software")).toBe("This company sells software");
+  });
+  it.each([
     ["Human bottleneck", "Dépendance à une personne"],
     ["Single point of failure", "Point de dépendance unique"],
     ["High manual workload", "Charge de travail manuelle élevée"],

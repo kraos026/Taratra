@@ -5,6 +5,20 @@ import type {
 
 const uuidPattern = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi;
 
+// Guidance for known generated findings, not new facts or a change of decision state.
+const findingChecks: Record<string, string> = {
+  "manual invoice processing":
+    "Décrire, sur une facture récente, les étapes de saisie et de validation, relever le temps passé et confirmer les contrôles à conserver avant d’envisager une automatisation.",
+  "email dependency":
+    "Relever, sur un dossier récent, les échanges nécessaires et les informations dispersées ; définir où suivre le dossier et qui en est responsable avant d’automatiser.",
+  "excel dependency":
+    "Identifier les tableaux utilisés, leurs responsables et les ressaisies ; vérifier la source de référence et les règles de mise à jour avant d’automatiser.",
+  "missing documentation":
+    "Documenter les étapes du processus, leurs responsables et les contrôles, puis faire vérifier cette procédure par la personne qui réalise le travail.",
+  "missing kpi":
+    "Choisir un indicateur lié au problème observé, préciser sa source et relever une valeur de départ avant d’annoncer un gain.",
+};
+
 export function readableDecisionState(state: string): string {
   const labels: Record<string, string> = {
     AUTOMATE_NOW: "Automatiser maintenant",
@@ -24,6 +38,12 @@ export function readableDecisionState(state: string): string {
 
 /** Translate known generated copy only. Never infer a decision, source content or a tool name. */
 export function customerDecisionText(value: string): string {
+  if (value === "This company") return "Cette entreprise";
+  const finding =
+    /^(?:Review finding: |Fix or validate this issue before automating: )(.+?)\.?$/i.exec(value);
+  const key = finding?.[1]?.toLowerCase();
+  const check = key && Object.hasOwn(findingChecks, key) ? findingChecks[key] : null;
+  if (check) return check;
   return value
     .replaceAll("AutomateX", "Optivos")
     .replaceAll("AUTOMATEX", "OPTIVOS")
@@ -258,15 +278,25 @@ export function customerDecisionCenter(center: PatronDecisionCenter): PatronDeci
   for (const match of allCopy.matchAll(/connecteur ([0-9a-f-]{36})/gi)) {
     const id = match[1]!.toLowerCase();
     if (!connections.has(id))
-      connections.set(id, `connexion ${connections.size + 1} (nom non renseigné)`);
+      connections.set(id, `connexion ${connections.size + 1} (outil à identifier)`);
   }
   const text = (value: string) =>
     customerDecisionText(
       value
         .replace(
+          /Rendre disponible le connecteur ([0-9a-f-]{36}) avant mise en œuvre\./gi,
+          (_, id: string) =>
+            `Pour la ${connections.get(id.toLowerCase())}, renseigner le nom de l’outil concerné puis faire confirmer sa disponibilité par son responsable avant toute mise en œuvre.`,
+        )
+        .replace(
+          /Vérifier la connexion et les droits du connecteur ([0-9a-f-]{36})\./gi,
+          (_, id: string) =>
+            `Pour la ${connections.get(id.toLowerCase())}, renseigner le nom de l’outil concerné puis faire vérifier la connexion et les droits d’accès par son responsable.`,
+        )
+        .replace(
           /connecteur ([0-9a-f-]{36})/gi,
           (_, id: string) =>
-            connections.get(id.toLowerCase()) ?? "connexion requise (nom non renseigné)",
+            connections.get(id.toLowerCase()) ?? "connexion requise (outil à identifier)",
         )
         .replace(/\ble connexion\b/g, "la connexion")
         .replace(/\bdu connexion\b/g, "de la connexion"),

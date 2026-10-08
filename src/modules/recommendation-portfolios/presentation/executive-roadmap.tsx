@@ -61,11 +61,12 @@ export function ExecutiveRoadmap({
                 Feuille de route exécutive
               </h1>
               <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-300">
-                Les recommandations sont classées par priorité et par phase. Ce classement et les
-                estimations économiques ne constituent pas une autorisation d’automatiser. Les
-                indices internes ne garantissent pas la pertinence. Les gains restent à vérifier
-                pour chaque activité et ne doivent pas être additionnés sans contrôler les
-                recouvrements.
+                Les recommandations sont classées par ordre d’examen, pas par date de mise en œuvre.
+                Les corrections et validations requises restent à traiter dans le centre de
+                décision. Ce classement et les estimations économiques ne constituent pas une
+                autorisation d’automatiser. Les indices internes ne garantissent pas la pertinence.
+                Les gains restent à vérifier pour chaque activité et ne doivent pas être additionnés
+                sans contrôler les recouvrements.
               </p>
               <p className="mt-3 text-sm font-semibold text-blue-200">
                 Statut du plan : {readableStatus(status)}
@@ -95,7 +96,7 @@ export function ExecutiveRoadmap({
           <div>
             <p className="text-xs font-bold tracking-[0.22em] text-slate-500 uppercase">Priorité</p>
             <h2 id="top-actions" className="text-2xl font-bold">
-              Top 3 à traiter en premier
+              Top 3 à examiner en premier
             </h2>
           </div>
           {topThree.length ? (
@@ -133,7 +134,7 @@ export function ExecutiveRoadmap({
                     </span>
                     <div>
                       <p className="text-xs font-bold tracking-[0.2em] text-slate-500 uppercase">
-                        Séquence
+                        Ordre d’examen
                       </p>
                       <h3 className="text-lg font-bold">{readablePhase(phase)}</h3>
                     </div>
@@ -204,16 +205,16 @@ function RecommendationCard({
                 : `${item.expectedRoi.toLocaleString("fr-FR", { maximumFractionDigits: 1 })}%`
           }
         />
-        <Metric label="Investissement" value={formatMoney(item.implementationCost)} />
+        <Metric label="Coût de mise en œuvre estimé" value={formatMoney(item.implementationCost)} />
       </dl>
       <div className="mt-4 grid gap-3 md:grid-cols-2">
         <InfoPanel
           label="Conditions / prérequis"
-          value="Consultez les preuves et les prérequis dans le Decision Center. Leur absence sur cette page ne signifie pas qu’ils sont satisfaits."
+          value="Consultez les preuves et les prérequis dans le centre de décision. Leur absence sur cette page ne signifie pas qu’ils sont satisfaits. Le coût affiché ne comprend pas nécessairement la formation, l’infrastructure et la maintenance : vérifiez le détail du ROI."
         />
       </div>
       <p className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-blue-200">
-        <ShieldCheck size={16} /> La décision canonique reste celle du Decision Center.
+        <ShieldCheck size={16} /> L’autorisation dépend des contrôles du centre de décision.
       </p>
       <a
         href={`/companies/${companyId}/automation-audit/decision-center`}
@@ -256,9 +257,9 @@ function groupByPhase(items: readonly Item[]) {
 function readablePhase(value: string): string {
   const normalized = value.toLowerCase();
   if (normalized.includes("immediate") || normalized === "now" || normalized === "phase_1")
-    return "Priorité immédiate";
-  if (normalized.includes("short") || normalized === "phase_2") return "Court terme";
-  if (normalized.includes("next") || normalized === "phase_3") return "Étape suivante";
+    return "À examiner en premier";
+  if (normalized.includes("short") || normalized === "phase_2") return "À examiner ensuite";
+  if (normalized.includes("next") || normalized === "phase_3") return "À examiner ultérieurement";
   if (normalized.includes("condition")) return "Conditions / prérequis";
   return value.replace(/^phase_/, "Phase ").replaceAll("_", " ");
 }

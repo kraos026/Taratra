@@ -30,8 +30,14 @@ describe("ExecutiveRoadmap", () => {
     expect(html).toContain("Indice interne");
     expect(html).not.toContain("Automate invoice");
     expect(html).toContain("Feuille de route exécutive");
-    expect(html).toContain("Top 3 à traiter en premier");
-    expect(html).toContain("Priorité immédiate");
+    expect(html).toContain("Top 3 à examiner en premier");
+    expect(html).toContain("À examiner en premier");
+    expect(html).not.toContain("Priorité immédiate");
+    expect(html).toContain("pas par date de mise en œuvre");
+    expect(html).toContain("corrections et validations requises");
+    expect(html).toContain("Coût de mise en œuvre estimé");
+    expect(html).toContain("formation, l’infrastructure et la maintenance");
+    expect(html).not.toContain("Decision Center");
     expect(html).toContain("Conditions / prérequis");
     expect(html).toContain("200,5%");
     expect(html).not.toContain("200.45678");

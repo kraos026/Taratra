@@ -152,9 +152,11 @@ describe("PatronDecisionCenterView", () => {
     expect(html).toContain("Les données dépendent de tableaux de calcul.");
     expect(html).toContain("Priorité moyenne");
     expect(html).toContain("Preuves : limitées");
-    expect(html).toContain("connexion 1 (nom non renseigné)");
-    expect(html).toContain("connexion 2 (nom non renseigné)");
-    expect(html).toContain("Vérifier la connexion et les droits");
+    expect(html).toContain("connexion 1 (outil à identifier)");
+    expect(html).toContain("connexion 2 (outil à identifier)");
+    expect(html).toContain("renseigner le nom de l’outil concerné");
+    expect(html).toContain("faire confirmer sa disponibilité par son responsable");
+    expect(html).toContain("faire vérifier la connexion et les droits d’accès");
     expect(html).toContain("contenu non détaillé");
     expect(html).toContain("Ne pas automatiser avant d’avoir corrigé");
     expect(html).not.toContain(connectionA);

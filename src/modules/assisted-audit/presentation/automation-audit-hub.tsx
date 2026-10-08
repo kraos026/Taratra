@@ -559,12 +559,12 @@ function StatusText({
 
 function AuditHubSkeleton() {
   return (
-    <main aria-busy="true" aria-label="Loading automation audit" className="space-y-6">
+    <main aria-busy="true" aria-label="Chargement de l’audit" className="space-y-6">
       <div
         role="status"
         className="h-28 animate-pulse rounded-xl bg-neutral-200 dark:bg-neutral-800"
       >
-        <span className="sr-only">Loading automation audit…</span>
+        <span className="sr-only">Chargement de l’audit…</span>
       </div>
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
         {Array.from({ length: 6 }, (_, index) => (
