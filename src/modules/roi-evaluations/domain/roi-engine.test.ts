@@ -71,6 +71,101 @@ const input = (): RoiInput => ({
 });
 describe("RoiEvaluationEngine", () => {
   const engine = new RoiEvaluationEngine();
+  it("calculates distinct activity inputs with the same canonical formulas without mutating the source", () => {
+    const source = input();
+    source.opportunities.push({ ...source.opportunities[0]!, id: "email", identifier: "email" });
+    const before = JSON.stringify(source);
+    const activities = source.opportunities.map((opportunity, index) => ({
+      opportunityId: opportunity.id,
+      suppliedAssumptions: { ...source.suppliedAssumptions, annual_frequency: index ? 50 : 100 },
+      unknownAssumptions: [] as AssumptionCode[],
+    }));
+    const results = engine.evaluateActivities(source, activities);
+    expect(results.map((row) => row.opportunityId)).toEqual(["opportunity", "email"]);
+    expect(
+      results.map(
+        (row) =>
+          row.result.scenarios[1]!.evaluations[0]!.metrics.find(
+            (metric) => metric.code === "annual_hours_saved",
+          )?.value,
+      ),
+    ).toEqual([200, 100]);
+    for (const row of results) {
+      const own = activities.find((activity) => activity.opportunityId === row.opportunityId)!;
+      expect(row.result).toEqual(
+        engine.evaluate({
+          ...source,
+          opportunities: source.opportunities.filter(
+            (opportunity) => opportunity.id === row.opportunityId,
+          ),
+          suppliedAssumptions: own.suppliedAssumptions,
+          unknownAssumptions: own.unknownAssumptions,
+          assumptions: source.assumptions.map((definition) => ({
+            ...definition,
+            defaultValue: null,
+          })),
+        }),
+      );
+    }
+    expect(JSON.stringify(source)).toBe(before);
+  });
+  it("keeps unknown activity inputs blocked even when shared inputs and defaults are available", () => {
+    const source = input();
+    source.assumptions.forEach((definition) => (definition.defaultValue = 100));
+    const supplied = { ...source.suppliedAssumptions };
+    delete supplied.hours_saved_per_occurrence;
+    const [row] = engine.evaluateActivities(source, [
+      {
+        opportunityId: "opportunity",
+        suppliedAssumptions: supplied,
+        unknownAssumptions: ["hours_saved_per_occurrence"],
+      },
+    ]);
+    expect(row!.result.scenarios).toEqual([]);
+    expect(row!.result.validations).toContainEqual(
+      expect.objectContaining({ code: "unknown_assumption" }),
+    );
+  });
+  it.each(["foreign", "duplicate", "missing"])("rejects %s activity references", (kind) => {
+    const source = input();
+    const own = {
+      opportunityId: "opportunity",
+      suppliedAssumptions: source.suppliedAssumptions,
+      unknownAssumptions: [],
+    };
+    const activities =
+      kind === "foreign"
+        ? [{ ...own, opportunityId: "another-tenant" }]
+        : kind === "duplicate"
+          ? [own, own]
+          : [];
+    expect(() => engine.evaluateActivities(source, activities)).toThrow(
+      "match the source opportunities exactly",
+    );
+  });
+  it.each(["missing", "ambiguous", "foreign-code", "invalid", "duplicate-unknown"])(
+    "rejects %s activity assumptions without falling back to shared inputs",
+    (kind) => {
+      const source = input();
+      const activity = {
+        opportunityId: "opportunity",
+        suppliedAssumptions: { ...source.suppliedAssumptions },
+        unknownAssumptions: [] as AssumptionCode[],
+      };
+      if (kind === "missing") delete activity.suppliedAssumptions.hourly_cost;
+      if (kind === "ambiguous") activity.unknownAssumptions.push("hourly_cost");
+      if (kind === "foreign-code")
+        Object.assign(activity.suppliedAssumptions, { unrecognized: 123 });
+      if (kind === "invalid") activity.suppliedAssumptions.hourly_cost = Number.NaN;
+      if (kind === "duplicate-unknown") {
+        delete activity.suppliedAssumptions.hourly_cost;
+        activity.unknownAssumptions.push("hourly_cost", "hourly_cost");
+      }
+      expect(() => engine.evaluateActivities(source, [activity])).toThrow(
+        "complete known or unknown assumptions",
+      );
+    },
+  );
   it("preserves V1 catalog arithmetic and selects the latest published model", () => {
     const value = input();
     value.models[0]!.version = 1;

@@ -55,6 +55,11 @@ export interface RoiInput {
   models: RoiModelDefinition[];
   assumptions: RoiAssumptionDefinition[];
 }
+export interface RoiActivityAssumptions {
+  opportunityId: string;
+  suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
+  unknownAssumptions: AssumptionCode[];
+}
 export interface RoiMetricResult {
   code: string;
   value: number | null;
@@ -93,6 +98,53 @@ const SCENARIOS: Record<ScenarioType, { volume: number; cost: number }> = {
 };
 
 export class RoiEvaluationEngine {
+  /** Internal preparation only; the public scenario contract remains unchanged.
+   * Every activity supplies its own complete known/unknown inputs, never inherited defaults.
+   * Callers must keep these results scoped by opportunity through persistence and publication.
+   */
+  evaluateActivities(input: RoiInput, activities: readonly RoiActivityAssumptions[]) {
+    const sourceIds = new Set(input.opportunities.map((opportunity) => opportunity.id));
+    const ids = activities.map((activity) => activity.opportunityId);
+    if (
+      sourceIds.size !== input.opportunities.length ||
+      new Set(ids).size !== ids.length ||
+      ids.length !== sourceIds.size ||
+      ids.some((id) => !sourceIds.has(id))
+    ) {
+      throw new Error("Activity assumptions must match the source opportunities exactly");
+    }
+    const codes = new Set(input.assumptions.map((definition) => definition.code));
+    for (const activity of activities) {
+      const providedCodes = Object.keys(activity.suppliedAssumptions);
+      const unknownCodes = activity.unknownAssumptions;
+      if (
+        new Set(unknownCodes).size !== unknownCodes.length ||
+        [...providedCodes, ...unknownCodes].some((code) => !codes.has(code as AssumptionCode)) ||
+        unknownCodes.some((code) => providedCodes.includes(code)) ||
+        [...codes].some(
+          (code) =>
+            !Object.hasOwn(activity.suppliedAssumptions, code) && !unknownCodes.includes(code),
+        ) ||
+        providedCodes.some((code) => {
+          const value = activity.suppliedAssumptions[code as AssumptionCode];
+          return typeof value !== "number" || !Number.isFinite(value) || value < 0;
+        })
+      ) {
+        throw new Error("Each activity must declare complete known or unknown assumptions");
+      }
+    }
+    return input.opportunities.map((opportunity) => {
+      const activity = activities.find((row) => row.opportunityId === opportunity.id)!;
+      const scopedInput: RoiInput = {
+        ...input,
+        opportunities: [opportunity],
+        suppliedAssumptions: { ...activity.suppliedAssumptions },
+        unknownAssumptions: [...activity.unknownAssumptions],
+        assumptions: input.assumptions.map((definition) => ({ ...definition, defaultValue: null })),
+      };
+      return { opportunityId: opportunity.id, result: this.evaluate(scopedInput) };
+    });
+  }
   evaluate(input: RoiInput) {
     const model = input.models
       .filter((item) => item.code === "automation_economic_impact")
