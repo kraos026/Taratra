@@ -95,6 +95,16 @@ export class PrismaExecutiveResultRepository implements ExecutiveResultRepositor
         where: { id: { in: opportunities.map((item) => item.detectionRuleId) } },
       }),
     ]);
+    const connectorIds = [...new Set(connectorLinks.map((link) => link.connectorId))];
+    const connectorCatalog = connectorIds.length
+      ? await this.db.automationConnectorCatalog.findMany({
+          where: {
+            id: { in: connectorIds },
+            OR: [{ organizationId: null }, { organizationId }],
+          },
+          select: { id: true, title: true },
+        })
+      : [];
     const factIds = [...new Set(evidenceLinks.map((item) => item.knowledgeFactId))];
     const [facts, evidenceRecords] = knowledgeRef
       ? await Promise.all([
@@ -131,16 +141,29 @@ export class PrismaExecutiveResultRepository implements ExecutiveResultRepositor
           : "INFERRED";
       };
       const connectors = connectorLinks.filter((link) => link.opportunityId === opportunity.id);
-      const prerequisites: OpportunityDecisionSafety["prerequisites"] = connectors.map((link) => ({
-        id: link.connectorId,
-        opportunityId: opportunity.id,
-        kind: "connector",
-        // Catalog keyword matching proves neither live connectivity nor permission.
-        satisfied: link.available ? null : false,
-        remediation: link.available
-          ? `Vérifier la connexion et les droits du connecteur ${link.connectorId}.`
-          : `Rendre disponible le connecteur ${link.connectorId} avant mise en œuvre.`,
-      }));
+      const prerequisites: OpportunityDecisionSafety["prerequisites"] = connectors.map((link) => {
+        const catalogTitle = connectorCatalog
+          .find((item) => item.id === link.connectorId)
+          ?.title.trim();
+        // A catalog label identifies the proposed connector, not an installed company tool.
+        const remediation = catalogTitle
+          ? `Connecteur proposé au catalogue : « ${catalogTitle} ». Identifier l’outil réellement utilisé et son responsable, puis ${
+              link.available
+                ? "vérifier la connexion et les droits d’accès."
+                : "confirmer sa disponibilité avant toute mise en œuvre."
+            } Aucune connexion réelle n’est attestée par ce rapprochement.`
+          : link.available
+            ? `Vérifier la connexion et les droits du connecteur ${link.connectorId}.`
+            : `Rendre disponible le connecteur ${link.connectorId} avant mise en œuvre.`;
+        return {
+          id: link.connectorId,
+          opportunityId: opportunity.id,
+          kind: "connector",
+          // Catalog keyword matching proves neither live connectivity nor permission.
+          satisfied: link.available ? null : false,
+          remediation,
+        };
+      });
       const rule = detectionRules.find((item) => item.id === opportunity.detectionRuleId);
       const required = rule && Array.isArray(rule.connectorCodes) ? rule.connectorCodes : null;
       if (!required || required.length !== connectors.length)
