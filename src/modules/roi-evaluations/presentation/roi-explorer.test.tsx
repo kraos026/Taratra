@@ -2,6 +2,47 @@ import { describe, expect, it } from "vitest";
 import { renderToStaticMarkup } from "react-dom/server";
 import { RoiExplorer } from "./roi-explorer";
 describe("RoiExplorer", () => {
+  it("shows shared estimates once while retaining each activity and its own sources", () => {
+    const evaluations = ["Factures", "Emails", "Tableaux"].map((title, index) => ({
+      id: String(index),
+      scenarioId: "s",
+      title,
+      description: "",
+      confidence: 100,
+    }));
+    const html = renderToStaticMarkup(
+      <RoiExplorer
+        currency="EUR"
+        scenarios={[{ id: "s", type: "expected" }]}
+        evaluations={evaluations}
+        metrics={evaluations.map((e) => ({
+          evaluationId: e.id,
+          code: "annual_benefit",
+          value: 4320,
+          specialValue: null,
+          unit: "currency/year",
+        }))}
+        traces={evaluations.map((e, index) => ({
+          evaluationId: e.id,
+          sharedEvaluationCount: 3,
+          sourceReferenceCount: index + 1,
+          volumeFactor: 1,
+          costFactor: 1,
+          assumptions: [
+            { code: "annual_frequency", value: 1440, unit: "occurrences/year", source: "provided" },
+          ],
+        }))}
+      />,
+    );
+    expect(html).toContain("Une estimation commune, pas des gains cumulables");
+    expect(html).toContain("rentabilité propre à chacune non démontrée");
+    expect(html.match(/4 320 EUR/g)).toHaveLength(1);
+    for (const title of ["Factures", "Emails", "Tableaux"])
+      expect(html).toContain(`Sources : ${title}`);
+    for (const count of [1, 2, 3])
+      expect(html).toContain(`${count} référence(s) source distincte(s)`);
+    expect(html).toContain("mesurez séparément");
+  });
   it("does not equate absent calculations with complete assumptions", () => {
     const html = renderToStaticMarkup(
       <RoiExplorer currency="EUR" scenarios={[]} evaluations={[]} metrics={[]} />,

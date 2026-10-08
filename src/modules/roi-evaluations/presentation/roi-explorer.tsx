@@ -6,6 +6,7 @@ import { AlertTriangle, Calculator, CircleDollarSign, Search, TrendingUp } from 
 import { Input } from "@/components/ui/input";
 import { customerDecisionText } from "@/modules/company-intake/presentation/customer-decision-copy";
 import type { RoiTrace } from "./roi-trace";
+import { groupRoiEvaluations } from "./roi-evaluation-groups";
 
 type Evaluation = {
   id: string;
@@ -58,6 +59,8 @@ export function RoiExplorer({
     ? Math.round(filtered.reduce((sum, item) => sum + item.confidence, 0) / filtered.length)
     : null;
   const primaryEvaluation = filtered[0];
+  const groups = groupRoiEvaluations(filtered, metrics, traces);
+  const sharedPrimary = (groups[0]?.length ?? 0) > 1;
   const primaryScenario = scenarios.find((item) => item.id === primaryEvaluation?.scenarioId)?.type;
   const summaryMetrics = primaryEvaluation
     ? {
@@ -109,9 +112,12 @@ export function RoiExplorer({
         {primaryEvaluation && (
           <p className="text-sm text-slate-300">
             Repère économique · {scenarioLabel(primaryScenario ?? "")} ·{" "}
-            {brandText(primaryEvaluation.title)}. Ce n’est pas le total de l’audit. Les évaluations
-            des différentes opportunités ne doivent pas être additionnées sans vérifier les
-            hypothèses communes et les doubles comptes.
+            {sharedPrimary
+              ? "Estimation commune aux activités ci-dessous"
+              : brandText(primaryEvaluation.title)}
+            . Ce n’est pas le total de l’audit. Les évaluations des différentes opportunités ne
+            doivent pas être additionnées sans vérifier les hypothèses communes et les doubles
+            comptes.
           </p>
         )}
         <section
@@ -202,7 +208,9 @@ export function RoiExplorer({
           {!filtered.length ? (
             <SafeState />
           ) : (
-            filtered.map((item) => {
+            groups.map((members) => {
+              const item = members[0]!;
+              const shared = members.length > 1;
               const roi = value(item.id, "roi_percentage");
               const payback = value(item.id, "payback_period");
               const savings = value(item.id, "annual_cost_saved");
@@ -238,10 +246,31 @@ export function RoiExplorer({
                       <span className="rounded-full bg-blue-500/15 px-3 py-1 text-xs font-bold text-blue-200">
                         {scenarioLabel(scenarioType)}
                       </span>
-                      <h2 className="mt-3 text-xl font-bold text-white">{brandText(item.title)}</h2>
-                      <p className="mt-2 text-sm leading-6 text-slate-300">
-                        {brandText(item.description)}
-                      </p>
+                      <h2 className="mt-3 text-xl font-bold text-white">
+                        {shared
+                          ? "Une estimation commune, pas des gains cumulables"
+                          : brandText(item.title)}
+                      </h2>
+                      {shared ? (
+                        <div className="mt-2 text-sm leading-6 text-slate-300">
+                          <p>Activités concernées — rentabilité propre à chacune non démontrée :</p>
+                          <ul className="mt-2 list-disc pl-5">
+                            {members.map((member) => (
+                              <li key={member.id}>{brandText(member.title)}</li>
+                            ))}
+                          </ul>
+                          <p className="mt-3">
+                            Même scénario, mêmes hypothèses et mêmes calculs : les chiffres sont
+                            affichés une seule fois. Pour comparer ces activités, mesurez séparément
+                            leur volume, le temps économisable et leurs coûts, puis vérifiez les
+                            tâches communes pour éviter de compter deux fois le même gain.
+                          </p>
+                        </div>
+                      ) : (
+                        <p className="mt-2 text-sm leading-6 text-slate-300">
+                          {brandText(item.description)}
+                        </p>
+                      )}
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3">
                       <p className="text-xs text-slate-400">État ROI</p>
@@ -310,7 +339,19 @@ export function RoiExplorer({
                       n’est pas une mesure des erreurs réellement évitées.
                     </p>
                   </div>
-                  <AssumptionTrace trace={trace} currency={currency} />
+                  {members.map((member) => (
+                    <div key={member.id}>
+                      {shared && (
+                        <h3 className="mt-5 font-semibold text-white">
+                          Sources : {brandText(member.title)}
+                        </h3>
+                      )}
+                      <AssumptionTrace
+                        trace={traces.find((row) => row.evaluationId === member.id)}
+                        currency={currency}
+                      />
+                    </div>
+                  ))}
                   <p className="mt-4 text-sm leading-6 text-slate-300">
                     Le bénéfice annuel total inclut le temps valorisé et le coût des erreurs évitées
                     selon les hypothèses du modèle enregistré. Ce montant doit être vérifié ; il ne
