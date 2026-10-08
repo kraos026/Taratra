@@ -95,6 +95,53 @@ const revisionRequest = {
 };
 
 describe("ROI draft revision", () => {
+  it("forwards activity inputs on revision without losing the tenant boundary", async () => {
+    const { repository, engine } = revisionFixture();
+    const activityAssumptions = [
+      {
+        opportunityId: "activity",
+        suppliedAssumptions: { maintenance_cost: 0 },
+        unknownAssumptions: ["training_cost" as const],
+      },
+    ];
+    await new RoiEvaluationService(repository, "consultant", engine).reviseInput("roi-v1", {
+      ...revisionRequest,
+      activityAssumptions,
+    });
+    expect(repository.input).toHaveBeenCalledWith(
+      "organization",
+      "automation",
+      "EUR",
+      { maintenance_cost: 0 },
+      ["training_cost"],
+      activityAssumptions,
+    );
+  });
+
+  it("forwards frozen activity inputs during a versioned rebuild", async () => {
+    const { repository, engine } = revisionFixture();
+    const activityAssumptions = [
+      {
+        opportunityId: "activity",
+        suppliedAssumptions: { maintenance_cost: 0 },
+        unknownAssumptions: ["training_cost" as const],
+      },
+    ];
+    Object.assign(repository, {
+      frozenAssumptions: vi.fn().mockResolvedValue({ ...revisionRequest, activityAssumptions }),
+    });
+    const current = await repository.snapshot("organization", "roi-v1");
+    Object.assign(current!, { currency: "EUR" });
+    await new RoiEvaluationService(repository, "consultant", engine).rebuildInput("roi-v1", 1);
+    expect(repository.input).toHaveBeenCalledWith(
+      "organization",
+      "automation",
+      "EUR",
+      { maintenance_cost: 0 },
+      ["training_cost"],
+      activityAssumptions,
+    );
+  });
   it("creates a linked draft version without mutating the existing ROI", async () => {
     const { current, repository, engine } = revisionFixture();
     const before = structuredClone(current);

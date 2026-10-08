@@ -38,6 +38,18 @@ const fixture = () => ({
 });
 
 describe("ROI render-only trace", () => {
+  it("does not borrow common provenance when an activity contribution is malformed", () => {
+    const input = fixture();
+    const detail = {
+      ...input,
+      contributions: input.contributions.map((row) => ({
+        ...row,
+        calculationJson: { scope: "activity", source: "catalog_default", unit: "currency/hour" },
+      })),
+    };
+    expect(roiTraces(detail)[0]!.sharedEvaluationCount).toBe(1);
+    expect(roiTraces(detail)[0]!.assumptions[0]!.source).toBe("unknown");
+  });
   it("scopes and deduplicates references; serializes frozen numeric inputs without altering data", () => {
     const input = fixture();
     const before = JSON.stringify(input);

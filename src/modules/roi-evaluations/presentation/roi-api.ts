@@ -1,7 +1,12 @@
 import { withAuthenticatedDatabase } from "@/infrastructure/database/with-authenticated-database";
 import { createClient } from "@/infrastructure/supabase/server";
 import { apiError } from "@/shared/presentation/api-response";
-import { RoiEvaluationEngine, type AssumptionCode } from "../domain/roi-engine";
+import {
+  RoiEvaluationEngine,
+  RoiActivityInputError,
+  type AssumptionCode,
+  type RoiActivityAssumptions,
+} from "../domain/roi-engine";
 import { RoiEvaluationError, RoiForbiddenError, RoiNotFoundError } from "../application/roi-errors";
 import { RoiEvaluationService } from "../application/roi-service";
 import {
@@ -22,6 +27,7 @@ type RoiAssumptionRequest = {
   currency: string;
   suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
   unknownAssumptions: AssumptionCode[];
+  activityAssumptions?: readonly RoiActivityAssumptions[];
 };
 
 export async function withRoiEvaluationService<T>(
@@ -166,6 +172,12 @@ async function executeRoiWriteCommand(
       ROI_WRITE_TRANSACTION_OPTIONS,
     );
   } catch (caught) {
+    if (caught instanceof RoiActivityInputError)
+      return apiError(
+        "VALIDATION_ERROR",
+        "Les hypothèses doivent correspondre exactement aux activités de cet audit.",
+        400,
+      );
     if (caught instanceof RoiEvaluationError)
       return apiError(caught.code, caught.message, caught.status);
     return apiError("INTERNAL_ERROR", "Unexpected error", 500);

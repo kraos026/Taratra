@@ -6,21 +6,34 @@ const unknownAssumption = z.object({ status: z.literal("unknown") }).strict();
 const publicAssumption = z.union([value, knownAssumption, unknownAssumption]);
 export const roiIdSchema = z.string().uuid();
 export const roiMutationSchema = z.object({ lockVersion: z.number().int().positive() });
+const assumptionsSchema = z.object({
+  hourly_cost: publicAssumption,
+  working_days: publicAssumption,
+  working_hours: publicAssumption,
+  monthly_frequency: publicAssumption,
+  annual_frequency: publicAssumption,
+  hours_saved_per_occurrence: publicAssumption,
+  implementation_cost: publicAssumption,
+  maintenance_cost: publicAssumption,
+  training_cost: publicAssumption,
+  infrastructure_cost: publicAssumption,
+  error_cost: publicAssumption,
+});
 export const roiEvaluateSchema = z.object({
   currency: z.string().regex(/^[A-Z]{3}$/),
-  assumptions: z.object({
-    hourly_cost: publicAssumption,
-    working_days: publicAssumption,
-    working_hours: publicAssumption,
-    monthly_frequency: publicAssumption,
-    annual_frequency: publicAssumption,
-    hours_saved_per_occurrence: publicAssumption,
-    implementation_cost: publicAssumption,
-    maintenance_cost: publicAssumption,
-    training_cost: publicAssumption,
-    infrastructure_cost: publicAssumption,
-    error_cost: publicAssumption,
-  }),
+  assumptions: assumptionsSchema,
+  activities: z
+    .array(
+      z
+        .object({
+          opportunityId: roiIdSchema,
+          assumptions: assumptionsSchema.strict(),
+        })
+        .strict(),
+    )
+    .min(1)
+    .max(100)
+    .optional(),
 });
 export const roiReviseSchema = roiEvaluateSchema.extend({
   lockVersion: z.number().int().positive(),
@@ -39,6 +52,20 @@ export function normalizeRoiAssumptions(assumptions: RoiEvaluateRequest["assumpt
     else unknownAssumptions.push(code);
   }
   return { suppliedAssumptions, unknownAssumptions };
+}
+
+export function normalizeRoiRequest(request: RoiEvaluateRequest) {
+  return {
+    ...normalizeRoiAssumptions(request.assumptions),
+    ...(request.activities
+      ? {
+          activityAssumptions: request.activities.map(({ opportunityId, assumptions }) => ({
+            opportunityId,
+            ...normalizeRoiAssumptions(assumptions),
+          })),
+        }
+      : {}),
+  };
 }
 export const roiListSchema = z.object({
   page: z.coerce.number().int().positive().default(1),

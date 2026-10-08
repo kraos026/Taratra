@@ -8,6 +8,20 @@ import {
 } from "./prisma-roi-evaluation-repository";
 
 describe("ROI frozen assumption provenance", () => {
+  it("never falls back to shared inputs when frozen activity provenance is malformed", async () => {
+    const db = {
+      roiEvaluationSnapshot: {
+        findFirst: vi
+          .fn()
+          .mockResolvedValue({ provenanceJson: { assumptionInputs: [], activityInputs: [] } }),
+      },
+      roiScenario: { findFirst: vi.fn() },
+    } as unknown as TransactionClient;
+    await expect(
+      new PrismaRoiEvaluationRepository(db).frozenAssumptions("organization", "roi"),
+    ).rejects.toThrow("shared fallback is forbidden");
+    expect(db.roiScenario.findFirst).not.toHaveBeenCalled();
+  });
   it("restores known zero and unknown as distinct values", () => {
     expect(
       readFrozenAssumptions({

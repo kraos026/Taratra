@@ -17,6 +17,7 @@ type Detail = {
     assumptionId: string;
     code: string;
     inputValue: Numeric;
+    calculationJson?: unknown;
   }[];
   assumptions: readonly {
     scenarioId: string;
@@ -38,9 +39,14 @@ export function roiTraces(detail: Detail): RoiTrace[] {
     costFactor: factor(
       detail.scenarios?.find((row) => row.id === evaluation.scenarioId)?.costFactor,
     ),
-    sharedEvaluationCount: detail.evaluations.filter(
-      (other) => other.scenarioId === evaluation.scenarioId,
-    ).length,
+    sharedEvaluationCount: detail.contributions.some(
+      (row) =>
+        row.evaluationId === evaluation.id &&
+        row.scenarioId === evaluation.scenarioId &&
+        activityCalculation(row.calculationJson)?.scope === "activity",
+    )
+      ? 1
+      : detail.evaluations.filter((other) => other.scenarioId === evaluation.scenarioId).length,
     sourceReferenceCount: new Set(
       detail.evidence
         .filter(
@@ -59,6 +65,21 @@ export function roiTraces(detail: Detail): RoiTrace[] {
         );
         const value = Number(row.inputValue);
         const aligned = Number.isFinite(value) && frozen && Number(frozen.value) === value;
+        const calculation = activityCalculation(row.calculationJson);
+        if (calculation?.scope === "activity") {
+          const valid =
+            Number.isFinite(value) &&
+            value >= 0 &&
+            calculation.source === "provided" &&
+            typeof calculation.unit === "string" &&
+            calculation.unit.length > 0;
+          return {
+            code: row.code,
+            value: Number.isFinite(value) ? value : null,
+            unit: valid ? (calculation.unit as string) : "",
+            source: valid ? "provided" : "unknown",
+          };
+        }
         return {
           code: row.code,
           value: Number.isFinite(value) ? value : null,
@@ -67,6 +88,12 @@ export function roiTraces(detail: Detail): RoiTrace[] {
         };
       }),
   }));
+}
+
+function activityCalculation(value: unknown): Record<string, unknown> | null {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : null;
 }
 
 function factor(value: Numeric | undefined): number | null {

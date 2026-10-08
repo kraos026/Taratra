@@ -1,5 +1,5 @@
 import {
-  normalizeRoiAssumptions,
+  normalizeRoiRequest,
   roiIdSchema,
   roiReviseSchema,
 } from "@/modules/roi-evaluations/application/roi-schemas";
@@ -14,7 +14,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const result = await reviseRoiSnapshot(id.data, {
     lockVersion: body.data.lockVersion,
     currency: body.data.currency,
-    ...normalizeRoiAssumptions(body.data.assumptions),
+    ...normalizeRoiRequest(body.data),
   });
   return result instanceof Response ? result : apiSuccess(result, 201);
 }

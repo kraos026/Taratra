@@ -13,11 +13,56 @@ vi.mock("@/infrastructure/database/with-authenticated-database", () => ({
 }));
 
 import { evaluateRoiSnapshot, getRoiEvaluationDetail } from "./roi-api";
+import { RoiEvaluationService } from "../application/roi-service";
+import type { RoiInput } from "../domain/roi-engine";
 
 describe("ROI Evaluation production composition", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     getClaims.mockResolvedValue({ data: { claims: { sub: "user-id" } }, error: null });
+  });
+
+  it("returns 400 for invalid activity scope without starting a write transaction", async () => {
+    const prepare = vi
+      .spyOn(RoiEvaluationService.prototype, "evaluateInput")
+      .mockResolvedValueOnce({
+        organizationId: "org",
+        companyId: "company",
+        previousVersionId: null,
+        input: {
+          automationSnapshotId: "automation",
+          automationStatus: "published",
+          aiSnapshotId: "ai",
+          aiStatus: "published",
+          analysisId: "analysis",
+          analysisStatus: "published",
+          processMapId: "process",
+          processMapStatus: "published",
+          knowledgeSnapshotId: "knowledge",
+          currency: "EUR",
+          suppliedAssumptions: {},
+          unknownAssumptions: [],
+          models: [],
+          assumptions: [],
+          opportunities: [],
+          activityAssumptions: [
+            { opportunityId: "foreign", suppliedAssumptions: {}, unknownAssumptions: [] },
+          ],
+        } as RoiInput,
+      });
+    withAuthenticatedDatabase.mockImplementationOnce(async (_userId, operation) => operation({}));
+    try {
+      const result = await evaluateRoiSnapshot("automation", {
+        currency: "EUR",
+        suppliedAssumptions: {},
+        unknownAssumptions: [],
+      });
+      expect(result).toBeInstanceOf(Response);
+      expect((result as Response).status).toBe(400);
+      expect(withAuthenticatedDatabase).toHaveBeenCalledTimes(1);
+    } finally {
+      prepare.mockRestore();
+    }
   });
 
   it("splits ROI input resolution from bounded batched write persistence", async () => {

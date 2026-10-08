@@ -54,6 +54,7 @@ export interface RoiInput {
   opportunities: RoiOpportunityInput[];
   models: RoiModelDefinition[];
   assumptions: RoiAssumptionDefinition[];
+  activityAssumptions?: readonly RoiActivityAssumptions[];
 }
 export interface RoiActivityAssumptions {
   opportunityId: string;
@@ -97,8 +98,19 @@ const SCENARIOS: Record<ScenarioType, { volume: number; cost: number }> = {
   optimistic: { volume: 1.25, cost: 0.9 },
 };
 
+export class RoiActivityInputError extends Error {}
+
+export interface RoiEngineResult {
+  scenarios: RoiScenarioResult[];
+  validations: { code: string; severity: "error" | "information"; message: string }[];
+  catalogVersions: {
+    models: { id: string; code: string; version: number }[];
+    assumptions: { id: string; code: AssumptionCode; version: number }[];
+  };
+}
+
 export class RoiEvaluationEngine {
-  /** Internal preparation only; the public scenario contract remains unchanged.
+  /** Uses the canonical formulas independently for each activity.
    * Every activity supplies its own complete known/unknown inputs, never inherited defaults.
    * Callers must keep these results scoped by opportunity through persistence and publication.
    */
@@ -111,7 +123,9 @@ export class RoiEvaluationEngine {
       ids.length !== sourceIds.size ||
       ids.some((id) => !sourceIds.has(id))
     ) {
-      throw new Error("Activity assumptions must match the source opportunities exactly");
+      throw new RoiActivityInputError(
+        "Activity assumptions must match the source opportunities exactly",
+      );
     }
     const codes = new Set(input.assumptions.map((definition) => definition.code));
     for (const activity of activities) {
@@ -130,13 +144,16 @@ export class RoiEvaluationEngine {
           return typeof value !== "number" || !Number.isFinite(value) || value < 0;
         })
       ) {
-        throw new Error("Each activity must declare complete known or unknown assumptions");
+        throw new RoiActivityInputError(
+          "Each activity must declare complete known or unknown assumptions",
+        );
       }
     }
     return input.opportunities.map((opportunity) => {
       const activity = activities.find((row) => row.opportunityId === opportunity.id)!;
       const scopedInput: RoiInput = {
         ...input,
+        activityAssumptions: undefined,
         opportunities: [opportunity],
         suppliedAssumptions: { ...activity.suppliedAssumptions },
         unknownAssumptions: [...activity.unknownAssumptions],
@@ -145,7 +162,49 @@ export class RoiEvaluationEngine {
       return { opportunityId: opportunity.id, result: this.evaluate(scopedInput) };
     });
   }
-  evaluate(input: RoiInput) {
+  evaluate(input: RoiInput): RoiEngineResult {
+    if (input.activityAssumptions) {
+      const scoped = this.evaluateActivities(input, input.activityAssumptions);
+      const validations = scoped.flatMap(({ result }, index) =>
+        result.validations.map((validation) => ({
+          ...validation,
+          message: `Activité ${index + 1}: ${validation.message}`,
+        })),
+      );
+      const complete =
+        scoped.length > 0 && scoped.every((row) => row.result.scenarios.length === 3);
+      const scenarios: RoiScenarioResult[] = complete
+        ? scoped[0]!.result.scenarios.map((scenario) => ({
+            ...scenario,
+            assumptions: [],
+            evaluations: scoped.flatMap(({ result }) =>
+              result.scenarios
+                .find((row) => row.type === scenario.type)!
+                .evaluations.map((evaluation) => ({
+                  ...evaluation,
+                  contributions: evaluation.contributions.map((contribution) => ({
+                    ...contribution,
+                    calculation: {
+                      ...contribution.calculation,
+                      scope: "activity",
+                      unit: contribution.assumption.unit,
+                    },
+                  })),
+                })),
+            ),
+          }))
+        : [];
+      return {
+        scenarios,
+        validations: scoped.length
+          ? validations
+          : [error("missing_activity", "No source activity is available")],
+        catalogVersions: {
+          models: input.models.map(({ id, code, version }) => ({ id, code, version })),
+          assumptions: input.assumptions.map(({ id, code, version }) => ({ id, code, version })),
+        },
+      };
+    }
     const model = input.models
       .filter((item) => item.code === "automation_economic_impact")
       .sort((a, b) => b.version - a.version)[0];

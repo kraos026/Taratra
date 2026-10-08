@@ -1,5 +1,5 @@
 import {
-  normalizeRoiAssumptions,
+  normalizeRoiRequest,
   roiEvaluateSchema,
   roiIdSchema,
 } from "@/modules/roi-evaluations/application/roi-schemas";
@@ -12,7 +12,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return apiError("VALIDATION_ERROR", "Invalid ROI evaluation request", 400);
   const result = await evaluateRoiSnapshot(id.data, {
     currency: body.data.currency,
-    ...normalizeRoiAssumptions(body.data.assumptions),
+    ...normalizeRoiRequest(body.data),
   });
   return result instanceof Response ? result : apiSuccess(result, 201);
 }

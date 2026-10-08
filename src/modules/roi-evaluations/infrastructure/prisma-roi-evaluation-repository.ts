@@ -8,6 +8,7 @@ import type {
   RoiEvaluationEngine,
   RoiInput,
   RoiModelDefinition,
+  RoiActivityAssumptions,
 } from "../domain/roi-engine";
 type Result = ReturnType<RoiEvaluationEngine["evaluate"]>;
 export interface RoiEvaluationDetail {
@@ -153,6 +154,22 @@ export function prepareRoiPersistencePlan(
       businessAnalysisId: input.analysisId,
       processMapId: input.processMapId,
       knowledgeSnapshotId: input.knowledgeSnapshotId,
+      ...(input.activityAssumptions
+        ? {
+            activityInputs: input.activityAssumptions.map((activity) => ({
+              opportunityId: activity.opportunityId,
+              assumptionInputs: input.assumptions.map((definition) =>
+                activity.unknownAssumptions.includes(definition.code)
+                  ? { code: definition.code, status: "unknown" }
+                  : {
+                      code: definition.code,
+                      status: "known",
+                      value: activity.suppliedAssumptions[definition.code],
+                    },
+              ),
+            })),
+          }
+        : {}),
       assumptionInputs: input.assumptions.map((definition) =>
         input.unknownAssumptions.includes(definition.code)
           ? { code: definition.code, status: "unknown" }
@@ -188,6 +205,7 @@ export class PrismaRoiEvaluationRepository {
     currency: string,
     suppliedAssumptions: Partial<Record<AssumptionCode, number>>,
     unknownAssumptions: AssumptionCode[],
+    activityAssumptions?: readonly RoiActivityAssumptions[],
   ): Promise<RoiInput | null> {
     const automation = await this.automationSnapshot(organizationId, automationSnapshotId);
     if (!automation) return null;
@@ -246,6 +264,7 @@ export class PrismaRoiEvaluationRepository {
       currency,
       suppliedAssumptions,
       unknownAssumptions,
+      ...(activityAssumptions ? { activityAssumptions } : {}),
       opportunities: opportunities.map((item) => ({
         id: item.id,
         identifier: item.identifier,
@@ -285,6 +304,14 @@ export class PrismaRoiEvaluationRepository {
   async frozenAssumptions(organizationId: string, snapshotId: string) {
     const snapshot = await this.snapshot(organizationId, snapshotId);
     const frozen = readFrozenAssumptions(snapshot?.provenanceJson);
+    if (
+      snapshot?.provenanceJson &&
+      typeof snapshot.provenanceJson === "object" &&
+      !Array.isArray(snapshot.provenanceJson) &&
+      "activityInputs" in snapshot.provenanceJson &&
+      !frozen
+    )
+      throw new Error("Invalid frozen activity assumptions; shared fallback is forbidden");
     if (frozen) return frozen;
     const scenario = await this.db.roiScenario.findFirst({
       where: { organizationId, snapshotId, type: "expected" },
@@ -527,21 +554,65 @@ export class PrismaRoiEvaluationRepository {
   }
 }
 
-export function readFrozenAssumptions(value: Prisma.JsonValue | undefined) {
+type FrozenRoiAssumptions = {
+  suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
+  unknownAssumptions: AssumptionCode[];
+  activityAssumptions?: RoiActivityAssumptions[];
+};
+
+export function readFrozenAssumptions(
+  value: Prisma.JsonValue | undefined,
+): FrozenRoiAssumptions | null {
   if (!value || typeof value !== "object" || Array.isArray(value)) return null;
   const inputs = value.assumptionInputs;
   if (!Array.isArray(inputs)) return null;
   const suppliedAssumptions: Partial<Record<AssumptionCode, number>> = {};
   const unknownAssumptions: AssumptionCode[] = [];
+  const seen = new Set<string>();
   for (const item of inputs) {
     if (!item || typeof item !== "object" || Array.isArray(item) || typeof item.code !== "string")
       return null;
-    if (!ASSUMPTION_CODES.has(item.code)) return null;
+    if (!ASSUMPTION_CODES.has(item.code) || seen.has(item.code)) return null;
+    seen.add(item.code);
     const code = item.code as AssumptionCode;
     if (item.status === "unknown") unknownAssumptions.push(code);
-    else if (item.status === "known" && typeof item.value === "number")
+    else if (
+      item.status === "known" &&
+      typeof item.value === "number" &&
+      Number.isFinite(item.value) &&
+      item.value >= 0
+    )
       suppliedAssumptions[code] = item.value;
     else return null;
+  }
+  if ("activityInputs" in value) {
+    if (!Array.isArray(value.activityInputs) || value.activityInputs.length === 0) return null;
+    const activityAssumptions: RoiActivityAssumptions[] = [];
+    for (const activity of value.activityInputs) {
+      if (
+        !activity ||
+        typeof activity !== "object" ||
+        Array.isArray(activity) ||
+        typeof activity.opportunityId !== "string" ||
+        !activity.opportunityId ||
+        !Array.isArray(activity.assumptionInputs)
+      )
+        return null;
+      const parsed = readFrozenAssumptions({ assumptionInputs: activity.assumptionInputs });
+      if (
+        !parsed ||
+        Object.keys(parsed.suppliedAssumptions).length + parsed.unknownAssumptions.length !==
+          ASSUMPTION_CODES.size ||
+        activityAssumptions.some((row) => row.opportunityId === activity.opportunityId)
+      )
+        return null;
+      activityAssumptions.push({
+        opportunityId: activity.opportunityId,
+        suppliedAssumptions: parsed.suppliedAssumptions,
+        unknownAssumptions: parsed.unknownAssumptions,
+      });
+    }
+    return { suppliedAssumptions, unknownAssumptions, activityAssumptions };
   }
   return { suppliedAssumptions, unknownAssumptions };
 }

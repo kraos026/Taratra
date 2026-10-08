@@ -1,4 +1,9 @@
-import { RoiEvaluationEngine, type AssumptionCode, type RoiInput } from "../domain/roi-engine";
+import {
+  RoiEvaluationEngine,
+  type AssumptionCode,
+  type RoiInput,
+  type RoiActivityAssumptions,
+} from "../domain/roi-engine";
 import type { PrismaRoiEvaluationRepository } from "../infrastructure/prisma-roi-evaluation-repository";
 import type { PreparedRoiPersistencePlan } from "../infrastructure/prisma-roi-evaluation-repository";
 import {
@@ -27,6 +32,7 @@ export class RoiEvaluationService {
       currency: string;
       suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
       unknownAssumptions: AssumptionCode[];
+      activityAssumptions?: readonly RoiActivityAssumptions[];
     },
   ) {
     const prepared = await this.evaluateInput(automationSnapshotId, request);
@@ -45,6 +51,7 @@ export class RoiEvaluationService {
       currency: string;
       suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
       unknownAssumptions: AssumptionCode[];
+      activityAssumptions?: readonly RoiActivityAssumptions[];
     },
   ): Promise<RoiPreparedInput> {
     const context = await this.context();
@@ -55,6 +62,7 @@ export class RoiEvaluationService {
       request.currency,
       request.suppliedAssumptions,
       request.unknownAssumptions,
+      ...(request.activityAssumptions ? [request.activityAssumptions] : []),
     );
     const source = await this.repo.automationSnapshot(context.organizationId, automationSnapshotId);
     if (!input || !source)
@@ -93,6 +101,7 @@ export class RoiEvaluationService {
       current.currency,
       frozen.suppliedAssumptions,
       frozen.unknownAssumptions,
+      ...(frozen.activityAssumptions ? [frozen.activityAssumptions] : []),
     );
     if (!input) throw new RoiValidationError("Published source contracts are unavailable");
     return {
@@ -110,6 +119,7 @@ export class RoiEvaluationService {
       currency: string;
       suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
       unknownAssumptions: AssumptionCode[];
+      activityAssumptions?: readonly RoiActivityAssumptions[];
     },
   ) {
     const prepared = await this.reviseInput(id, request);
@@ -131,6 +141,7 @@ export class RoiEvaluationService {
       currency: string;
       suppliedAssumptions: Partial<Record<AssumptionCode, number>>;
       unknownAssumptions: AssumptionCode[];
+      activityAssumptions?: readonly RoiActivityAssumptions[];
     },
   ): Promise<RoiPreparedInput> {
     const context = await this.context();
@@ -145,6 +156,7 @@ export class RoiEvaluationService {
       request.currency,
       request.suppliedAssumptions,
       request.unknownAssumptions,
+      ...(request.activityAssumptions ? [request.activityAssumptions] : []),
     );
     if (!input) throw new RoiValidationError("Published source contracts are unavailable");
     return {
