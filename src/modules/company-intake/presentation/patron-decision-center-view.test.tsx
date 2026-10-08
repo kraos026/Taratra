@@ -11,6 +11,22 @@ import { DecisionBrief } from "./decision-brief";
 import { customerDecisionCenter } from "./customer-decision-copy";
 
 describe("PatronDecisionCenterView", () => {
+  it("labels an unpriced finding without implying a positive activity ROI", () => {
+    const view = northstarView();
+    const center = PatronDecisionCenterPresenter.build({
+      ...view,
+      priorityCards: [
+        {
+          ...view.priorityCards[0]!,
+          id: "finding:unpriced",
+          economicState: "INSUFFICIENT_EVIDENCE",
+        },
+      ],
+    });
+    const html = renderToStaticMarkup(<PatronDecisionCenterView center={center} />);
+    expect(html).toContain("Impact économique non chiffré");
+    expect(JSON.stringify(center.sourceView)).toContain("finding:unpriced");
+  });
   it("keeps each catalog connector with its repeated verification and disclaimer", () => {
     const view = northstarView();
     const verification =

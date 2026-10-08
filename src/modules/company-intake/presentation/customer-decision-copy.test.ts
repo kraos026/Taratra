@@ -2,6 +2,20 @@ import { describe, expect, it } from "vitest";
 import { customerDecisionText } from "./customer-decision-copy";
 
 describe("Customer decision copy", () => {
+  it.each(["performs 100% of manual steps", "carries 72.5% of manual duration"])(
+    "bounds unresolved actor evidence without inventing a role: %s",
+    (statement) => {
+      const id = "11111111-2222-3333-4444-555555555555";
+      const copy = customerDecisionText(`${id} ${statement}.`);
+      expect(copy).toContain("Dans le modèle publié");
+      expect(copy).toContain("Son identité");
+      expect(copy).toContain("restent à vérifier");
+      expect(copy).toContain("ne mesure pas sa charge de travail réelle");
+      expect(copy).not.toContain(id);
+      expect(copy).not.toContain("référence interne non nommée");
+      expect(copy).toContain(statement.startsWith("performs") ? "100 %" : "72.5 %");
+    },
+  );
   it.each([
     ["Manual invoice processing", "sur une facture récente"],
     ["Email dependency", "les échanges nécessaires"],

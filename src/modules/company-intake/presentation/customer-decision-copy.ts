@@ -51,6 +51,14 @@ export function customerDecisionText(value: string): string {
     .replaceAll("Single point of failure", "Point de dépendance unique")
     .replaceAll("High manual workload", "Charge de travail manuelle élevée")
     .replace(
+      /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} performs ([\d.]+)% of manual steps\./gi,
+      "Dans le modèle publié, $1 % des étapes manuelles sont attribuées à une même référence de responsable. Son identité et la répartition réelle du travail restent à vérifier ; ce pourcentage ne mesure pas sa charge de travail réelle.",
+    )
+    .replace(
+      /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12} carries ([\d.]+)% of manual duration\./gi,
+      "Dans le modèle publié, $1 % de la durée manuelle est attribuée à une même référence de responsable. Son identité et les durées réelles restent à vérifier ; ce pourcentage ne mesure pas sa charge de travail réelle.",
+    )
+    .replace(
       /Estimated manual workload is ([\d.]+) hours per month\./g,
       "La charge de travail manuelle estimée est de $1 heures par mois.",
     )

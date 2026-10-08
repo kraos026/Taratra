@@ -202,7 +202,7 @@ function cardsFor(
           issue.issueType === "MANDATORY_CONTROL_RISK"
             ? "HUMAN_DECISION_REQUIRED"
             : "FIX_BEFORE_AUTOMATING",
-        economicState,
+        economicState: "INSUFFICIENT_EVIDENCE",
         whyItMatters: issue.downstreamImpact,
         whatToDoNow: issue.blockingDecision
           ? "Fix or clarify this issue before approving automation."

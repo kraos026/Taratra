@@ -46,7 +46,7 @@ export class ProductionExecutiveDecisionViewBuilder {
     const traceability = traceabilityFor(input);
     const economicState = economicStateFor(result);
     const explanation = evidenceExplanationFor(result);
-    const cards = cardsFor(result, traceability, explanation, economicState);
+    const cards = cardsFor(result, traceability, explanation);
     const nextBestActions = nextActionsFor(result, cards);
     const view: ExecutiveDecisionView = {
       company: { id: result.company.id, tenantId: input.tenantId, name: result.company.name },
@@ -107,7 +107,6 @@ function cardsFor(
   result: ExecutiveAuditResult,
   traceability: ExecutiveTraceability,
   explanation: ExecutiveEvidenceExplanation,
-  economicState: ExecutiveEconomicState,
 ): readonly ExecutivePriorityCard[] {
   return freeze(
     dedupeCards([
@@ -119,7 +118,9 @@ function cardsFor(
           probableCause: "La cause de ce constat n’est pas établie par les preuves publiées.",
           priority: priorityFromSeverity(finding.severity),
           state: "FIX_BEFORE_AUTOMATING",
-          economicState,
+          // A finding has no independently scoped ROI in this read model.
+          // Never transfer a different opportunity's positive economics to it.
+          economicState: "INSUFFICIENT_EVIDENCE",
           whyItMatters: finding.impact,
           whatToDoNow: `Fix or validate this issue before automating: ${finding.title}`,
           whatNotToDo: "Do not automate before remediation.",
@@ -187,12 +188,16 @@ function cardsFor(
             problem: recommendation.description,
             probableCause: "La cause de cette proposition reste à vérifier.",
             priority: priorityFromRecommendation(recommendation.priority),
-            state: recommendationStateFor(recommendation, economicState),
-            economicState,
+            state: recommendationStateFor(recommendation, "INSUFFICIENT_EVIDENCE"),
+            economicState: "INSUFFICIENT_EVIDENCE",
             whyItMatters: recommendation.description,
-            whatToDoNow: actionFor(recommendationStateFor(recommendation, economicState)),
-            whatNotToDo: notActionFor(recommendationStateFor(recommendation, economicState)),
-            nextBestAction: actionFor(recommendationStateFor(recommendation, economicState)),
+            whatToDoNow: actionFor(recommendationStateFor(recommendation, "INSUFFICIENT_EVIDENCE")),
+            whatNotToDo: notActionFor(
+              recommendationStateFor(recommendation, "INSUFFICIENT_EVIDENCE"),
+            ),
+            nextBestAction: actionFor(
+              recommendationStateFor(recommendation, "INSUFFICIENT_EVIDENCE"),
+            ),
             evidenceReferences: evidenceFor(result, recommendation.id),
             uncertainty: unknownsFor(result),
             explanation,

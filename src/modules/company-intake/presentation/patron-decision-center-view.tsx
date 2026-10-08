@@ -244,7 +244,10 @@ function DecisionCard({ card }: { readonly card: PatronDecisionCard }) {
             Preuves : {readableEvidenceStrength(card.evidenceStrength)}
           </Badge>
           <Badge className={roiBadgeClass(card.economicState)}>
-            ROI: {readableRoiState(card.economicState)}
+            {card.sourceCardId.startsWith("finding:") &&
+            card.economicState === "INSUFFICIENT_EVIDENCE"
+              ? "Impact économique non chiffré"
+              : `ROI : ${readableRoiState(card.economicState)}`}
           </Badge>
         </div>
       </div>

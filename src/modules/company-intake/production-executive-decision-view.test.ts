@@ -3,6 +3,60 @@ import type { ExecutiveAuditResult } from "../executive-results/application/exec
 import { PatronDecisionCenterPresenter, ProductionExecutiveDecisionViewBuilder } from "./index";
 
 describe("ProductionExecutiveDecisionViewBuilder", () => {
+  it("keeps mixed activity economics scoped while findings stay unpriced", () => {
+    const result = publishedResult();
+    result.roi!.evaluations[0]!.roi = -19.1;
+    const opportunity = result.opportunities[0]!;
+    result.opportunities.push({
+      ...opportunity,
+      id: "opportunity-positive",
+      title: "Email routing",
+      safety: {
+        ...opportunity.safety!,
+        opportunityId: "opportunity-positive",
+      },
+    });
+    result.roi!.evaluations.push({
+      ...result.roi!.evaluations[0]!,
+      id: "roi-positive",
+      automationOpportunityId: "opportunity-positive",
+      roi: 50,
+    });
+    const view = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result,
+    }).view!;
+    expect(view.economicReadiness).toBe("ECONOMICALLY_JUSTIFIED");
+    expect(
+      view.priorityCards.find((card) => card.id === "opportunity:opportunity-1")?.economicState,
+    ).toBe("NOT_JUSTIFIED");
+    expect(
+      view.priorityCards.find((card) => card.id === "opportunity:opportunity-positive")
+        ?.economicState,
+    ).toBe("ECONOMICALLY_JUSTIFIED");
+    expect(
+      view.priorityCards
+        .filter((card) => card.id.startsWith("finding:"))
+        .every((card) => card.economicState === "INSUFFICIENT_EVIDENCE"),
+    ).toBe(true);
+  });
+  it("does not transfer positive dossier economics to unpriced findings or recommendations", () => {
+    const result = publishedResult();
+    const original = JSON.stringify(result);
+    const view = new ProductionExecutiveDecisionViewBuilder().build({
+      tenantId: "tenant-a",
+      result,
+    }).view!;
+    expect(view.economicReadiness).toBe("ECONOMICALLY_JUSTIFIED");
+    const unpriced = view.priorityCards.filter((card) => !card.id.startsWith("opportunity:"));
+    expect(unpriced.length).toBeGreaterThan(0);
+    expect(unpriced.every((card) => card.economicState === "INSUFFICIENT_EVIDENCE")).toBe(true);
+    expect(unpriced.some((card) => card.recommendationState === "AUTOMATE_NOW")).toBe(false);
+    expect(
+      view.priorityCards.find((card) => card.id.startsWith("opportunity:"))?.economicState,
+    ).toBe("ECONOMICALLY_JUSTIFIED");
+    expect(JSON.stringify(result)).toBe(original);
+  });
   it("projects published implementation costs as a range, not a portfolio sum", () => {
     const result = publishedResult();
     const evaluation = result.roi!.evaluations[0]!;

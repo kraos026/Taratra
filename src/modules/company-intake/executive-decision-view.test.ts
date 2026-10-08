@@ -22,6 +22,16 @@ const trace = ReasoningTrace.create(
 );
 
 describe("ExecutiveDecisionViewBuilder", () => {
+  it("keeps unpriced critical issues separate from the pilot's global economics", () => {
+    const pilot = pilotResult();
+    const view = new ExecutiveDecisionViewBuilder().build({ pilot });
+    expect(view.economicReadiness).toBe("ECONOMICALLY_JUSTIFIED");
+    for (const issue of pilot.finalBrainResult.criticalIssues) {
+      expect(view.priorityCards.find((card) => card.id === issue.issueId)?.economicState).toBe(
+        "INSUFFICIENT_EVIDENCE",
+      );
+    }
+  });
   it("projects the Northstar pilot into patron-facing executive sections", () => {
     const view = new ExecutiveDecisionViewBuilder().build({
       pilot: pilotResult(),
