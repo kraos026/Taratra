@@ -11,3 +11,4 @@ artifacts/recovery-reference/preview-readonly-0762132.mjs
 artifacts/recovery-reference/run-preview-qa.mjs
 artifacts/recovery-reference/run-staging-canonical-preview.mjs
 artifacts/recovery-reference/ux-reference-review.mjs
+vendor/

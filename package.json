@@ -43,6 +43,7 @@
     "zod": "3.24.1"
   },
   "devDependencies": {
+    "@next/eslint-plugin-next": "file:vendor/next-eslint-plugin",
     "@playwright/test": "1.55.1",
     "@tailwindcss/postcss": "4.3.3",
     "@types/node": "22.18.0",
@@ -60,6 +61,7 @@
     "vitest": "4.1.11"
   },
   "overrides": {
+    "@next/eslint-plugin-next": "$@next/eslint-plugin-next",
     "prisma@7.9.1": {
       "mysql2": "3.24.5"
     },
