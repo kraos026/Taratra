@@ -22,6 +22,8 @@ describe("Customer decision copy", () => {
     ["Excel dependency", "la source de référence"],
     ["Missing documentation", "faire vérifier cette procédure"],
     ["Missing KPI", "relever une valeur de départ"],
+    ["Single point of failure", "tester une procédure de remplacement"],
+    ["Human bottleneck", "le temps de traitement et d’attente"],
   ])(
     "provides verification steps for the known finding %s, not invented facts",
     (finding, step) => {

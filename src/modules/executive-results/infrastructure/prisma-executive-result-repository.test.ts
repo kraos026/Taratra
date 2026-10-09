@@ -25,6 +25,83 @@ describe("executive result error distinction", () => {
   });
 });
 
+describe("published actor label scope", () => {
+  it.each(["Responsable comptable", null])(
+    "resolves only the explanation actor in the process snapshot: %s",
+    async (label) => {
+      const actor = "00000000-0000-4000-8000-000000000601";
+      get.mockResolvedValue({
+        company: { id: "company", name: "Synthetic" },
+        currentStage: "COMPLETED",
+        stages: [
+          "PROCESS_MAP",
+          "BUSINESS_ANALYSIS",
+          "AUTOMATION_OPPORTUNITIES",
+          "ROI",
+          "RECOMMENDATIONS",
+          "KNOWLEDGE",
+        ].map((stage) => ({ stage, artifact: { id: stage } })),
+      });
+      const db = {
+        organizationMember: { findFirst: vi.fn().mockResolvedValue({ organizationId: "tenant" }) },
+        processMap: {
+          findFirst: vi
+            .fn()
+            .mockResolvedValue({
+              id: "PROCESS_MAP",
+              name: "Invoices",
+              knowledgeSnapshotId: "published-process-knowledge",
+            }),
+        },
+        businessFinding: {
+          findMany: vi
+            .fn()
+            .mockResolvedValue([
+              {
+                id: "finding",
+                title: "Single point of failure",
+                description: `${actor} performs 100% of manual steps.`,
+                relatedActorId: "different-actor",
+                severity: "high",
+                businessImpact: "coverage",
+              },
+            ]),
+        },
+        knowledgeNode: { findMany: vi.fn().mockResolvedValue(label ? [{ id: actor, label }] : []) },
+        automationOpportunity: { findMany: vi.fn().mockResolvedValue([]) },
+        roiEvaluationSnapshot: {
+          findFirst: vi.fn().mockResolvedValue({ id: "ROI", currency: "EUR" }),
+        },
+        roiScenario: { findFirst: vi.fn().mockResolvedValue({ id: "expected" }) },
+        transformationRecommendation: { findMany: vi.fn().mockResolvedValue([]) },
+        roiEvaluation: { findMany: vi.fn().mockResolvedValue([]) },
+        roiMetric: { findMany: vi.fn().mockResolvedValue([]) },
+        automationOpportunityEvidence: { findMany: vi.fn().mockResolvedValue([]) },
+        automationOpportunityConnector: { findMany: vi.fn().mockResolvedValue([]) },
+        automationDetectionRuleCatalog: { findMany: vi.fn().mockResolvedValue([]) },
+        knowledgeFact: { findMany: vi.fn().mockResolvedValue([]) },
+        knowledgeEvidence: { findMany: vi.fn().mockResolvedValue([]) },
+      };
+      const result = await new PrismaExecutiveResultRepository(
+        db as unknown as TransactionClient,
+      ).read("user", "company");
+      expect(db.knowledgeNode.findMany).toHaveBeenCalledWith({
+        where: {
+          organizationId: "tenant",
+          snapshotId: "published-process-knowledge",
+          id: { in: [actor] },
+        },
+        select: { id: true, label: true },
+      });
+      expect(result?.findings[0].description).toContain(
+        label ? `« ${label} »` : "libellé est inconnu",
+      );
+      expect(result?.findings[0].description).toContain("restent à vérifier");
+      expect(result?.findings[0].description).not.toContain(actor);
+    },
+  );
+});
+
 describe("connector catalog identity is not proof of live connectivity", () => {
   it.each([
     { title: "Messagerie", available: true },

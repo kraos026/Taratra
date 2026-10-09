@@ -2,6 +2,10 @@ import type { TransactionClient } from "@/infrastructure/database/with-authentic
 import { AssistedAuditService } from "@/modules/assisted-audit/application/assisted-audit-service";
 import { AssistedAuditError } from "@/modules/assisted-audit/application/assisted-audit-errors";
 import { PrismaAssistedAuditRepository } from "@/modules/assisted-audit/infrastructure/prisma-assisted-audit-repository";
+import {
+  publishedActorDescription,
+  publishedActorReferences,
+} from "../application/published-actor-description";
 import type {
   ExecutiveAuditResult,
   ExecutiveResultRepositoryPort,
@@ -50,7 +54,7 @@ export class PrismaExecutiveResultRepository implements ExecutiveResultRepositor
       await Promise.all([
         this.db.processMap.findFirst({
           where: { id: processRef.id, companyId, organizationId, status: "published" },
-          select: { id: true, name: true },
+          select: { id: true, name: true, knowledgeSnapshotId: true },
         }),
         this.db.businessFinding.findMany({
           where: { analysisSnapshotId: analysisRef.id, organizationId },
@@ -72,6 +76,21 @@ export class PrismaExecutiveResultRepository implements ExecutiveResultRepositor
         }),
       ]);
     if (!process || !roiSnapshot || !scenario) return empty;
+    const actorIds = [
+      ...new Set(findings.flatMap((item) => publishedActorReferences(item.description))),
+    ];
+    const actors =
+      process.knowledgeSnapshotId && actorIds.length
+        ? await this.db.knowledgeNode.findMany({
+            where: {
+              organizationId,
+              snapshotId: process.knowledgeSnapshotId,
+              id: { in: actorIds },
+            },
+            select: { id: true, label: true },
+          })
+        : [];
+    const actorLabels = new Map(actors.map((actor) => [actor.id.toLowerCase(), actor.label]));
     const [evaluations, metrics] = await Promise.all([
       this.db.roiEvaluation.findMany({
         where: { snapshotId: roiRef.id, scenarioId: scenario.id, organizationId },
@@ -223,7 +242,7 @@ export class PrismaExecutiveResultRepository implements ExecutiveResultRepositor
       findings: findings.map((item) => ({
         id: item.id,
         title: item.title,
-        description: item.description,
+        description: publishedActorDescription(item.description, actorLabels),
         severity: item.severity,
         impact: item.businessImpact,
       })),

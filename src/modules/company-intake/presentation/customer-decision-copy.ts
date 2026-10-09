@@ -7,6 +7,10 @@ const uuidPattern = /\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{
 
 // Guidance for known generated findings, not new facts or a change of decision state.
 const findingChecks: Record<string, string> = {
+  "single point of failure":
+    "Confirmer qui réalise et valide chaque étape sur un dossier récent, identifier les tâches sans relais et tester une procédure de remplacement avant toute délégation ou automatisation.",
+  "human bottleneck":
+    "Mesurer, sur un dossier récent, le temps de traitement et d’attente par étape avec le responsable ; vérifier le point de blocage, puis définir un relais sans supprimer les validations humaines.",
   "manual invoice processing":
     "Décrire, sur une facture récente, les étapes de saisie et de validation, relever le temps passé et confirmer les contrôles à conserver avant d’envisager une automatisation.",
   "email dependency":
