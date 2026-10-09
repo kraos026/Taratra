@@ -45,27 +45,23 @@ describe("published actor label scope", () => {
       const db = {
         organizationMember: { findFirst: vi.fn().mockResolvedValue({ organizationId: "tenant" }) },
         processMap: {
-          findFirst: vi
-            .fn()
-            .mockResolvedValue({
-              id: "PROCESS_MAP",
-              name: "Invoices",
-              knowledgeSnapshotId: "published-process-knowledge",
-            }),
+          findFirst: vi.fn().mockResolvedValue({
+            id: "PROCESS_MAP",
+            name: "Invoices",
+            knowledgeSnapshotId: "published-process-knowledge",
+          }),
         },
         businessFinding: {
-          findMany: vi
-            .fn()
-            .mockResolvedValue([
-              {
-                id: "finding",
-                title: "Single point of failure",
-                description: `${actor} performs 100% of manual steps.`,
-                relatedActorId: "different-actor",
-                severity: "high",
-                businessImpact: "coverage",
-              },
-            ]),
+          findMany: vi.fn().mockResolvedValue([
+            {
+              id: "finding",
+              title: "Single point of failure",
+              description: `${actor} performs 100% of manual steps.`,
+              relatedActorId: "different-actor",
+              severity: "high",
+              businessImpact: "coverage",
+            },
+          ]),
         },
         knowledgeNode: { findMany: vi.fn().mockResolvedValue(label ? [{ id: actor, label }] : []) },
         automationOpportunity: { findMany: vi.fn().mockResolvedValue([]) },
