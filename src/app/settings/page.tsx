@@ -21,6 +21,13 @@ export default function SettingsPage() {
           Conservez le fichier dans un emplacement privé : il peut contenir des coordonnées ou des
           informations que vous avez saisies.
         </p>
+        <p>
+          Un second téléchargement contient les sources de compréhension et d’entretien : sessions,
+          réponses et preuves d’entretien, y compris leurs versions archivées. Les documents, autres
+          preuves acquises et résultats calculés (dont le ROI) restent exclus. Ces sources ne
+          constituent pas un rapport de décisions actuelles ni un export complet du compte. Si le
+          volume dépasse la limite, aucun fichier partiel n’est fourni : contactez le responsable.
+        </p>
         <Link href="/companies" className="inline-block text-blue-300 hover:underline">
           Ouvrir mes dossiers entreprise
         </Link>
@@ -49,6 +56,13 @@ export default function SettingsPage() {
           n’efface pas automatiquement son compte, ses audits, les journaux ou les sauvegardes. Les
           actions réalisées et leurs limites doivent être confirmées lors du traitement de votre
           demande.
+        </p>
+        <p>
+          Pour une suppression, le responsable vérifie d’abord que vous contrôlez le compte et
+          précise avec vous le périmètre demandé. Il examine les données partagées, les audits, les
+          sessions et les prestataires avant toute action. La réponse doit distinguer les données
+          effacées de celles qui restent conservées, avec leurs raisons. Cette page n’exécute aucune
+          suppression automatique.
         </p>
       </section>
     </main>

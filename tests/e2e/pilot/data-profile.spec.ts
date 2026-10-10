@@ -35,6 +35,9 @@ test("local fictitious profile export, archive and deletion preserve tenant isol
     const bId = await createCertificationCompany(b, `Privacy local B ${Date.now()}`);
     const forbidden = await b.request.get(`/api/companies/${aId}/export`);
     expect([403, 404]).toContain(forbidden.status());
+    expect([403, 404]).toContain(
+      (await b.request.get(`/api/companies/${aId}/audit-export`)).status(),
+    );
     expect([403, 404]).toContain((await b.request.delete(`/api/companies/${aId}`)).status());
     expect((await a.request.get(`/api/companies/${aId}`)).status()).toBe(200);
 
@@ -47,6 +50,9 @@ test("local fictitious profile export, archive and deletion preserve tenant isol
     const downloadEvent = a.waitForEvent("download");
     await a.getByRole("link", { name: "Télécharger le profil (JSON)" }).click();
     expect((await downloadEvent).suggestedFilename()).toBe(`optivos-profil-${aId}.json`);
+    const sourceDownload = a.waitForEvent("download");
+    await a.getByRole("link", { name: "Télécharger les sources d’audit (JSON)" }).click();
+    expect((await sourceDownload).suggestedFilename()).toBe(`optivos-sources-audit-${aId}.json`);
 
     expect((await a.request.post(`/api/companies/${aId}/archive`)).status()).toBe(200);
     const exported = await a.request.get(`/api/companies/${aId}/export`);
@@ -67,8 +73,36 @@ test("local fictitious profile export, archive and deletion preserve tenant isol
     // Insert and remove only this identified fictitious local row, never real audits.
     const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
     const auditId = randomUUID();
+    const discoveryId = randomUUID();
     await client.connect();
     try {
+      // Newly created synthetic source only, with live tenant ownership.
+      await client.query(
+        `insert into public.discovery_sessions (id, organization_id, company_id, started_by)
+         select $1, c.organization_id, c.id, m.user_id from public.companies c
+         join public.organization_members m on m.organization_id = c.organization_id
+         where c.id = $2 limit 1`,
+        [discoveryId, aId],
+      );
+      await client.query(
+        `insert into public.discovery_answers (organization_id, discovery_session_id, step, field_key, value_json, answered_by)
+         select organization_id, id, 'company', 'privacy_fixture_zero', '0'::jsonb, started_by
+         from public.discovery_sessions where id = $1 and company_id = $2`,
+        [discoveryId, aId],
+      );
+      const sourceResponse = await a.request.get(`/api/companies/${aId}/audit-export`);
+      expect(sourceResponse.status()).toBe(200);
+      expect(sourceResponse.headers()["cache-control"]).toContain("no-store");
+      const sources = await sourceResponse.json();
+      expect(sources.scope).toBe("audit_sources_only");
+      expect(sources.discoverySessions).toHaveLength(1);
+      expect(sources.discoverySessions[0].id).toBe(discoveryId);
+      expect(sources.discoverySessions[0]).not.toHaveProperty("startedBy");
+      expect(sources.discoveryAnswers[0].valueJson).toBe(0);
+      expect(sources.excluded).toContain("derived_results_and_roi");
+      expect([403, 404]).toContain(
+        (await b.request.get(`/api/companies/${aId}/audit-export`)).status(),
+      );
       const inserted = await client.query(
         "insert into public.audits (id, organization_id, company_id) select $1, organization_id, id from public.companies where id = $2",
         [auditId, aId],
@@ -84,6 +118,10 @@ test("local fictitious profile export, archive and deletion preserve tenant isol
       );
       expect(retained.rowCount).toBe(1);
     } finally {
+      await client.query(
+        "delete from public.discovery_sessions where id = $1 and company_id = $2",
+        [discoveryId, aId],
+      );
       await client.query("delete from public.audits where id = $1 and company_id = $2", [
         auditId,
         aId,

@@ -228,6 +228,14 @@ export function CompanyDetail({ id }: { id: string }) {
       <section className="flex flex-wrap gap-3">
         {permissions.canDelete && (
           <a
+            href={`/api/companies/${id}/audit-export`}
+            className="opt-secondary inline-flex items-center rounded-xl border px-4 py-2 text-sm"
+          >
+            Télécharger les sources d’audit (JSON)
+          </a>
+        )}
+        {permissions.canDelete && (
+          <a
             href={`/api/companies/${id}/export`}
             className="opt-secondary inline-flex items-center rounded-xl border px-4 py-2 text-sm"
           >
