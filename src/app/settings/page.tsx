@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PrivacyRequestsPanel } from "@/modules/privacy/presentation/privacy-requests-panel";
 export default function SettingsPage() {
   return (
     <main className="mx-auto max-w-3xl space-y-6 p-6 text-slate-100">
@@ -33,6 +34,7 @@ export default function SettingsPage() {
           Ouvrir mes dossiers entreprise
         </Link>
       </section>
+      <PrivacyRequestsPanel />
       <section className="space-y-3 rounded-2xl border border-white/10 bg-slate-900 p-6">
         <h2 className="text-xl font-semibold">
           Demander un accès, une correction ou une suppression

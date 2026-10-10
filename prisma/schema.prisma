@@ -556,6 +556,21 @@ model Organization {
   @@schema("public")
 }
 
+model PrivacyRequest {
+  id             String   @id @db.Uuid
+  requesterId    String   @map("requester_id") @db.Uuid
+  organizationId String   @map("organization_id") @db.Uuid
+  kind           String
+  description    String
+  status         String   @default("RECEIVED")
+  publicResponse String?  @map("public_response")
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime @default(now()) @map("updated_at") @db.Timestamptz(6)
+
+  @@map("privacy_requests")
+  @@schema("public")
+}
+
 model OrganizationMember {
   organizationId String           @map("organization_id") @db.Uuid
   userId         String           @map("user_id") @db.Uuid
