@@ -35,6 +35,15 @@ export default function SettingsPage() {
         </Link>
       </section>
       <PrivacyRequestsPanel />
+      {process.env.VERCEL_ENV === "preview" ||
+      process.env.AUTOMATEX_CERTIFICATION_TARGET === "local" ? (
+        <Link
+          href="/settings/privacy-requests"
+          className="inline-block text-blue-300 hover:underline"
+        >
+          Espace responsable — accès restreint (test uniquement)
+        </Link>
+      ) : null}
       <section className="space-y-3 rounded-2xl border border-white/10 bg-slate-900 p-6">
         <h2 className="text-xl font-semibold">
           Demander un accès, une correction ou une suppression
