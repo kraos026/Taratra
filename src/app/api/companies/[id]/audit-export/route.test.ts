@@ -29,7 +29,10 @@ describe("audit source attachment", () => {
   it("downloads through the authenticated DB without caching", async () => {
     const response = await request();
     expect(response.status).toBe(200);
-    expect(mocks.transaction).toHaveBeenCalledWith("user-a", expect.any(Function));
+    expect(mocks.transaction).toHaveBeenCalledWith("user-a", expect.any(Function), {
+      timeout: 20_000,
+      isolationLevel: "RepeatableRead",
+    });
     expect(mocks.export).toHaveBeenCalledWith("authenticated-db", "user-a", id);
     expect(response.headers.get("Content-Disposition")).toBe(
       `attachment; filename="optivos-sources-audit-${id}.json"`,

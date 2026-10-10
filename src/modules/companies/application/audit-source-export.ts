@@ -1,8 +1,10 @@
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import { CompanyNotFoundError, CompanyPermissionError } from "../domain/company-errors";
+import { exportDocumentsAndSummary } from "./audit-document-result-export";
+import { boundedExportRows as bounded } from "./audit-export-limits";
+export { ExportLimitError } from "./audit-export-limits";
 
 const limit = 1000;
-export class ExportLimitError extends Error {}
 
 // Data-access operation only: never rebuild or mutate canonical artifacts.
 export async function exportAuditSources(db: TransactionClient, userId: string, companyId: string) {
@@ -104,15 +106,15 @@ export async function exportAuditSources(db: TransactionClient, userId: string, 
       )
     : [];
   return {
-    formatVersion: 1,
-    scope: "audit_sources_only",
+    formatVersion: 2,
+    scope: "audit_sources_and_current_summary",
     companyId,
     description:
-      "Sources de compréhension et d’entretien, toutes versions. Pas un export complet du compte ni un rapport de décisions actuelles.",
+      "Sources conservées, toutes versions, et synthèse courante du produit. Pas un export complet du compte ni de tous les résultats historiques.",
     excluded: [
       "company_profile",
-      "documents_and_acquired_evidence",
-      "derived_results_and_roi",
+      "original_binary_files",
+      "complete_historical_artifacts_and_roi_calculations",
       "legacy_questionnaire_audits",
       "auth",
       "provider_logs",
@@ -123,11 +125,6 @@ export async function exportAuditSources(db: TransactionClient, userId: string, 
     interviewSessions,
     interviewAnswers,
     interviewEvidence,
+    ...(await exportDocumentsAndSummary(db, userId, organizationId, companyId)),
   };
-}
-
-function bounded<T>(rows: T[]): T[] {
-  // Refuse an incomplete download instead of silently truncating it.
-  if (rows.length > limit) throw new ExportLimitError();
-  return rows;
 }

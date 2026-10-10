@@ -25,8 +25,10 @@ async function download(rawId: string): Promise<Response> {
     const { data, error } = await supabase.auth.getClaims();
     const userId = data?.claims?.sub;
     if (error || !userId) return apiError("UNAUTHENTICATED", "Connexion requise", 401);
-    const result = await withAuthenticatedDatabase(userId, (db) =>
-      exportAuditSources(db, userId, id.data),
+    const result = await withAuthenticatedDatabase(
+      userId,
+      (db) => exportAuditSources(db, userId, id.data),
+      { timeout: 20_000, isolationLevel: "RepeatableRead" },
     );
     const body = JSON.stringify(result, null, 2);
     if (Buffer.byteLength(body, "utf8") > 10 * 1024 * 1024) throw new ExportLimitError();

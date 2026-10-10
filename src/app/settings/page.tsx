@@ -22,10 +22,11 @@ export default function SettingsPage() {
           informations que vous avez saisies.
         </p>
         <p>
-          Un second téléchargement contient les sources de compréhension et d’entretien : sessions,
-          réponses et preuves d’entretien, y compris leurs versions archivées. Les documents, autres
-          preuves acquises et résultats calculés (dont le ROI) restent exclus. Ces sources ne
-          constituent pas un rapport de décisions actuelles ni un export complet du compte. Si le
+          Un second téléchargement contient les sessions, réponses et preuves d’entretien, leurs
+          versions archivées, le contenu documentaire conservé (texte ou tableaux) et la synthèse
+          courante des résultats, dont le ROI affiché par le produit. Les fichiers binaires
+          originaux et l’ensemble des résultats et calculs historiques restent exclus. Une synthèse
+          incomplète reste indiquée comme telle. Ce n’est pas un export complet du compte. Si le
           volume dépasse la limite, aucun fichier partiel n’est fourni : contactez le responsable.
         </p>
         <Link href="/companies" className="inline-block text-blue-300 hover:underline">

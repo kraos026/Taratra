@@ -1,6 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import { exportAuditSources, ExportLimitError } from "./audit-source-export";
+vi.mock("./audit-document-result-export", () => ({
+  exportDocumentsAndSummary: vi.fn().mockResolvedValue({
+    documentSources: [],
+    acquiredEvidence: [],
+    currentSummary: { complete: false },
+  }),
+}));
 
 function setup(role = "owner", company: unknown = { id: "company-a", organizationId: "org-a" }) {
   const db = {
@@ -50,7 +57,7 @@ describe("bounded canonical audit-source export", () => {
   it("scopes each table and child read; preserves zero/null and archives", async () => {
     const { db, run } = setup("admin");
     const result = await run();
-    expect(result.scope).toBe("audit_sources_only");
+    expect(result.scope).toBe("audit_sources_and_current_summary");
     expect(result.discoverySessions[0].status).toBe("archived");
     expect(result.discoveryAnswers[0].valueJson).toBe(0);
     expect(result.interviewAnswers[0].valueJson).toBeNull();
@@ -76,7 +83,7 @@ describe("bounded canonical audit-source export", () => {
     expect(db.interviewAnswer.findMany.mock.calls[0][0].where.interviewSessionId).toEqual({
       in: ["interview-a"],
     });
-    expect(result.excluded).toContain("derived_results_and_roi");
+    expect(result.excluded).toContain("complete_historical_artifacts_and_roi_calculations");
   });
   it("refuses oversize sets without returning a truncated file", async () => {
     const { db, run } = setup();

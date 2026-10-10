@@ -44,7 +44,7 @@ test("local fictitious profile export, archive and deletion preserve tenant isol
     await a.goto("/settings");
     await expect(a.getByRole("heading", { name: "Vos données et votre compte" })).toBeVisible();
     await expect(
-      a.getByText("Ce n’est pas un export complet du compte.", { exact: false }),
+      a.getByText("Ce fichier contient uniquement le profil", { exact: false }),
     ).toBeVisible();
     await a.goto(`/companies/${aId}`);
     const downloadEvent = a.waitForEvent("download");
@@ -74,6 +74,7 @@ test("local fictitious profile export, archive and deletion preserve tenant isol
     const client = new pg.Client({ connectionString: process.env.DATABASE_URL });
     const auditId = randomUUID();
     const discoveryId = randomUUID();
+    const documentSourceId = randomUUID();
     await client.connect();
     try {
       // Newly created synthetic source only, with live tenant ownership.
@@ -90,16 +91,45 @@ test("local fictitious profile export, archive and deletion preserve tenant isol
          from public.discovery_sessions where id = $1 and company_id = $2`,
         [discoveryId, aId],
       );
+      await client.query(
+        `insert into public.audit_production_evidence_sources
+         (id, organization_id, company_id, source_key, source_version, source_type, origin, raw_content, received_at)
+         select $1, organization_id, id, 'privacy_fixture', 1, 'DOCUMENT', 'local-certification',
+         'Synthetic local document only', now() from public.companies where id = $2`,
+        [documentSourceId, aId],
+      );
+      await client.query(
+        `insert into public.audit_production_evidence_records
+         (organization_id, company_id, source_id, evidence_key, content, confidence)
+         select organization_id, company_id, id, 'privacy_fixture', 'Synthetic local evidence only', 0
+         from public.audit_production_evidence_sources where id = $1 and company_id = $2`,
+        [documentSourceId, aId],
+      );
       const sourceResponse = await a.request.get(`/api/companies/${aId}/audit-export`);
       expect(sourceResponse.status()).toBe(200);
       expect(sourceResponse.headers()["cache-control"]).toContain("no-store");
       const sources = await sourceResponse.json();
-      expect(sources.scope).toBe("audit_sources_only");
+      expect(sources.scope).toBe("audit_sources_and_current_summary");
+      expect(sources.formatVersion).toBe(2);
       expect(sources.discoverySessions).toHaveLength(1);
       expect(sources.discoverySessions[0].id).toBe(discoveryId);
       expect(sources.discoverySessions[0]).not.toHaveProperty("startedBy");
       expect(sources.discoveryAnswers[0].valueJson).toBe(0);
-      expect(sources.excluded).toContain("derived_results_and_roi");
+      expect(sources.documentSources[0].rawContent).toBe("Synthetic local document only");
+      expect(sources.documentSources[0]).not.toHaveProperty("metadataJson");
+      expect(sources.acquiredEvidence[0].sourceId).toBe(documentSourceId);
+      expect(Number(sources.acquiredEvidence[0].confidence)).toBe(0);
+      expect(sources.currentSummary.complete).toBe(false);
+      expect(sources.currentSummary.company.id).toBe(aId);
+      expect(sources.currentSummary.roi).toBeNull();
+      const canonicalResponse = await a.request.get(
+        `/api/companies/${aId}/automation-audit/results`,
+      );
+      expect(canonicalResponse.status()).toBe(200);
+      const canonical = (await canonicalResponse.json()).data;
+      expect(sources.currentSummary.overview).toEqual(canonical.overview);
+      expect(sources.currentSummary.provenance).toEqual(canonical.provenance);
+      expect(sources.excluded).toContain("complete_historical_artifacts_and_roi_calculations");
       expect([403, 404]).toContain(
         (await b.request.get(`/api/companies/${aId}/audit-export`)).status(),
       );
@@ -118,6 +148,14 @@ test("local fictitious profile export, archive and deletion preserve tenant isol
       );
       expect(retained.rowCount).toBe(1);
     } finally {
+      await client.query(
+        "delete from public.audit_production_evidence_records where source_id = $1 and company_id = $2",
+        [documentSourceId, aId],
+      );
+      await client.query(
+        "delete from public.audit_production_evidence_sources where id = $1 and company_id = $2",
+        [documentSourceId, aId],
+      );
       await client.query(
         "delete from public.discovery_sessions where id = $1 and company_id = $2",
         [discoveryId, aId],
