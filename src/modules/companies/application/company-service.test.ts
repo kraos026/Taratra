@@ -136,4 +136,72 @@ describe("CompanyService", () => {
       status: 404,
     });
   });
+
+  it("exports only explicitly allowed profile fields for an administrator", async () => {
+    repository.context = { ...repository.context!, role: "owner" };
+    repository.company = {
+      ...baseCompany,
+      employeeCount: 0,
+      internalNotes: "Note déclarée",
+      password: "never-export",
+    } as Company;
+    const result = await service.exportProfile(baseCompany.id);
+    expect(result.scope).toBe("company_profile_only");
+    expect(result.excluded).toContain("audits_and_results");
+    expect(result.company).toMatchObject({
+      name: "Nova",
+      employeeCount: 0,
+      internalNotes: "Note déclarée",
+    });
+    expect(result.company).not.toHaveProperty("password");
+    expect(result.company).not.toHaveProperty("organizationId");
+  });
+
+  it("denies profile export without membership or with non-administrator roles", async () => {
+    for (const role of ["consultant", "viewer"] as const) {
+      repository.context = { organizationId: baseCompany.organizationId, role };
+      await expect(service.exportProfile(baseCompany.id)).rejects.toMatchObject({
+        code: "COMPANY_FORBIDDEN",
+      });
+    }
+    repository.context = null;
+    await expect(service.exportProfile(baseCompany.id)).rejects.toMatchObject({
+      code: "COMPANY_FORBIDDEN",
+    });
+  });
+
+  it("rejects missing, mismatched-id or cross-tenant exports even from a faulty adapter", async () => {
+    repository.context = { ...repository.context!, role: "admin" };
+    for (const company of [
+      null,
+      { ...baseCompany, id: "other-id" },
+      { ...baseCompany, organizationId: "other-tenant" },
+    ]) {
+      repository.company = company;
+      await expect(service.exportProfile(baseCompany.id)).rejects.toMatchObject({
+        code: "COMPANY_NOT_FOUND",
+      });
+    }
+  });
+
+  it("preserves archive metadata instead of pretending archived data was erased", async () => {
+    repository.context = { ...repository.context!, role: "admin" };
+    repository.company = { ...baseCompany, deletedAt: new Date("2026-10-10") };
+    expect((await service.exportProfile(baseCompany.id)).company.archivedAt).toEqual(
+      new Date("2026-10-10"),
+    );
+    expect(repository.company).not.toBeNull();
+  });
+
+  it("does not report dependent deletion as successful or retry destructively", async () => {
+    repository.context = { ...repository.context!, role: "owner" };
+    repository.delete = async () => {
+      throw new Error("Foreign key dependency");
+    };
+    await expect(service.permanentlyDelete(baseCompany.id)).rejects.toMatchObject({
+      code: "COMPANY_HAS_DEPENDENCIES",
+      status: 409,
+    });
+    expect(repository.company).toEqual(baseCompany);
+  });
 });

@@ -54,6 +54,42 @@ export class CompanyService {
     return this.repository.create(context.organizationId, input);
   }
 
+  async exportProfile(id: string) {
+    const context = await this.requireContext();
+    if (!canPermanentlyDeleteCompanies(context.role)) throw new CompanyPermissionError();
+    const company = await this.repository.findById(context.organizationId, id);
+    // Defense in depth: fail closed even if an adapter returns a different tenant.
+    if (!company || company.organizationId !== context.organizationId || company.id !== id)
+      throw new CompanyNotFoundError();
+    return {
+      formatVersion: 1,
+      scope: "company_profile_only",
+      description: "Profil entreprise uniquement ; ceci n’est pas un export complet du compte.",
+      excluded: ["auth", "audits_and_results", "provider_logs", "backups"],
+      company: {
+        id: company.id,
+        name: company.name,
+        sectorId: company.sectorId,
+        employeeCount: company.employeeCount,
+        companySize: company.companySize,
+        primaryContactName: company.primaryContactName,
+        primaryContactRole: company.primaryContactRole,
+        phone: company.phone,
+        email: company.email,
+        website: company.website,
+        address: company.address,
+        city: company.city,
+        country: company.country,
+        description: company.description,
+        internalNotes: company.internalNotes,
+        status: company.status,
+        createdAt: company.createdAt,
+        updatedAt: company.updatedAt,
+        archivedAt: company.deletedAt,
+      },
+    };
+  }
+
   async update(id: string, input: CompanyUpdate) {
     const context = await this.requireEditor();
     const company = await this.repository.update(context.organizationId, id, input);

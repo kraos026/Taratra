@@ -226,6 +226,20 @@ export function CompanyDetail({ id }: { id: string }) {
       </section>
 
       <section className="flex flex-wrap gap-3">
+        {permissions.canDelete && (
+          <a
+            href={`/api/companies/${id}/export`}
+            className="opt-secondary inline-flex items-center rounded-xl border px-4 py-2 text-sm"
+          >
+            Télécharger le profil (JSON)
+          </a>
+        )}
+        <Link
+          href="/settings"
+          className="inline-flex items-center px-4 py-2 text-sm text-blue-300 hover:underline"
+        >
+          Mes données et demandes
+        </Link>
         {permissions.canWrite && !company.deletedAt && (
           <Button
             className="opt-secondary"
