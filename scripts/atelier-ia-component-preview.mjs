@@ -29,22 +29,23 @@ writeFileSync(
 );
 writeFileSync(
   join(fixture, "next-navigation.ts"),
-  `export const usePathname = () => '/companies/${companyId}/atelier-ia';`,
+  `export const usePathname = () => '/companies/${companyId}/atelier-ia'; export const useRouter = () => ({push: (url: string) => {location.href=url}});`,
 );
 writeFileSync(
   join(fixture, "entry.tsx"),
   `import {createRoot} from 'react-dom/client';
 import {CompanyShell} from '@/components/dashboard/company-shell';
+import {InteractiveDashboard} from '@/components/dashboard/interactive-dashboard';
 import {AgentWorkspacePanel} from '@/modules/agent-workspace/presentation/agent-workspace-panel';
 import './style.css';
-createRoot(document.getElementById('root')!).render(<CompanyShell verifiedCompanyId='${companyId}'><AgentWorkspacePanel company={{id:'${companyId}',name:'Entreprise de démonstration',canSimulate:true}}/></CompanyShell>);`,
+createRoot(document.getElementById('root')!).render(location.search.includes('dashboard') ? <InteractiveDashboard/> : <CompanyShell verifiedCompanyId='${companyId}'><AgentWorkspacePanel company={{id:'${companyId}',name:'Entreprise de démonstration',canSimulate:true}}/></CompanyShell>);`,
 );
 // Preview only: avoid remote font requests and restrict Tailwind scanning.
 const css = readFileSync(join(root, "src/app/globals.css"), "utf8")
   .replace(/^@import url\([^\r\n]+\);\r?\n/m, "")
   .replace(
     '@import "tailwindcss";',
-    `@import "tailwindcss" source(none);\n@source "${unix(join(root, "src/modules/agent-workspace/presentation"))}";\n@source "${unix(join(root, "src/components/dashboard/company-shell.tsx"))}";\n@source "${unix(join(root, "src/components/brand"))}";\n@source "${unix(join(root, "src/components/ui/button.tsx"))}";`,
+    `@import "tailwindcss" source(none);\n@source "${unix(join(root, "src/modules/agent-workspace/presentation"))}";\n@source "${unix(join(root, "src/components/dashboard"))}";\n@source "${unix(join(root, "src/components/brand"))}";\n@source "${unix(join(root, "src/components/ui/button.tsx"))}";`,
   );
 writeFileSync(join(fixture, "style.css"), css);
 const config = {
@@ -91,6 +92,11 @@ try {
       return route.abort();
     }
     if (request.method() !== "GET") mutationCount++;
+    if (url.pathname === "/api/companies")
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ data: { items: [], total: 0 } }),
+      });
     if (url.pathname.startsWith("/api/"))
       return route.fulfill({
         contentType: "application/json",
@@ -114,6 +120,36 @@ try {
     `/companies/${companyId}/atelier-ia`,
   );
   checks.push("company-scoped Atelier navigation");
+  const desktopNav = page.getByRole("navigation", { name: "Navigation principale", exact: true });
+  const auditToggle = desktopNav.getByRole("button", { name: "Audit", exact: true });
+  const agentToggle = desktopNav.getByRole("button", {
+    name: "Orchestrateur & agents",
+    exact: true,
+  });
+  assert.equal(await auditToggle.getAttribute("aria-expanded"), "false");
+  assert.equal(await agentToggle.getAttribute("aria-expanded"), "true");
+  assert.equal(
+    await desktopNav.getByRole("link", { name: "Mon entreprise", exact: true }).count(),
+    0,
+  );
+  await auditToggle.focus();
+  await page.keyboard.press("Enter");
+  assert.equal(await auditToggle.getAttribute("aria-expanded"), "true");
+  assert.equal(
+    await desktopNav.getByRole("link", { name: "Mon entreprise", exact: true }).count(),
+    1,
+  );
+  assert.equal(await desktopNav.getByRole("link", { name: "Résultats", exact: true }).count(), 1);
+  assert.equal(
+    await desktopNav
+      .getByRole("link", { name: "Atelier IA", exact: true })
+      .getAttribute("aria-current"),
+    "page",
+  );
+  await page.screenshot({ path: join(evidence, "optivos-navigation-desktop.png"), fullPage: true });
+  await auditToggle.click();
+  checks.push("audit and agent groups, keyboard toggle and current location");
+
   await page.screenshot({ path: join(evidence, "optivos-atelier-desktop.png"), fullPage: true });
   await page.getByRole("button", { name: "Préparer la simulation", exact: true }).click();
   await page.getByRole("button", { name: "Valider et simuler", exact: true }).waitFor();
@@ -126,6 +162,50 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   checks.push("mobile without horizontal overflow");
+  for (const viewport of [
+    { width: 375, height: 812 },
+    { width: 844, height: 390 },
+    { width: 820, height: 1180 },
+  ]) {
+    await page.setViewportSize(viewport);
+    const menu = page.getByRole("button", { name: "Menu", exact: true });
+    await menu.click();
+    const mobileNav = page.getByRole("navigation", {
+      name: "Navigation principale mobile",
+      exact: true,
+    });
+    assert.equal(
+      await mobileNav
+        .getByRole("button", { name: "Orchestrateur & agents", exact: true })
+        .getAttribute("aria-expanded"),
+      "true",
+    );
+    const auditMenu = mobileNav.getByRole("button", { name: "Audit", exact: true });
+    if ((await auditMenu.getAttribute("aria-expanded")) === "false") await auditMenu.click();
+    for (const control of await mobileNav.locator("button:visible, a:visible").all()) {
+      const box = await control.boundingBox();
+      assert.ok(box && box.height >= 44);
+    }
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    if (viewport.width === 375)
+      await page.screenshot({
+        path: join(evidence, "optivos-navigation-mobile.png"),
+        fullPage: true,
+      });
+    await page.keyboard.press("Escape");
+    assert.equal(await menu.getAttribute("aria-expanded"), "false");
+    assert.equal(await menu.evaluate((element) => document.activeElement === element), true);
+    assert.equal(
+      await page
+        .getByRole("navigation", { name: "Navigation principale mobile", exact: true })
+        .count(),
+      0,
+    );
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.emulateMedia({ reducedMotion: "reduce" });
+  checks.push("375px, landscape and tablet menus, 44px targets, Escape restores focus");
+
   await page.screenshot({ path: join(evidence, "optivos-atelier-mobile.png"), fullPage: true });
   await page.getByRole("button", { name: "Réglages", exact: true }).click();
   await page
@@ -136,6 +216,34 @@ try {
   await page.getByRole("button", { name: "Missions", exact: true }).click();
   await page.getByText("Aucune mission dans cette rubrique.", { exact: false }).waitFor();
   checks.push("no cross-session mission persistence");
+  await page.goto(`${base}/?dashboard`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Bienvenue dans Optivos", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Menu", exact: true }).click();
+  const rootNav = page.getByRole("navigation", {
+    name: "Navigation principale mobile",
+    exact: true,
+  });
+  await rootNav.getByRole("button", { name: "Audit", exact: true }).click();
+  assert.equal(
+    await rootNav.getByRole("link", { name: "Mon entreprise", exact: true }).getAttribute("href"),
+    "/companies",
+  );
+  await rootNav.getByRole("button", { name: "Orchestrateur & agents", exact: true }).click();
+  assert.equal(
+    await rootNav.getByRole("link", { name: "Atelier IA", exact: true }).getAttribute("href"),
+    "/atelier-ia",
+  );
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({
+    path: join(evidence, "optivos-accueil-navigation-mobile.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  assert.equal(
+    await page.getByRole("navigation", { name: "Navigation principale", exact: true }).count(),
+    1,
+  );
+  checks.push("overview dashboard uses the same grouped desktop and mobile navigation");
   assert.equal(errors.length, 0);
   assert.equal(blocked.length, 0);
   assert.equal(mutationCount, 0);

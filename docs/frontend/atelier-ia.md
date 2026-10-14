@@ -53,3 +53,9 @@ Les rendus sont générés dans un dossier ignoré; `OPTIVOS_ATELIER_EVIDENCE_DI
 ## Suite prévue
 
 Brancher la passerelle HTTP Hermes déjà testée dans le projet Hermes, puis définir les missions persistantes et leurs droits par entreprise. Les validations d’outils, arrêts confirmés, budgets vérifiables et versions de compétences devront être testés au niveau du runtime. Aucune autorisation permanente, promesse d’IA illimitée ou promotion en moteur canonique n’est créée par cette interface.
+
+## Navigation regroupée
+
+Vue d’ensemble reste au premier niveau. Audit regroupe Mon entreprise, Parcours d’audit, Opportunités, ROI, Plan d’action et Résultats. Orchestrateur & agents regroupe l’Atelier IA ; compétences, connexions et Studio créatif sont annoncés comme extensions futures. Ce groupe suit le flag du laboratoire.
+
+Le groupe de la page courante s’ouvre initialement. Les groupes se déplient indépendamment ; leurs liens conservent les destinations canoniques et le contexte entreprise. Les boutons exposent aria-expanded/aria-controls, les liens aria-current. Sous 1024 px, un bouton Menu affiche la navigation avec défilement vertical borné ; Échap ferme le menu et rend le focus au bouton. Aucun menu exclusivement à icônes ni défilement horizontal.

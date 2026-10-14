@@ -22,8 +22,10 @@ describe("Cross-screen layout safety", () => {
     expect(css).toContain("@media (prefers-reduced-motion: reduce)");
     const shell = readFileSync("src/components/dashboard/company-shell.tsx", "utf8");
     expect(shell).toContain("workspace-content");
-    expect(shell).toContain('aria-label="Navigation principale mobile"');
-    expect(shell).toContain("href={navigationHref(label, href)}");
+    expect(readFileSync("src/components/dashboard/grouped-navigation.tsx", "utf8")).toContain(
+      '"Navigation principale mobile"',
+    );
+    expect(shell).toContain("href: navigationHref(label, href)");
   });
   it("keeps the dashboard primary action and decision context visible on mobile", () => {
     const css = readFileSync("src/app/globals.css", "utf8");

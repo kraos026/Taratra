@@ -13,3 +13,17 @@ OUT-OF-SCOPE: Moteurs, calculs, recommandations, campagne email, suppression de 
 Base: `29ea642ba09215767258770d5e448fe9b0c0b6e2`. Travail isolé dans la branche `codex/optivos-hermes-ui`. Les fichiers de mesures non suivis du checkout principal restent en attente dans ce checkout ; ils ne sont ni incorporés ni modifiés.
 
 Les échanges consultés confirment le positionnement: Optivos pour décider et spécifier ; un menu distinct « Atelier IA » pour les missions d’agents, avec « Studio créatif » comme extension éventuelle. Les anciennes certifications concernent leurs SHA et environnements, pas ce nouvel espace. Elles ne sont pas réutilisées comme preuve de certification.
+
+## Regroupement de navigation — 14 octobre 2026
+
+MISSION: Regrouper Mon entreprise → Résultats sous Audit, et réserver Orchestrateur & agents à l’Atelier IA et ses futures extensions.
+AFFECTED DOMAIN: Présentation exclusivement, composants de navigation communs et adaptation mobile/tablette.
+CANONICAL OWNER: Les routes et moteurs existants conservent leur responsabilité.
+CURRENT STATUS: SHADOW, aucune connexion d’agent activée.
+FILES EXPECTED: Deux shells, composant GroupedNavigation, CSS responsive, tests et aperçu.
+DB IMPACT: Aucun.
+SECURITY IMPACT: Flags et autorisations inchangés ; liens d’entreprise conservés.
+TEST PLAN: Types, lint, tests de navigation existants, navigateur clavier/mobile/tablette avec API simulée.
+OUT-OF-SCOPE: Moteurs, API, nouvelles connexions réelles, publication et appels payants.
+
+Skill utilisée : UI UX Pro Max, complétée par Optivos UI UX. Menus à boutons natifs, état ouvert annoncé, emplacement courant indiqué, cibles de 44 px et libellés visibles. La recherche locale UX a retourné des recommandations de fil d’Ariane et de titres, sans correspondance directe pour les menus repliables ; le regroupement suit la demande et les règles d’accessibilité de la skill. Les extensions futures restent un texte « À venir », sans lien fictif.

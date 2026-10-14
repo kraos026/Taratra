@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { GroupedNavigation } from "./grouped-navigation";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, type FormEvent } from "react";
 import {
@@ -140,21 +141,15 @@ export function InteractiveDashboard() {
         <Link className="brand" href={dashboardRoutes.overview} aria-label="Accueil Optivos">
           <OptivosLogo subtitle="Espace de décision" />
         </Link>
-        <nav aria-label="Navigation principale">
-          <p className="nav-label">COMPRENDRE ET DÉCIDER</p>
-          {navigation.map(([Icon, label, href]) => (
-            <Link
-              className={href === "/" ? "nav-item active" : "nav-item"}
-              href={href}
-              key={label}
-              aria-label={label}
-            >
-              <Icon size={19} />
-              <span>{label}</span>
-              {label === "Audit" && activeAudits > 0 && <b>{activeAudits}</b>}
-            </Link>
-          ))}
-        </nav>
+        <GroupedNavigation
+          entries={navigation.map(([icon, label, href]) => ({
+            icon,
+            label,
+            href,
+            active: label === "Vue d’ensemble",
+            count: label === "Audit" ? activeAudits : undefined,
+          }))}
+        />
         <div className="upgrade" aria-label="Cadre Optivos">
           <span>
             <Sparkles size={17} />
@@ -182,6 +177,21 @@ export function InteractiveDashboard() {
       </aside>
 
       <section className="content">
+        <div className="optivos-mobile-navigation border-b border-white/10 p-3">
+          <Link href="/" aria-label="Accueil Optivos">
+            <OptivosLogo compact />
+          </Link>
+          <GroupedNavigation
+            mobile
+            entries={navigation.map(([icon, label, href]) => ({
+              icon,
+              label,
+              href,
+              active: label === "Vue d’ensemble",
+              count: label === "Audit" ? activeAudits : undefined,
+            }))}
+          />
+        </div>
         <header className="topbar">
           <form className="search" role="search" onSubmit={search}>
             <Search size={18} />
