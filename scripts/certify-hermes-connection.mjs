@@ -13,7 +13,7 @@ import {
   stopProcessTree,
 } from "./local-certification-support.mjs";
 
-// Local real Auth/RLS + native Hermes health only. No migrations, identity writes or inference.
+// Local Auth/RLS + Hermes consultation only; optional privileged historical test-run registration.
 const repository = resolve(import.meta.dirname, "..");
 const generatedSnapshots = new Map(
   ["AGENTS.md", "next-env.d.ts"].map((file) => [file, readFileSync(join(repository, file))]),
@@ -44,7 +44,7 @@ let companies;
 try {
   companies = (
     await database.query(
-      "select id, name from public.companies where name = ANY($1) and deleted_at is null",
+      "select id, name, organization_id from public.companies where name = ANY($1) and deleted_at is null",
       [[LOCAL_E2E_USERS.tenantA.companyName, LOCAL_E2E_USERS.tenantB.companyName]],
     )
   ).rows;
@@ -89,8 +89,55 @@ const sanitize = (value) =>
 let app;
 let browser;
 const checks = [];
+const testRunId = process.env.OPTIVOS_HERMES_CERT_RUN_ID;
+let testLinkId = null;
 const errors = [];
 try {
+  if (testRunId) {
+    assert.match(testRunId, /^run_[0-9a-f]{32}$/);
+    const verifiedRunResponse = await fetch(new URL(`/v1/runs/${testRunId}`, origin), {
+      method: "GET",
+      headers: { Authorization: `Bearer ${privateKey}` },
+      redirect: "error",
+      cache: "no-store",
+      signal: AbortSignal.timeout(3000),
+    });
+    assert.equal(verifiedRunResponse.status, 200);
+    const verifiedRun = await verifiedRunResponse.json();
+    assert.equal(verifiedRun.object, "hermes.run");
+    assert.equal(verifiedRun.run_id, testRunId);
+    assert.equal(
+      verifiedRun.status,
+      "completed",
+      "Only the known completed historical test run may be registered by this local recipe.",
+    );
+    const registry = new pg.Client({ connectionString: env.DATABASE_URL });
+    await registry.connect();
+    try {
+      await registry.query(
+        "insert into public.agent_mission_links(organization_id,company_id,run_id,title) values($1,$2,$3,$4) on conflict(run_id) do nothing",
+        [
+          companyA[0].organization_id,
+          companyA[0].id,
+          testRunId,
+          "Test historique de connexion Hermes",
+        ],
+      );
+      const registered = await registry.query(
+        "select id from public.agent_mission_links where run_id=$1 and company_id=$2 and organization_id=$3",
+        [testRunId, companyA[0].id, companyA[0].organization_id],
+      );
+      assert.equal(
+        registered.rows.length,
+        1,
+        "An existing run cannot be reassigned to another company.",
+      );
+      testLinkId = registered.rows[0].id;
+    } finally {
+      await registry.end();
+    }
+    checks.push("historical completed test run linked once by a privileged local operator");
+  }
   try {
     await fetch(`${appUrl}/login`, { signal: AbortSignal.timeout(1000) });
     throw new Error("Recipe port is already occupied.");
@@ -201,8 +248,59 @@ try {
   await page.getByRole("status").filter({ hasText: "Connexion Hermes vérifiée" }).waitFor();
   await page.screenshot({ path: join(output, "optivos-hermes-authenticated.png"), fullPage: true });
   checks.push("real authenticated UI verifies Hermes health");
+  if (testLinkId) {
+    const missionBase = (id) => `${appUrl}/api/companies/${id}/atelier-ia/missions`;
+    const list = await tenantA.request.get(missionBase(companyA[0].id));
+    assert.equal(list.status(), 200);
+    const listed = (await list.json()).data.items;
+    assert.ok(listed.some((row) => row.id === testLinkId));
+    assert.ok(!JSON.stringify(listed).includes(testRunId));
+    const observation = await tenantA.request.get(
+      `${missionBase(companyA[0].id)}/${testLinkId}/status`,
+    );
+    assert.equal(observation.status(), 200);
+    assert.equal((await observation.json()).data.status, "completed");
+    const cross = await tenantB.request.get(`${missionBase(companyA[0].id)}/${testLinkId}/status`);
+    assert.ok([403, 404].includes(cross.status()));
+    const ownWrong = await tenantB.request.get(
+      `${missionBase(companyB[0].id)}/${testLinkId}/status`,
+    );
+    assert.equal(ownWrong.status(), 404);
+    const rawId = await tenantA.request.get(`${missionBase(companyA[0].id)}/${testRunId}/status`);
+    assert.equal(rawId.status(), 404);
+    const claimed = await tenantA.request.post(missionBase(companyA[0].id), {
+      data: { run_id: testRunId },
+    });
+    assert.equal(claimed.status(), 405);
+    checks.push(
+      "persisted link resolves native completed state; foreign company, raw IDs and client registration denied",
+    );
+    for (const reload of [false, true]) {
+      if (reload) await page.reload({ waitUntil: "networkidle" });
+      await page.getByRole("button", { name: "Activité réelle", exact: true }).click();
+      await page.getByText("Suivi réel · lecture seule", { exact: true }).waitFor();
+      await page.getByRole("button", { name: "Charger les missions liées", exact: true }).click();
+      await page
+        .getByRole("heading", { name: "Test historique de connexion Hermes", exact: true })
+        .waitFor();
+      await page.getByRole("button", { name: "Vérifier l’état", exact: true }).click();
+      await page.getByRole("status").filter({ hasText: "Terminée · état Hermes" }).waitFor();
+    }
+    await page.screenshot({
+      path: join(output, "optivos-hermes-mission-live.png"),
+      fullPage: true,
+    });
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    await page.screenshot({
+      path: join(output, "optivos-hermes-mission-mobile.png"),
+      fullPage: true,
+    });
+    checks.push("real mission state in authenticated UI persists after reload and fits mobile");
+  }
+
   writeFileSync(
-    join(output, "live-connection.json"),
+    join(output, testLinkId ? "live-missions.json" : "live-connection.json"),
     JSON.stringify(
       {
         passed: true,
@@ -216,7 +314,9 @@ try {
         checks,
         modelCalls: 0,
         newMigrations: 0,
-        directBusinessWritesByRecipe: 0,
+        directBusinessWritesByRecipe: testLinkId
+          ? "one local registry link, idempotent; no existing business data changed"
+          : 0,
         authSessionWrites: true,
         production: "NOT CERTIFIED",
         secretStoredInFiles: false,

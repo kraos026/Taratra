@@ -82,8 +82,8 @@ export function HermesConnectionPanel({ companyId }: { companyId: string }) {
         </dl>
       )}
       <p className="mt-5 text-sm leading-6 text-slate-400">
-        Les missions réelles et leur historique ne sont pas encore liés à ce dossier. Le lancement
-        reste désactivé ; les missions de l’atelier sont des simulations.
+        Les missions déjà liées à ce dossier sont consultables dans Activité réelle. Le lancement
+        reste désactivé ; les missions de démonstration restent des simulations.
       </p>
     </section>
   );

@@ -6,8 +6,17 @@ import { Bot, CheckCircle2, ClipboardList, FileText, Settings2 } from "lucide-re
 import { Button } from "@/components/ui/button";
 import { moveAgentMission, prepareAgentMission, type AgentMission } from "../domain/simulation";
 import { HermesConnectionPanel } from "./hermes-connection-panel";
+import { MissionMonitoringPanel } from "./mission-monitoring-panel";
 
-const tabs = ["Accueil", "Missions", "Résultats", "À valider", "Connexion", "Réglages"] as const;
+const tabs = [
+  "Accueil",
+  "Missions",
+  "Résultats",
+  "À valider",
+  "Activité réelle",
+  "Connexion",
+  "Réglages",
+] as const;
 type Tab = (typeof tabs)[number];
 const labels = {
   ready: "Préparée",
@@ -73,10 +82,15 @@ export function AgentWorkspacePanel({ company }: { company: Company }) {
         </Link>
       </header>
       <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-amber-100">
-        <strong>Démonstration · 0 € d’appels IA</strong>
+        <strong>
+          {tab === "Activité réelle"
+            ? "Suivi réel · lecture seule"
+            : "Démonstration · 0 € d’appels IA"}
+        </strong>
         <p className="mt-2 text-sm leading-6">
-          Les missions ci-dessous sont simulées. Aucun agent, modèle, outil ou envoi externe n’est
-          lancé. Elles disparaissent lorsque vous actualisez ou quittez cet espace.
+          {tab === "Activité réelle"
+            ? "Les missions affichées existent déjà dans Hermes. Vous consultez leur état sans lancer de mission ni appeler de modèle IA. Les liaisons restent conservées dans votre dossier."
+            : "Les missions de démonstration sont simulées. Aucun agent, modèle, outil ou envoi externe n’est lancé. Elles disparaissent lorsque vous actualisez ou quittez cet espace."}
         </p>
       </div>
       {!company.canSimulate && (
@@ -275,6 +289,9 @@ export function AgentWorkspacePanel({ company }: { company: Company }) {
         </div>
       )}
       {tab === "Connexion" && <HermesConnectionPanel key={company.id} companyId={company.id} />}
+      {tab === "Activité réelle" && (
+        <MissionMonitoringPanel key={company.id} companyId={company.id} />
+      )}
       {tab === "Réglages" && (
         <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6">
           <h2 className="flex items-center gap-2 text-xl font-semibold">

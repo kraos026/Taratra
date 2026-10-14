@@ -62,3 +62,24 @@ MIGRATION REQUIRED?: Aucune migration et aucune initialisation ; base existante 
 RLS IMPACT?: Politiques existantes conservées et testées.
 TENANT IMPACT?: Deux comptes de test locaux isolés.
 ROLLBACK PLAN?: Fermer le serveur de recette ; conserver les conteneurs existants et fermer les processus créés par cette recette.
+
+## Missions Hermes liées aux entreprises — 14 octobre 2026
+
+MISSION: Persister les liaisons entreprise/mission puis consulter leur état réel, sans lancement.
+AFFECTED DOMAIN: Agent-workspace SHADOW et registre Supabase.
+CANONICAL OWNER: Auth/CompanyService pour l’accès, Supabase pour la persistance/RLS, Hermes pour l’état d’exécution.
+CURRENT STATUS: SHADOW, suivi en lecture seule, budget IA 0 €.
+FILES EXPECTED: Migration et test RLS dédiés, dépôt Supabase, client GET de statut, routes de consultation, panneau Activité réelle, tests et recette locale.
+DB IMPACT: Nouvelle table agent_mission_links ; aucun moteur ni table métier existante modifié. Aucun modèle Prisma généré nécessaire pour ce dépôt PostgREST.
+SECURITY IMPACT: Un run ne peut appartenir qu’à une entreprise ; FK composite organization/company ; lecture RLS ; aucune écriture accordée à anon/authenticated. Liaison créée par opérateur serveur, jamais par un run_id transmis depuis le navigateur.
+TEST PLAN: Migration LOCAL, RLS A/B et refus d’écriture, consultation de run enregistré uniquement, erreur/timeout/contrat invalide, UI réelle et persistance au rechargement.
+OUT-OF-SCOPE: Soumission de mission, inférence, arrêt, approbation, résultats bruts, sessions globales, migration STAGING/Production et déploiement.
+
+TARGET: Supabase LOCAL de certification uniquement.
+PRODUCTION?: NON.
+DISPOSABLE?: OUI, comptes et liaisons de test.
+BACKUP?: Aucun reset, drop ou écrasement de table existante.
+MIGRATION REQUIRED?: OUI, additive et appartenant à Supabase.
+RLS IMPACT?: Nouvelle politique de lecture par organisation et entreprise active, pas de privilège d’écriture client.
+TENANT IMPACT?: Cloisonnement A/B et lignée entreprise/organisation vérifiés.
+ROLLBACK PLAN?: Fermeture du serveur de recette ; migration non publiée et aucun reset distant. Les données locales restent disponibles pour les prochains tests.
