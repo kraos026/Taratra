@@ -83,3 +83,15 @@ MIGRATION REQUIRED?: OUI, additive et appartenant à Supabase.
 RLS IMPACT?: Nouvelle politique de lecture par organisation et entreprise active, pas de privilège d’écriture client.
 TENANT IMPACT?: Cloisonnement A/B et lignée entreprise/organisation vérifiés.
 ROLLBACK PLAN?: Fermeture du serveur de recette ; migration non publiée et aucun reset distant. Les données locales restent disponibles pour les prochains tests.
+
+## Accueil guidé pour novices — 14 octobre 2026
+
+MISSION: Guider l’utilisateur depuis son dossier vérifié vers la connexion, le suivi réel et une simulation explicitement identifiée.
+AFFECTED DOMAIN: Présentation agent-workspace uniquement.
+CANONICAL OWNER: Routes de consultation Company/Hermes/registre existantes, sans nouvel endpoint.
+CURRENT STATUS: SHADOW, guide en lecture seule et simulation locale.
+FILES EXPECTED: Panneau de prise en main, accueil, recettes visuelles et documentation.
+DB IMPACT: Aucun nouveau schéma ou écriture métier.
+SECURITY IMPACT: Deux GET manuels via les routes authentifiées existantes ; aucun secret, nouveau droit ou lancement.
+TEST PLAN: Vérifications partielles/échouées, liste vide/non vide, absence d’appels automatiques, navigation vers les rubriques, mobile et UI authentifiée.
+OUT-OF-SCOPE: Dispatch, dépenses, installation sur VPS, activation de compétences/modèles, publication et moteurs Optivos.

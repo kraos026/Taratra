@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { moveAgentMission, prepareAgentMission, type AgentMission } from "../domain/simulation";
 import { HermesConnectionPanel } from "./hermes-connection-panel";
 import { MissionMonitoringPanel } from "./mission-monitoring-panel";
+import { GettingStartedPanel } from "./getting-started-panel";
 
 const tabs = [
   "Accueil",
@@ -119,6 +120,13 @@ export function AgentWorkspacePanel({ company }: { company: Company }) {
       )}
       {tab === "Accueil" && (
         <>
+          <GettingStartedPanel
+            key={company.id}
+            company={company}
+            onConnection={() => setTab("Connexion")}
+            onActivity={() => setTab("Activité réelle")}
+            onSimulation={() => document.getElementById("agent-title")?.focus()}
+          />
           <div className="grid gap-4 sm:grid-cols-3">
             {[
               [ClipboardList, visible.length, "Missions préparées"],
@@ -139,7 +147,7 @@ export function AgentWorkspacePanel({ company }: { company: Company }) {
             })}
           </div>
           <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6">
-            <h2 className="text-xl font-semibold">Préparer une première mission</h2>
+            <h2 className="text-xl font-semibold">Essayer une mission en simulation</h2>
             <p className="mt-2 text-sm leading-6 text-slate-300">
               Décrivez le résultat souhaité. Relisez ensuite la demande avant de lancer sa
               simulation.

@@ -77,6 +77,9 @@ const blocked = [];
 let mutationCount = 0;
 let connectionCount = 0;
 let connectionStatus = 200;
+let registryCount = 0;
+let registryStatus = 200;
+let registryBody = { data: { items: [], hasMore: false } };
 let connectionBody = {
   data: {
     state: "connected",
@@ -111,6 +114,14 @@ try {
         body: JSON.stringify(connectionBody),
       });
     }
+    if (url.pathname.endsWith("/atelier-ia/missions")) {
+      registryCount++;
+      return route.fulfill({
+        status: registryStatus,
+        contentType: "application/json",
+        body: JSON.stringify(registryBody),
+      });
+    }
     if (url.pathname === "/api/companies")
       return route.fulfill({
         contentType: "application/json",
@@ -139,6 +150,75 @@ try {
     `/companies/${companyId}/atelier-ia`,
   );
   checks.push("company-scoped Atelier navigation");
+  await page.getByRole("heading", { name: "Commencez ici", exact: true }).waitFor();
+  assert.equal(connectionCount, 0);
+  assert.equal(registryCount, 0);
+  await page.getByRole("button", { name: "Vérifier mon atelier", exact: true }).click();
+  await page.getByText("Connexion prête pour le suivi", { exact: true }).waitFor();
+  await page.getByText("Aucune mission réelle liée pour le moment", { exact: true }).waitFor();
+  assert.equal(connectionCount, 1);
+  assert.equal(registryCount, 1);
+  await page.screenshot({
+    path: join(evidence, "optivos-prise-en-main-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  await page.screenshot({
+    path: join(evidence, "optivos-prise-en-main-mobile.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 1100 });
+  registryBody = {
+    data: {
+      items: [
+        {
+          id: "22222222-2222-4222-8222-222222222222",
+          title: "Mission de test",
+          created_at: "2026-10-14T10:00:00.000Z",
+        },
+      ],
+      hasMore: false,
+    },
+  };
+  await page.getByRole("button", { name: "Vérifier mon atelier", exact: true }).click();
+  await page.getByText("1 mission disponible dans la liste récente", { exact: true }).waitFor();
+  registryStatus = 503;
+  await page.getByRole("button", { name: "Vérifier mon atelier", exact: true }).click();
+  await page.getByText("Liste temporairement indisponible", { exact: true }).waitFor();
+  assert.equal(
+    await page.getByText("1 mission disponible dans la liste récente", { exact: true }).count(),
+    0,
+  );
+  connectionStatus = 403;
+  await page.getByRole("button", { name: "Vérifier mon atelier", exact: true }).click();
+  await page.getByText("Vérification indisponible", { exact: true }).waitFor();
+  assert.equal(await page.getByText("Connexion prête pour le suivi", { exact: true }).count(), 0);
+  connectionStatus = 200;
+  registryStatus = 200;
+  connectionBody.data.state = "unconfigured";
+  await page.getByRole("button", { name: "Vérifier mon atelier", exact: true }).click();
+  await page
+    .getByText("Configuration à terminer avec votre installateur", { exact: true })
+    .waitFor();
+  connectionBody.data.state = "connected";
+  await page.getByRole("button", { name: "Ouvrir la connexion", exact: true }).click();
+  await page.getByRole("heading", { name: "Connexion Hermes", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Accueil", exact: true }).click();
+  await page.getByRole("button", { name: "Voir l’activité réelle", exact: true }).click();
+  await page.getByRole("heading", { name: "Activité réelle", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Accueil", exact: true }).click();
+  await page.getByRole("button", { name: "Essayer une simulation", exact: true }).click();
+  assert.equal(
+    await page.locator("#agent-title").evaluate((element) => document.activeElement === element),
+    true,
+  );
+  connectionCount = 0;
+  registryCount = 0;
+  checks.push(
+    "guided setup: no automatic reads, two manual GETs, real empty/nonempty states, failures clear stale readiness, mobile and navigation",
+  );
+
   const desktopNav = page.getByRole("navigation", { name: "Navigation principale", exact: true });
   const auditToggle = desktopNav.getByRole("button", { name: "Audit", exact: true });
   const agentToggle = desktopNav.getByRole("button", {

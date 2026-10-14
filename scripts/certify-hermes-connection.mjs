@@ -243,7 +243,16 @@ try {
   checks.push("tenant B own company is not linked to tenant A Hermes");
   const page = await tenantA.newPage();
   await page.goto(`${appUrl}/companies/${companyA[0].id}/atelier-ia`, { waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Connexion", exact: true }).click();
+  await page.getByRole("button", { name: "Vérifier mon atelier", exact: true }).click();
+  await page.getByText("Connexion prête pour le suivi", { exact: true }).waitFor();
+  if (testLinkId)
+    await page.getByText("1 mission disponible dans la liste récente", { exact: true }).waitFor();
+  await page.screenshot({
+    path: join(output, "optivos-prise-en-main-authenticated.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Ouvrir la connexion", exact: true }).click();
+  checks.push("guided setup verifies real private connection and persisted company mission list");
   await page.getByRole("button", { name: "Vérifier la connexion", exact: true }).click();
   await page.getByRole("status").filter({ hasText: "Connexion Hermes vérifiée" }).waitFor();
   await page.screenshot({ path: join(output, "optivos-hermes-authenticated.png"), fullPage: true });

@@ -97,3 +97,9 @@ Le listing GET /api/companies/[id]/atelier-ia/missions projette seulement id de 
 La rubrique Activité réelle charge la liste à la demande puis chaque état individuellement ; aucun polling et aucun lancement. Une indisponibilité remplace l’ancien état. La liaison est persistante, les observations sont des relevés horodatés non persistés. Une mission non retrouvée après la rétention de Hermes n’est pas affichée comme terminée.
 
 La recette accepte OPTIVOS_HERMES_CERT_RUN_ID uniquement pour vérifier et enregistrer une ancienne mission de test terminée dans le dossier LOCAL A. Elle ne soumet aucune nouvelle tâche. Cette opération crée au plus une liaison de recette ; un conflit appartenant à une autre entreprise n’est jamais réassigné. Le fichier de preuves live-missions.json distingue cette écriture locale des sessions Auth. Les tests SQL roulent leur transaction de fixture en arrière. Migration STAGING/Production et dispatch réel restent hors périmètre.
+
+## Prise en main guidée
+
+L’accueil commence par trois repères : accès au dossier déjà vérifié par le serveur, connexion Hermes et disponibilité des missions liées. Vérifier mon atelier appelle uniquement les deux GET authentifiés existants, regroupés à la demande. Il n’y a aucune vérification automatique, aucune écriture et aucun appel de modèle. Une liste vide est annoncée comme telle ; une erreur de registre n’est pas traitée comme une liste vide. Chaque nouvelle vérification efface les anciens indicateurs avant de lire les services.
+
+Les actions conduisent aux rubriques Connexion et Activité réelle. Essayer une simulation focalise le formulaire existant, réservé aux rôles autorisés. Les compétences et le lancement réel restent explicitement futurs. Une connexion prête pour le suivi ne signifie jamais que l’exécution est activée. L’état du guide est un relevé de la page, pas une configuration persistée.
