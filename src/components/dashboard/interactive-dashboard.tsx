@@ -221,7 +221,7 @@ export function InteractiveDashboard() {
               <div>
                 <h2 className="font-semibold text-slate-100">Atelier IA · Missions et résultats</h2>
                 <p className="mt-2 text-sm text-slate-300">
-                  Explorez un parcours de mission en simulation, sans activer d’agent réel.
+                  Retrouvez les missions Hermes, la connexion et les capacités de votre atelier.
                 </p>
                 <Link
                   href={agentWorkspaceHref(activeCompany?.id)}

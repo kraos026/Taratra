@@ -9,12 +9,10 @@ export function GettingStartedPanel({
   company,
   onConnection,
   onActivity,
-  onSimulation,
 }: {
-  company: { id: string; name: string; canSimulate: boolean };
+  company: { id: string; name: string; canWrite: boolean };
   onConnection: () => void;
   onActivity: () => void;
-  onSimulation: () => void;
 }) {
   const [connection, setConnection] = useState<HermesConnection | null>(null);
   const [missionCount, setMissionCount] = useState<number | null>(null);
@@ -117,7 +115,7 @@ export function GettingStartedPanel({
             {registryText}
           </p>
           <Button variant="outline" className="min-h-11" onClick={onActivity}>
-            Voir l’activité réelle
+            Voir les missions
           </Button>
         </li>
       </ol>
@@ -128,18 +126,10 @@ export function GettingStartedPanel({
       </p>
       <div className="border-t border-white/10 pt-4">
         <p className="text-sm leading-6 text-slate-300">
-          Pour découvrir le parcours, essayez une simulation à 0 € d’appels IA. Les missions réelles
-          restent en consultation ; leur lancement et les compétences métier seront configurés
-          ultérieurement.
+          La prochaine étape consiste à raccorder le lancement réel et à vérifier un modèle
+          compatible avec votre budget. Les missions déjà liées sont consultables dès que la
+          connexion du dossier est configurée.
         </p>
-        <Button
-          variant="outline"
-          className="mt-3 min-h-11"
-          disabled={!company.canSimulate}
-          onClick={onSimulation}
-        >
-          Essayer une simulation
-        </Button>
       </div>
     </section>
   );

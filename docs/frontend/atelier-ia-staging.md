@@ -32,7 +32,7 @@ VERCEL_ENV est fourni par Vercel. Aucune clé Hermes, OpenRouter ou service-role
 
 ## Connexion Hermes depuis la Preview
 
-Le tunnel localhost utilisé pour la recette LOCAL n’est pas joignable depuis Vercel. Il ne faut pas y transférer sa valeur d’URL. En l’absence d’une passerelle HTTPS privée validée, le guide annonce Connexion non configurée ; l’audit, les simulations et le registre de missions restent accessibles avec leurs droits existants. Aucune connexion réelle n’est annoncée comme active en staging sur la seule base des tests locaux.
+Le tunnel localhost utilisé pour la recette LOCAL n’est pas joignable depuis Vercel. Il ne faut pas y transférer sa valeur d’URL. En l’absence d’une passerelle HTTPS privée validée, le guide annonce Connexion non configurée ; l’audit et le registre de missions restent accessibles avec leurs droits existants. Aucune connexion réelle n’est annoncée comme active en staging sur la seule base des tests locaux.
 
 La connexion distante sera une opération séparée, avec une origine HTTPS protégée et une clé serveur de consultation, avant tout raccordement. L’exécution et les appels IA restent désactivés.
 

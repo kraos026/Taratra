@@ -17,8 +17,8 @@ export function agentWorkspaceHref(companyId?: string | null): string {
 
 export const agentExecutionPolicy = Object.freeze({
   status: "SHADOW",
-  mode: "simulation",
+  mode: "real-monitoring",
   budgetEuro: 0,
   liveEnabled: false,
-  persistence: "page-memory-only",
+  persistence: "company-scoped-registry",
 } as const);

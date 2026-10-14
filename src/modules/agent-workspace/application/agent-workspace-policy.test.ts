@@ -40,7 +40,7 @@ describe("Atelier IA isolation from production", () => {
   it("exposes no live execution or paid budget option", () => {
     expect(agentExecutionPolicy).toMatchObject({
       liveEnabled: false,
-      mode: "simulation",
+      mode: "real-monitoring",
       budgetEuro: 0,
       status: "SHADOW",
     });

@@ -13,7 +13,7 @@ export async function loadAgentCompany(id: string) {
     if (company.id !== id || company.deletedAt || company.status === "archived")
       return new Response(null, { status: 404 });
     const permissions = await service.permissions();
-    return { id: company.id, name: company.name, canSimulate: permissions.canWrite };
+    return { id: company.id, name: company.name, canWrite: permissions.canWrite };
   });
 }
 

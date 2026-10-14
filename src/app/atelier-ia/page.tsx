@@ -22,16 +22,17 @@ export default async function AgentWorkspaceIndex({
     <CompanyShell>
       <section className="mx-auto max-w-4xl space-y-6">
         <header>
-          <p className="text-sm font-medium text-indigo-300">Atelier IA · Démonstration</p>
+          <p className="text-sm font-medium text-indigo-300">Atelier IA · Hermes</p>
           <h1 className="mt-2 text-3xl font-bold">Un espace pour vos missions</h1>
           <p className="mt-3 text-slate-300">
-            Ouvrez un dossier entreprise pour préparer une mission, suivre son parcours et retrouver
-            un exemple de résultat.
+            Choisissez l’entreprise dont vous souhaitez ouvrir le poste de commande : missions,
+            discussion, capacités et installation.
           </p>
         </header>
         <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm text-amber-100">
-          Cet espace est expérimental. Hermes et les modèles IA ne sont pas activés. Les simulations
-          n’effectuent aucune action externe.
+          Le suivi des missions liées est disponible après configuration de la connexion. Le
+          lancement et la discussion restent à raccorder avec votre plafond de 0 € de nouveaux frais
+          API.
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {data.companies.map((company) => (

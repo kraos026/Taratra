@@ -50,7 +50,7 @@ describe("Atelier IA reuses canonical company access", () => {
     expect(service.get).not.toHaveBeenCalled();
   });
   it("projects only the company identifier, label and permission into the panel", async () => {
-    expect(await loadAgentCompany(id)).toEqual({ id, name: "Test entreprise", canSimulate: true });
+    expect(await loadAgentCompany(id)).toEqual({ id, name: "Test entreprise", canWrite: true });
     expect(service.get).toHaveBeenCalledWith(id);
     expect(call).toHaveBeenCalledWith("agent-workspace.company.read");
   });
@@ -73,7 +73,7 @@ describe("Atelier IA reuses canonical company access", () => {
   });
   it("keeps viewer permissions read only", async () => {
     service.permissions.mockResolvedValue({ canWrite: false });
-    expect(await loadAgentCompany(id)).toMatchObject({ canSimulate: false });
+    expect(await loadAgentCompany(id)).toMatchObject({ canWrite: false });
   });
   it("lists only the companies supplied by the authenticated canonical service, with bounded pagination", async () => {
     service.list.mockResolvedValue({

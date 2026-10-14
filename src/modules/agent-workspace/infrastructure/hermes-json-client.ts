@@ -11,7 +11,7 @@ export async function readHermesJson(
   env: Record<string, string | undefined> = process.env,
   fetcher: typeof fetch = fetch,
 ): Promise<Result> {
-  if (!/^\/(?:v1\/capabilities|v1\/runs\/run_[0-9a-f]{32})$/.test(path))
+  if (!/^\/(?:v1\/(?:capabilities|skills|toolsets)|v1\/runs\/run_[0-9a-f]{32})$/.test(path))
     return { state: "unavailable" };
   const owner = companyIdSchema.safeParse(env.OPTIVOS_HERMES_COMPANY_ID);
   if (!owner.success) return { state: "unconfigured" };
@@ -56,7 +56,8 @@ export async function readHermesJson(
         const { done, value } = await reader.read();
         if (done) break;
         size += value.byteLength;
-        if (size > 16_384) {
+        const limit = path === "/v1/skills" || path === "/v1/toolsets" ? 65_536 : 16_384;
+        if (size > limit) {
           await reader.cancel();
           return { state: "unavailable" };
         }

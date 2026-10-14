@@ -107,7 +107,7 @@ export function GroupedNavigation({ entries, mobile = false }: NavigationProps) 
               {links(items)}
               {key === "agents" && (
                 <p className="px-3 py-2 text-xs leading-5 text-slate-400">
-                  À venir : agents et compétences, connexions IA, Studio créatif.
+                  Missions, discussion, capacités et installation dans l’Atelier IA.
                 </p>
               )}
             </div>

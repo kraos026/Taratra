@@ -40,7 +40,7 @@ export function HermesConnectionPanel({ companyId }: { companyId: string }) {
       }
     } catch {
       if (!controller.signal.aborted)
-        setError("Vérification impossible. Réessayez ; vos simulations restent accessibles.");
+        setError("Vérification impossible. Réessayez pour obtenir un état actualisé.");
     } finally {
       if (!controller.signal.aborted) setChecking(false);
       request.current = null;
@@ -82,8 +82,9 @@ export function HermesConnectionPanel({ companyId }: { companyId: string }) {
         </dl>
       )}
       <p className="mt-5 text-sm leading-6 text-slate-400">
-        Les missions déjà liées à ce dossier sont consultables dans Activité réelle. Le lancement
-        reste désactivé ; les missions de démonstration restent des simulations.
+        Les missions déjà liées à ce dossier sont consultables dans Missions. Une connexion de suivi
+        réussie n’active ni la discussion ni le lancement : leur raccordement et le contrôle du
+        budget restent nécessaires.
       </p>
     </section>
   );

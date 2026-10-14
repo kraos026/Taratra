@@ -38,7 +38,7 @@ import {CompanyShell} from '@/components/dashboard/company-shell';
 import {InteractiveDashboard} from '@/components/dashboard/interactive-dashboard';
 import {AgentWorkspacePanel} from '@/modules/agent-workspace/presentation/agent-workspace-panel';
 import './style.css';
-createRoot(document.getElementById('root')!).render(location.search.includes('dashboard') ? <InteractiveDashboard/> : <CompanyShell verifiedCompanyId='${companyId}'><AgentWorkspacePanel company={{id:'${companyId}',name:'Entreprise de démonstration',canSimulate:true}}/></CompanyShell>);`,
+createRoot(document.getElementById('root')!).render(location.search.includes('dashboard') ? <InteractiveDashboard/> : <CompanyShell verifiedCompanyId='${companyId}'><AgentWorkspacePanel company={{id:'${companyId}',name:'Entreprise de démonstration',canWrite:true}}/></CompanyShell>);`,
 );
 // Preview only: avoid remote font requests and restrict Tailwind scanning.
 const css = readFileSync(join(root, "src/app/globals.css"), "utf8")
@@ -77,6 +77,22 @@ const blocked = [];
 let mutationCount = 0;
 let connectionCount = 0;
 let connectionStatus = 200;
+let inventoryCount = 0;
+let inventoryStatus = 200;
+let inventoryBody = {
+  data: {
+    checkedAt: "2026-10-14T10:00:00.000Z",
+    skills: {
+      state: "available",
+      items: [{ name: "research", description: "Sources vérifiables" }],
+    },
+    toolsets: {
+      state: "available",
+      items: [{ name: "web", label: "Recherche Web", enabled: true, configured: false }],
+    },
+    modelCalls: 0,
+  },
+};
 let registryCount = 0;
 let registryStatus = 200;
 let registryBody = { data: { items: [], hasMore: false } };
@@ -114,6 +130,14 @@ try {
         body: JSON.stringify(connectionBody),
       });
     }
+    if (url.pathname.endsWith("/atelier-ia/inventory")) {
+      inventoryCount++;
+      return route.fulfill({
+        status: inventoryStatus,
+        contentType: "application/json",
+        body: JSON.stringify(inventoryBody),
+      });
+    }
     if (url.pathname.endsWith("/atelier-ia/missions")) {
       registryCount++;
       return route.fulfill({
@@ -144,7 +168,7 @@ try {
     return route.continue();
   });
   await page.goto(base, { waitUntil: "networkidle" });
-  await page.getByRole("heading", { name: "Vos missions, en toute clarté" }).waitFor();
+  await page.getByRole("heading", { name: "Votre poste de commande" }).waitFor();
   assert.equal(
     await page.getByRole("link", { name: "Atelier IA", exact: true }).first().getAttribute("href"),
     `/companies/${companyId}/atelier-ia`,
@@ -204,15 +228,10 @@ try {
   connectionBody.data.state = "connected";
   await page.getByRole("button", { name: "Ouvrir la connexion", exact: true }).click();
   await page.getByRole("heading", { name: "Connexion Hermes", exact: true }).waitFor();
-  await page.getByRole("button", { name: "Accueil", exact: true }).click();
-  await page.getByRole("button", { name: "Voir l’activité réelle", exact: true }).click();
+  await page.getByRole("button", { name: "Vue d’ensemble", exact: true }).click();
+  await page.getByRole("button", { name: "Voir les missions", exact: true }).click();
   await page.getByRole("heading", { name: "Activité réelle", exact: true }).waitFor();
-  await page.getByRole("button", { name: "Accueil", exact: true }).click();
-  await page.getByRole("button", { name: "Essayer une simulation", exact: true }).click();
-  assert.equal(
-    await page.locator("#agent-title").evaluate((element) => document.activeElement === element),
-    true,
-  );
+  await page.getByRole("button", { name: "Vue d’ensemble", exact: true }).click();
   connectionCount = 0;
   registryCount = 0;
   checks.push(
@@ -250,14 +269,56 @@ try {
   checks.push("audit and agent groups, keyboard toggle and current location");
 
   await page.screenshot({ path: join(evidence, "optivos-atelier-desktop.png"), fullPage: true });
-  await page.getByRole("button", { name: "Préparer la simulation", exact: true }).click();
-  await page.getByRole("button", { name: "Valider et simuler", exact: true }).waitFor();
-  checks.push("explicit mission validation");
-  await page.getByRole("button", { name: "Valider et simuler", exact: true }).click();
-  await page.getByText("Terminée · simulation", { exact: true }).waitFor();
-  await page.getByRole("button", { name: "Résultats", exact: true }).click();
-  await page.getByText("EXEMPLE SIMULÉ", { exact: false }).waitFor();
-  checks.push("simulated result and progress");
+  const atelierNav = page.getByRole("navigation", { name: "Navigation de l’atelier" });
+  for (const label of ["Vue d’ensemble", "Missions", "Discussion", "Capacités", "Installation"]) {
+    await atelierNav.getByRole("button", { name: label, exact: true }).click();
+    assert.equal(
+      await atelierNav
+        .getByRole("button", { name: label, exact: true })
+        .getAttribute("aria-current"),
+      "page",
+    );
+    assert.equal(await page.getByText(/simulation|EXEMPLE SIMULÉ/i).count(), 0);
+  }
+  await atelierNav.getByRole("button", { name: "Missions", exact: true }).click();
+  assert.equal(
+    await page.getByRole("button", { name: "Nouvelle mission", exact: true }).isDisabled(),
+    true,
+  );
+  await page.getByRole("button", { name: "Charger les missions liées", exact: true }).click();
+  await page.getByRole("heading", { name: "Mission de test", exact: true }).waitFor();
+  await atelierNav.getByRole("button", { name: "Discussion", exact: true }).click();
+  await page
+    .getByText("La conversation réelle n’est pas encore connectée à Optivos.", { exact: false })
+    .waitFor();
+  assert.equal(await page.getByRole("textbox").count(), 0);
+  await atelierNav.getByRole("button", { name: "Capacités", exact: true }).click();
+  for (const name of ["Skills", "Plugins", "API", "MCP"])
+    await page.getByRole("heading", { name, exact: true }).waitFor();
+  assert.equal(inventoryCount, 0);
+  await page.getByRole("button", { name: "Vérifier les capacités", exact: true }).click();
+  await page.getByText("research", { exact: true }).waitFor();
+  await page.getByText("Recherche Web", { exact: true }).waitFor();
+  await page.getByText("Activation : oui · Configuration : non", { exact: true }).waitFor();
+  inventoryStatus = 503;
+  await page.getByRole("button", { name: "Vérifier les capacités", exact: true }).click();
+  await page
+    .getByText("Vérification impossible. Réessayez pour obtenir un inventaire actualisé.", {
+      exact: true,
+    })
+    .waitFor();
+  assert.equal(await page.getByText("research", { exact: true }).count(), 0);
+  inventoryStatus = 200;
+  inventoryBody.data.skills = { state: "unconfigured", items: [] };
+  inventoryBody.data.toolsets = { state: "unconfigured", items: [] };
+  await page.getByRole("button", { name: "Vérifier les capacités", exact: true }).click();
+  assert.equal(await page.getByText("Connexion non configurée", { exact: true }).count(), 2);
+  checks.push(
+    "manual inventory read, actual items rendered, enabled/configured distinction, failure clears stale data",
+  );
+  checks.push(
+    "five coherent sections, no simulated workflow, real registry consultation, unavailable actions explained",
+  );
   await page.setViewportSize({ width: 390, height: 844 });
   assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   checks.push("mobile without horizontal overflow");
@@ -306,17 +367,11 @@ try {
   checks.push("375px, landscape and tablet menus, 44px targets, Escape restores focus");
 
   await page.screenshot({ path: join(evidence, "optivos-atelier-mobile.png"), fullPage: true });
-  await page.getByRole("button", { name: "Réglages", exact: true }).click();
-  await page
-    .getByText("0 € d’appels IA ; aucune activation payante disponible.", { exact: true })
-    .waitFor();
-  checks.push("live execution stays disabled");
-  await page.reload({ waitUntil: "networkidle" });
-  await page.getByRole("button", { name: "Missions", exact: true }).click();
-  await page.getByText("Aucune mission dans cette rubrique.", { exact: false }).waitFor();
-  checks.push("no cross-session mission persistence");
-  await page.getByRole("button", { name: "Connexion", exact: true }).click();
-  assert.equal(connectionCount, 0);
+  await page.getByRole("button", { name: "Installation", exact: true }).click();
+  await page.getByText("0 € de nouveaux frais API", { exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Autonomie et permissions", exact: true }).waitFor();
+  await page.getByRole("heading", { name: "Clients et isolation", exact: true }).waitFor();
+  checks.push("budget, autonomy, providers and client hosting prerequisites visible");
   const checkConnection = page.getByRole("button", { name: "Vérifier la connexion", exact: true });
   await checkConnection.click();
   await page.getByRole("status").filter({ hasText: "Connexion Hermes vérifiée" }).waitFor();

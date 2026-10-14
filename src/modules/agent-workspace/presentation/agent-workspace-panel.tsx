@@ -1,332 +1,260 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { Bot, CheckCircle2, ClipboardList, FileText, Settings2 } from "lucide-react";
+import { useState } from "react";
+import { Bot, ClipboardList, MessageSquare, Plug, Server, LayoutDashboard } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { moveAgentMission, prepareAgentMission, type AgentMission } from "../domain/simulation";
 import { HermesConnectionPanel } from "./hermes-connection-panel";
 import { MissionMonitoringPanel } from "./mission-monitoring-panel";
 import { GettingStartedPanel } from "./getting-started-panel";
+import { HermesInventoryPanel } from "./hermes-inventory-panel";
 
 const tabs = [
-  "Accueil",
-  "Missions",
-  "Résultats",
-  "À valider",
-  "Activité réelle",
-  "Connexion",
-  "Réglages",
+  { label: "Vue d’ensemble", icon: LayoutDashboard },
+  { label: "Missions", icon: ClipboardList },
+  { label: "Discussion", icon: MessageSquare },
+  { label: "Capacités", icon: Plug },
+  { label: "Installation", icon: Server },
 ] as const;
-type Tab = (typeof tabs)[number];
-const labels = {
-  ready: "Préparée",
-  approval: "À valider",
-  running: "En cours",
-  completed: "Terminée",
-  stopped: "Arrêtée",
-};
-type Company = { id: string; name: string; canSimulate: boolean };
+type Tab = (typeof tabs)[number]["label"];
+type Company = { id: string; name: string; canWrite: boolean };
+
+function Information({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <article className="rounded-2xl border border-white/10 bg-slate-900/70 p-5 sm:p-6">
+      <h2 className="text-lg font-semibold">{title}</h2>
+      <div className="mt-3 space-y-3 text-sm leading-6 text-slate-300">{children}</div>
+    </article>
+  );
+}
 
 export function AgentWorkspacePanel({ company }: { company: Company }) {
-  const [tab, setTab] = useState<Tab>("Accueil");
-  const [missions, setMissions] = useState<AgentMission[]>([]);
-  const [title, setTitle] = useState("Préparer une fiche de présentation");
-  const [brief, setBrief] = useState(
-    "Obtenir une fiche claire présentant mon activité, mes services et les prochaines étapes.",
-  );
-  const [error, setError] = useState("");
-  const visible = missions.filter((m) => m.companyId === company.id);
-  const runningId = visible.find((m) => m.state === "running")?.id;
-  useEffect(() => {
-    if (!runningId) return;
-    const timer = setTimeout(
-      () =>
-        setMissions((rows) =>
-          rows.map((m) => (m.id === runningId ? moveAgentMission(m, company.id, "finish") : m)),
-        ),
-      3500,
-    );
-    return () => clearTimeout(timer);
-  }, [runningId, company.id]);
-  const pending = visible.filter((m) => m.state === "approval");
-  const finished = visible.filter((m) => m.state === "completed");
-  function act(id: string, action: "approve" | "stop") {
-    if (!company.canSimulate) return;
-    if (action === "approve" && runningId) {
-      setError("Une simulation est déjà en cours. Attendez son résultat ou arrêtez-la.");
-      return;
-    }
-    setError("");
-    setMissions((rows) =>
-      rows.map((m) => (m.id === id ? moveAgentMission(m, company.id, action) : m)),
-    );
-    if (action === "approve") setTab("Missions");
-  }
+  const [tab, setTab] = useState<Tab>("Vue d’ensemble");
   return (
-    <section className="mx-auto max-w-5xl space-y-6">
+    <section className="mx-auto max-w-6xl space-y-6">
       <header className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <p className="flex items-center gap-2 text-sm font-semibold text-indigo-300">
-            <Bot size={17} /> Atelier IA · Hermes Facile
+            <Bot size={17} aria-hidden="true" /> Atelier IA · Hermes
           </p>
-          <h1 className="mt-2 text-3xl font-bold">Vos missions, en toute clarté</h1>
+          <h1 className="mt-2 text-3xl font-bold">Votre poste de commande</h1>
           <p className="mt-3 text-slate-300">
-            Dossier : <strong>{company.name}</strong>
+            Entreprise : <strong>{company.name}</strong>
           </p>
         </div>
         <Link
           href={`/companies/${encodeURIComponent(company.id)}`}
-          className="text-sm text-indigo-300 underline underline-offset-4"
+          className="inline-flex min-h-11 items-center text-sm text-indigo-300 underline underline-offset-4"
         >
           Retour à mon entreprise
         </Link>
       </header>
       <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-amber-100">
-        <strong>
-          {tab === "Activité réelle"
-            ? "Suivi réel · lecture seule"
-            : "Démonstration · 0 € d’appels IA"}
-        </strong>
+        <strong>Connexion à finaliser · lancement désactivé</strong>
         <p className="mt-2 text-sm leading-6">
-          {tab === "Activité réelle"
-            ? "Les missions affichées existent déjà dans Hermes. Vous consultez leur état sans lancer de mission ni appeler de modèle IA. Les liaisons restent conservées dans votre dossier."
-            : "Les missions de démonstration sont simulées. Aucun agent, modèle, outil ou envoi externe n’est lancé. Elles disparaissent lorsque vous actualisez ou quittez cet espace."}
+          Vous pouvez vérifier la connexion et consulter les missions réellement liées à ce dossier.
+          Le lancement et la discussion attendent un raccordement sécurisé et une IA compatible avec
+          votre plafond de 0 € de nouveaux frais API.
         </p>
       </div>
-      {!company.canSimulate && (
+      {!company.canWrite && (
         <p className="rounded-xl border border-white/10 p-4 text-sm text-slate-300">
-          Votre rôle permet de consulter cet espace. La préparation et la validation des simulations
-          sont réservées aux rôles autorisés du dossier.
+          Votre rôle permet la consultation. Les futures commandes seront réservées aux rôles
+          autorisés de cette entreprise.
         </p>
       )}
-      <nav aria-label="Navigation de l’atelier" className="flex flex-wrap gap-2">
-        {tabs.map((label) => (
+      <nav
+        aria-label="Navigation de l’atelier"
+        className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap"
+      >
+        {tabs.map(({ label, icon: Icon }) => (
           <button
             key={label}
+            type="button"
             onClick={() => setTab(label)}
             aria-current={tab === label ? "page" : undefined}
-            className={`rounded-xl border px-4 py-2.5 text-sm font-medium focus-visible:ring-2 focus-visible:ring-indigo-400 ${tab === label ? "border-indigo-400/40 bg-indigo-400/15 text-indigo-100" : "border-white/10 text-slate-300 hover:bg-white/5"}`}
+            className={`flex min-h-11 items-center gap-2 rounded-xl border px-3 py-3 text-left text-sm font-medium focus-visible:ring-2 focus-visible:ring-indigo-400 ${tab === label ? "border-indigo-400/40 bg-indigo-400/15 text-indigo-100" : "border-white/10 text-slate-300 hover:bg-white/5"}`}
           >
+            <Icon size={17} aria-hidden="true" className="shrink-0" />
             {label}
-            {label === "À valider" && pending.length > 0 ? ` (${pending.length})` : ""}
           </button>
         ))}
       </nav>
-      {error && (
-        <p role="alert" className="rounded-xl border border-rose-300/30 p-4 text-rose-200">
-          {error}
-        </p>
-      )}
-      {tab === "Accueil" && (
+      {tab === "Vue d’ensemble" && (
         <>
           <GettingStartedPanel
             key={company.id}
             company={company}
-            onConnection={() => setTab("Connexion")}
-            onActivity={() => setTab("Activité réelle")}
-            onSimulation={() => document.getElementById("agent-title")?.focus()}
+            onConnection={() => setTab("Installation")}
+            onActivity={() => setTab("Missions")}
           />
-          <div className="grid gap-4 sm:grid-cols-3">
-            {[
-              [ClipboardList, visible.length, "Missions préparées"],
-              [CheckCircle2, pending.length, "À valider"],
-              [FileText, finished.length, "Exemples de résultats"],
-            ].map(([Icon, count, label]) => {
-              const Symbol = Icon as typeof ClipboardList;
-              return (
-                <div
-                  key={String(label)}
-                  className="rounded-2xl border border-white/10 bg-slate-900/70 p-5"
-                >
-                  <Symbol size={20} className="text-indigo-300" />
-                  <strong className="mt-3 block text-3xl">{String(count)}</strong>
-                  <p className="mt-1 text-sm text-slate-400">{String(label)}</p>
-                </div>
-              );
-            })}
-          </div>
-          <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6">
-            <h2 className="text-xl font-semibold">Essayer une mission en simulation</h2>
-            <p className="mt-2 text-sm leading-6 text-slate-300">
-              Décrivez le résultat souhaité. Relisez ensuite la demande avant de lancer sa
-              simulation.
-            </p>
-            <form
-              className="mt-5 grid max-w-3xl gap-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                if (!company.canSimulate) return;
-                if (visible.length >= 12) {
-                  setError(
-                    "La démonstration est limitée à douze missions. Actualisez la page pour recommencer.",
-                  );
-                  return;
-                }
-                try {
-                  const mission = prepareAgentMission(
-                    crypto.randomUUID(),
-                    company.id,
-                    title,
-                    brief,
-                  );
-                  setMissions((rows) => [...rows, mission]);
-                  setError("");
-                  setTab("À valider");
-                } catch {
-                  setError("Indiquez un titre et un résultat attendu suffisamment précis.");
-                }
-              }}
-            >
-              <label htmlFor="agent-title" className="text-sm font-semibold">
-                Nom de la mission
-              </label>
-              <input
-                id="agent-title"
-                disabled={!company.canSimulate}
-                minLength={3}
-                maxLength={120}
-                required
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className="rounded-xl border border-white/10 bg-slate-950 p-3 focus-visible:ring-2 focus-visible:ring-indigo-400"
-              />
-              <label htmlFor="agent-brief" className="text-sm font-semibold">
-                Quel résultat souhaitez-vous ?
-              </label>
-              <textarea
-                id="agent-brief"
-                disabled={!company.canSimulate}
-                minLength={10}
-                maxLength={4000}
-                required
-                rows={4}
-                value={brief}
-                onChange={(e) => setBrief(e.target.value)}
-                className="rounded-xl border border-white/10 bg-slate-950 p-3 focus-visible:ring-2 focus-visible:ring-indigo-400"
-              />
-              <Button type="submit" disabled={!company.canSimulate} className="mt-2 w-fit">
-                Préparer la simulation
+          <div className="grid gap-4 md:grid-cols-2">
+            <Information title="Confier un travail à Hermes">
+              <p>
+                Décrivez votre objectif et le résultat attendu. Le parcours réunira les validations,
+                l’exécution, le suivi et les fichiers livrés au même endroit.
+              </p>
+              <p className="text-amber-200">
+                Aujourd’hui : consultation des états des missions liées. Création, arrêt,
+                validations et récupération des résultats restent à raccorder.
+              </p>
+              <Button variant="outline" className="min-h-11" onClick={() => setTab("Missions")}>
+                Ouvrir les missions
               </Button>
-            </form>
+            </Information>
+            <Information title="Discuter avec votre agent">
+              <p>
+                Une conversation pour préciser une demande et poursuivre un travail. Les échanges
+                devront appartenir à cette entreprise.
+              </p>
+              <Button variant="outline" className="min-h-11" onClick={() => setTab("Discussion")}>
+                Voir la discussion
+              </Button>
+            </Information>
+            <Information title="Donner les bons outils à Hermes">
+              <p>
+                Skills, plugins, API et MCP : les capacités dépendent des connexions réellement
+                installées et des autorisations accordées.
+              </p>
+              <Button variant="outline" className="min-h-11" onClick={() => setTab("Capacités")}>
+                Voir les capacités
+              </Button>
+            </Information>
+            <Information title="Votre VPS, votre espace">
+              <p>
+                Priorité à votre VPS Hostinger. Les premiers clients connecteront leur propre VPS ;
+                l’hébergement chez nous viendra ensuite avec des espaces isolés.
+              </p>
+              <Button variant="outline" className="min-h-11" onClick={() => setTab("Installation")}>
+                Vérifier l’installation
+              </Button>
+            </Information>
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <article className="rounded-2xl border border-white/10 p-5">
-              <h2 className="font-semibold">Décider avec Optivos</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-300">
-                Retrouvez votre audit, ses preuves et les recommandations publiées dans votre
-                dossier.
-              </p>
-              <Link
-                href={`/companies/${encodeURIComponent(company.id)}/automation-audit`}
-                className="mt-3 inline-block text-sm text-indigo-300 underline"
-              >
-                Ouvrir mon audit
-              </Link>
-            </article>
-            <article className="rounded-2xl border border-white/10 p-5">
-              <h2 className="font-semibold">Studio créatif</h2>
-              <p className="mt-2 text-sm leading-6 text-slate-300">
-                Une extension envisagée pour les visuels, présentations et documents. Elle n’est pas
-                intégrée dans cette démonstration.
-              </p>
-            </article>
+          <Link
+            href={`/companies/${encodeURIComponent(company.id)}/automation-audit`}
+            className="inline-flex min-h-11 items-center text-sm text-indigo-300 underline"
+          >
+            Retrouver mon audit et mes recommandations
+          </Link>
+        </>
+      )}
+      {tab === "Missions" && (
+        <>
+          <Information title="Missions, validations et résultats">
+            <p>
+              Les états ci-dessous proviennent d’Hermes pour les missions enregistrées dans cette
+              entreprise. Aucun résultat n’est inventé.
+            </p>
+            <p>
+              Pour créer une mission, il reste à connecter le lancement avec un modèle vérifié, les
+              permissions et l’enregistrement de la mission avant son suivi.
+            </p>
+            <Button disabled className="min-h-11" aria-describedby="mission-blocked">
+              Nouvelle mission
+            </Button>
+            <p id="mission-blocked">
+              Indisponible : lancement réel et contrôle du budget pas encore raccordés.
+            </p>
+          </Information>
+          <MissionMonitoringPanel key={company.id} companyId={company.id} />
+        </>
+      )}
+      {tab === "Discussion" && (
+        <Information title="Discussion avec Hermes">
+          <p>
+            La conversation réelle n’est pas encore connectée à Optivos. Aucun message ne sera
+            envoyé ou présenté comme une réponse d’Hermes avant ce raccordement.
+          </p>
+          <p>
+            À raccorder : session privée par entreprise, historique conservé, choix du modèle et
+            contrôle du coût avant chaque demande.
+          </p>
+          <Button variant="outline" className="min-h-11" onClick={() => setTab("Installation")}>
+            Voir les prérequis
+          </Button>
+        </Information>
+      )}
+      {tab === "Capacités" && (
+        <>
+          <HermesInventoryPanel key={company.id} companyId={company.id} />
+          <div className="grid gap-4 md:grid-cols-2">
+            {[
+              [
+                "Skills",
+                "Des consignes et méthodes pour guider une tâche métier. Leur présence ne garantit pas les accès ou les outils nécessaires.",
+              ],
+              [
+                "Plugins",
+                "Des extensions compatibles avec Hermes, à vérifier avant installation et activation.",
+              ],
+              [
+                "API",
+                "Des connexions aux services autorisés, avec les clés conservées côté serveur et leurs éventuels coûts vérifiés.",
+              ],
+              [
+                "MCP",
+                "Des serveurs donnant accès à des outils. Chaque connexion devra être vérifiée et limitée à l’espace du client.",
+              ],
+            ].map(([title, description]) => (
+              <Information key={title} title={title}>
+                <p>{description}</p>
+                <p className="text-amber-200">Inventaire et activation à raccorder</p>
+              </Information>
+            ))}
           </div>
         </>
       )}
-      {(tab === "Missions" || tab === "À valider" || tab === "Résultats") && (
-        <div className="space-y-4">
-          <h2 className="text-xl font-semibold">{tab}</h2>
-          {(tab === "À valider" ? pending : tab === "Résultats" ? finished : visible).length ===
-            0 && (
-            <p className="rounded-2xl border border-white/10 p-6 text-slate-300">
-              Aucune mission dans cette rubrique. Préparez une simulation depuis l’accueil.
-            </p>
-          )}
-          {(tab === "À valider" ? pending : tab === "Résultats" ? finished : visible).map((m) => (
-            <article
-              key={m.id}
-              className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-6"
-            >
-              <div className="flex flex-wrap items-center justify-between gap-3">
-                <h3 className="text-lg font-semibold">{m.title}</h3>
-                <span className="rounded-full bg-indigo-400/10 px-3 py-1 text-xs text-indigo-200">
-                  {labels[m.state]} · simulation
-                </span>
-              </div>
-              <p className="text-sm leading-6 whitespace-pre-wrap text-slate-300">{m.brief}</p>
-              {m.state === "approval" && (
-                <div>
-                  <p className="mb-3 text-sm text-slate-300">
-                    Coût IA : 0 €. Permissions : aucune action externe. Le résultat sera un exemple.
-                  </p>
-                  <Button disabled={!company.canSimulate} onClick={() => act(m.id, "approve")}>
-                    Valider et simuler
-                  </Button>
-                </div>
-              )}
-              {(m.state === "approval" || m.state === "running") && (
-                <Button
-                  disabled={!company.canSimulate}
-                  variant="outline"
-                  onClick={() => act(m.id, "stop")}
-                >
-                  Arrêter la simulation
-                </Button>
-              )}
-              {m.state === "running" && (
-                <p role="status" className="text-sm text-indigo-200">
-                  Simulation en cours…
-                </p>
-              )}
-              {m.result && (
-                <pre className="rounded-xl bg-slate-950 p-4 font-sans text-sm leading-6 break-words whitespace-pre-wrap">
-                  {m.result}
-                </pre>
-              )}
-              <details className="text-sm text-slate-400">
-                <summary className="cursor-pointer">Voir le suivi</summary>
-                <ol className="mt-3 list-inside list-decimal space-y-2">
-                  {m.events.map((event, index) => (
-                    <li key={index}>{event}</li>
-                  ))}
-                </ol>
-              </details>
-            </article>
-          ))}
-        </div>
-      )}
-      {tab === "Connexion" && <HermesConnectionPanel key={company.id} companyId={company.id} />}
-      {tab === "Activité réelle" && (
-        <MissionMonitoringPanel key={company.id} companyId={company.id} />
-      )}
-      {tab === "Réglages" && (
-        <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6">
-          <h2 className="flex items-center gap-2 text-xl font-semibold">
-            <Settings2 size={20} /> Votre atelier
-          </h2>
-          <dl className="mt-5 space-y-5">
-            {[
-              ["Compte et dossier", "Accès contrôlé par votre compte et votre entreprise Optivos."],
-              ["Hermes", "Exécution réelle désactivée. Le parcours utilise une simulation locale."],
-              ["OpenRouter et modèles IA", "Aucun modèle configuré ni appelé par cet atelier."],
-              ["Budget", "0 € d’appels IA ; aucune activation payante disponible."],
-              [
-                "Conservation des missions",
-                "Mémoire de cette page uniquement. Actualiser ou quitter efface la démonstration.",
-              ],
-              [
-                "Compétences et intégrations",
-                "9Router, compétences métier et applications créatives restent à vérifier et à intégrer.",
-              ],
-            ].map(([name, value]) => (
-              <div key={name}>
-                <dt className="font-semibold">{name}</dt>
-                <dd className="mt-1 text-sm leading-6 text-slate-300">{value}</dd>
-              </div>
-            ))}
-          </dl>
-        </div>
+      {tab === "Installation" && (
+        <>
+          <HermesConnectionPanel key={company.id} companyId={company.id} />
+          <div className="grid gap-4 md:grid-cols-2">
+            <Information title="Serveur et installation">
+              <p>
+                Le VPS Hostinger existant est la cible prioritaire. Le contrôle de connexion
+                ci-dessus vérifie uniquement le raccordement de ce dossier à Hermes.
+              </p>
+              <p>
+                L’installation, les mises à jour et la gestion du VPS depuis Optivos ne sont pas
+                encore disponibles.
+              </p>
+            </Information>
+            <Information title="IA et budget">
+              <p>
+                Plafond : <strong>0 € de nouveaux frais API</strong>. Aucun appel payant ne doit
+                être lancé par cet atelier.
+              </p>
+              <ul className="list-inside list-disc space-y-2">
+                <li>OpenRouter : modèle gratuit et absence de repli payant à vérifier.</li>
+                <li>9Router : compatibilité, accès et coût des fournisseurs à vérifier.</li>
+                <li>
+                  Modèle sur VPS : mémoire, vitesse et capacité à utiliser les outils à mesurer.
+                </li>
+              </ul>
+              <p>Aucun de ces choix n’est activé depuis ce tableau de bord.</p>
+            </Information>
+            <Information title="Autonomie et permissions">
+              <p>
+                Trois modes prévus par mission : validation préalable, actions autorisées à
+                l’avance, ou autonomie dans des limites définies.
+              </p>
+              <p>
+                Les envois, publications, dépenses et changements importants demanderont une
+                validation par défaut. Ces réglages doivent être appliqués par le runtime avant
+                activation.
+              </p>
+            </Information>
+            <Information title="Clients et isolation">
+              <p>
+                Première étape : votre usage personnel, puis quelques clients pilotes avec leur
+                propre VPS et leurs comptes IA.
+              </p>
+              <p>
+                L’offre hébergée devra isoler les agents, secrets, sessions et fichiers de chaque
+                client. Elle n’est pas activée.
+              </p>
+            </Information>
+          </div>
+        </>
       )}
     </section>
   );

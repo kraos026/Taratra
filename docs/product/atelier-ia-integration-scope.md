@@ -95,3 +95,16 @@ DB IMPACT: Aucun nouveau schéma ou écriture métier.
 SECURITY IMPACT: Deux GET manuels via les routes authentifiées existantes ; aucun secret, nouveau droit ou lancement.
 TEST PLAN: Vérifications partielles/échouées, liste vide/non vide, absence d’appels automatiques, navigation vers les rubriques, mobile et UI authentifiée.
 OUT-OF-SCOPE: Dispatch, dépenses, installation sur VPS, activation de compétences/modèles, publication et moteurs Optivos.
+
+## Poste de commande réel — 14 octobre 2026
+
+MISSION: Remplacer le parcours simulé par un tableau cohérent avec missions, discussion, capacités et installation ; préparer le raccordement réel.
+AFFECTED DOMAIN: Présentation agent-workspace et diagnostic de connexion en lecture seule.
+CANONICAL OWNER: Auth/CompanyService/RLS existants ; Hermes possède son runtime ; moteur d'audit inchangé.
+CURRENT STATUS: SHADOW. Suivi des missions liées disponible ; discussion, dispatch et installation depuis Optivos restent non raccordés.
+FILES EXPECTED: Panneaux, recettes UI, documentation de raccordement.
+ADDITIONAL SCOPE: Inventaire manuel réel des skills et groupes d'outils, GET natifs bornés, projection sans secrets, autorisation Company avant toute lecture externe. Pas d'installation ni d'activation. Tester isolation, réponses invalides, absence d'appels automatiques et de fuite de champs privés.
+DB IMPACT: Aucun changement de schéma ou de données.
+SECURITY IMPACT: GET manuels existants ; aucun secret navigateur, dépense ou activation implicite. Budget de 0 € de nouveaux frais API conservé.
+TEST PLAN: Navigation desktop/mobile, absence de faux résultats, diagnostics, erreurs et absence de mutations ; isolation existante.
+OUT-OF-SCOPE: Production, moteur d'audit, achat, reset VPS, ouverture publique du serveur natif. Connexion HTTPS et contrôle des coûts requis avant exécution.

@@ -286,7 +286,7 @@ try {
     );
     for (const reload of [false, true]) {
       if (reload) await page.reload({ waitUntil: "networkidle" });
-      await page.getByRole("button", { name: "Activité réelle", exact: true }).click();
+      await page.getByRole("button", { name: "Missions", exact: true }).click();
       await page.getByText("Suivi réel · lecture seule", { exact: true }).waitFor();
       await page.getByRole("button", { name: "Charger les missions liées", exact: true }).click();
       await page
