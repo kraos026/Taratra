@@ -16,7 +16,7 @@ Différence essentielle : dans le service budgets étudié, un montant zéro dé
 
 REA 6.4.0 existant sur le VPS, sans modèle génératif ni installation supplémentaire. Analyse statique limitée à cinq fichiers dérivés des sources : schémas companies/agents, transport-security, parseurs stdout local/gateway. Les trois TypeScript sont transpilés avec le compilateur existant, sans exécuter leur code ; le manifeste de provenance conserve les chemins et empreintes des sources et des fichiers analysés. Le manifeste JSON compte comme sixième fichier inventorié.
 
-Limites : heap de l'analyseur 128 MiB, processus CLI 256 MiB, timeout par source 20 secondes. Résultat : 5 JavaScript parsés, 2 010 nœuds AST visités, aucune erreur de parsing, couverture sémantique partielle, aucun module résolu. Evidence `ev_76c9ea9e90bbc0eee05070494853af1ef9260baf67d45d380593856f0d7b1fdc`. Ce contrôle ne certifie ni l'architecture complète, ni les budgets en exécution, ni les performances de Paperclip. Les conclusions fonctionnelles viennent de la lecture des guides et services source, et non d'un runtime simulé.
+Limites : heap de l'analyseur 128 MiB, heap V8 du CLI 256 MiB (aucune limite RSS déduite), timeout par source 20 secondes. Résultat : 5 JavaScript parsés, 2 010 nœuds AST visités, aucune erreur de parsing, couverture sémantique partielle, aucun module résolu. Evidence `ev_76c9ea9e90bbc0eee05070494853af1ef9260baf67d45d380593856f0d7b1fdc`. Ce contrôle ne certifie ni l'architecture complète, ni les budgets en exécution, ni les performances de Paperclip. Les conclusions fonctionnelles viennent de la lecture des guides et services source, et non d'un runtime simulé.
 
 Le guide REA recommande la lecture ordinaire pour les dépôts source complets ; l'analyse ciblée supplémentaire répond à la demande humaine explicite, sans élargir aux milliers de fichiers ou lancer des agents.
 
@@ -42,3 +42,9 @@ Cette version configure une entreprise d'agents ; elle ne fait pas travailler l'
 Tests du service et recette UI des trois modes ; SQL pgTAP sur Supabase LOCAL CI jetable, puis migration additive et isolation sur staging avant publication finale. La recette UI à réponses API de test ne constitue pas une preuve d'Auth staging. Aucun moteur d'audit, compte client, campagne ou Production modifié.
 
 Suite : relier une configuration à un runtime privé, vérifier zéro frais, exécuter une mission en séquence avec preuves puis ajouter délégation, planning, historique d'équipe et validations. Les skills/plugins/API/MCP seront associés à des profils avec des permissions effectives ; les profils seuls ne confèrent aucun accès.
+
+## Migration staging et identité
+
+La migration source est `20261014181521_agent_company_workspaces.sql`, alignée sur la version attribuée par le MCP Supabase en staging. Son SQL a d'abord passé la CI LOCAL jetable sous l'identifiant CLI initial 20261014174747. La seule correction de recette concernait un statut de fixture : `prospect`, valeur canonique, remplace `draft` qui n'existe pas dans Optivos. Aucun schéma ou moteur existant n'a été changé pour satisfaire le test.
+
+En staging, la création indépendante, la consultation et la liaison au dossier du même tenant ont été vérifiées sous rôle authenticated ; une liaison à l'autre tenant, sa lecture et la lecture anonyme sont refusées. La transaction de recette a été annulée : aucune configuration de test conservée. Cette preuve SQL n'est pas une recette de l'interface staging authentifiée.
