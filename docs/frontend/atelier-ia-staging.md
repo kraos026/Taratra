@@ -14,7 +14,7 @@ TARGET: Supabase automatex-staging (ajvncwsazrhqjlktzojm), Vercel taratra / équ
 PRODUCTION?: NON. Optivos Production (mekihopfrfmqnhmtktgr) n’est pas une cible.
 DISPOSABLE?: Base de staging existante, traitée comme persistante ; aucun reset autorisé.
 BACKUP?: Pas d’écrasement ; opération additive isolée au nouveau registre.
-MIGRATION REQUIRED?: 20261014153000_agent_mission_links.sql, déjà vérifiée en LOCAL.
+MIGRATION REQUIRED?: 20261014162545_agent_mission_links.sql, déjà vérifiée en LOCAL.
 RLS IMPACT?: Nouvelle politique SELECT par organisation/entreprise active ; aucune écriture client.
 TENANT IMPACT?: Lignée composite et unicité de run conservées ; aucun dossier ou utilisateur créé pour cette livraison.
 ROLLBACK PLAN?: Désactiver le flag Preview de la branche ou revenir à la Preview précédente, sans supprimer les données de staging.
@@ -35,3 +35,7 @@ VERCEL_ENV est fourni par Vercel. Aucune clé Hermes, OpenRouter ou service-role
 Le tunnel localhost utilisé pour la recette LOCAL n’est pas joignable depuis Vercel. Il ne faut pas y transférer sa valeur d’URL. En l’absence d’une passerelle HTTPS privée validée, le guide annonce Connexion non configurée ; l’audit, les simulations et le registre de missions restent accessibles avec leurs droits existants. Aucune connexion réelle n’est annoncée comme active en staging sur la seule base des tests locaux.
 
 La connexion distante sera une opération séparée, avec une origine HTTPS protégée et une clé serveur de consultation, avant tout raccordement. L’exécution et les appels IA restent désactivés.
+
+## Identité de la migration
+
+Le MCP Supabase a appliqué la migration en staging sous la version 20261014162545. Le fichier source porte désormais ce même identifiant ; son SQL est inchangé. La recette LOCAL initiale avait utilisé 20261014153000. Son historique doit être réparé avec la CLI Supabase, uniquement en LOCAL, pour refléter le nouvel identifiant sans réappliquer la table ou modifier ses données. Les anciennes preuves restent attachées à leur SHA.

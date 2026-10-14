@@ -90,7 +90,7 @@ La vérification réelle a révélé que le contrat de capacités vient de `/v1/
 
 ## Activité réelle : registre et droits
 
-La migration 20261014153000_agent_mission_links.sql ajoute uniquement le registre SHADOW. Chaque run Hermes n’appartient qu’à une entreprise (unicité globale) et la FK composite garantit organization_id/company_id. Les utilisateurs authentifiés disposent seulement de SELECT sous RLS ; même un propriétaire ne peut saisir, déplacer ou supprimer une liaison. Les écritures appartiennent au serveur privilégié après vérification administrative de provenance. Aucune route POST de création ou de soumission n’est exposée.
+La migration 20261014162545_agent_mission_links.sql ajoute uniquement le registre SHADOW. Chaque run Hermes n’appartient qu’à une entreprise (unicité globale) et la FK composite garantit organization_id/company_id. Les utilisateurs authentifiés disposent seulement de SELECT sous RLS ; même un propriétaire ne peut saisir, déplacer ou supprimer une liaison. Les écritures appartiennent au serveur privilégié après vérification administrative de provenance. Aucune route POST de création ou de soumission n’est exposée.
 
 Le listing GET /api/companies/[id]/atelier-ia/missions projette seulement id de liaison, titre et date ; vingt éléments récents au maximum. GET .../missions/[missionId]/status résout la liaison dans l’entreprise vérifiée avant de consulter Hermes. Un run_id brut, une liaison absente ou étrangère est refusé avant consultation. Le client natif lit GET /v1/runs/{run_id}, valide l’identité retournée et un état reconnu, puis expose seulement l’état et l’heure. Aucun prompt, résultat brut, session, clé ou données d’une autre mission ne passe au navigateur.
 
