@@ -27,3 +27,17 @@ TEST PLAN: Types, lint, tests de navigation existants, navigateur clavier/mobile
 OUT-OF-SCOPE: Moteurs, API, nouvelles connexions réelles, publication et appels payants.
 
 Skill utilisée : UI UX Pro Max, complétée par Optivos UI UX. Menus à boutons natifs, état ouvert annoncé, emplacement courant indiqué, cibles de 44 px et libellés visibles. La recherche locale UX a retourné des recommandations de fil d’Ariane et de titres, sans correspondance directe pour les menus repliables ; le regroupement suit la demande et les règles d’accessibilité de la skill. Les extensions futures restent un texte « À venir », sans lien fictif.
+
+## Connexion Hermes en lecture seule — 14 octobre 2026
+
+MISSION: Vérification manuelle de la connexion Hermes dans le dossier entreprise, sans lancement.
+AFFECTED DOMAIN: Agent-workspace SHADOW ; adaptateur serveur, endpoint de consultation et panneau Connexion.
+CANONICAL OWNER: CompanyService/Auth/RLS contrôlent le dossier ; Hermes reste propriétaire de son runtime. Aucun moteur Optivos n’est modifié.
+CURRENT STATUS: SHADOW, lecture seule, budget IA 0 €.
+FILES EXPECTED: Adaptateur santé, contrat public minimal, route GET company-scoped, panneau et tests/documentation.
+DB IMPACT: Aucun. Pas de registre parallèle de missions.
+SECURITY IMPACT: Clé serveur privée, entreprise liée explicitement côté serveur, aucun identifiant de mission fourni par le navigateur, aucune redirection. Timeout et taille de réponse bornés.
+TEST PLAN: Auth/flag/entreprise avant requête externe, isolation A/B, statut indisponible, réponse malformée, secret non exposé, endpoints exclusivement GET /health, UI navigateur simulée.
+OUT-OF-SCOPE: Exécution, arrêt, approbations, sessions globales, historique des missions, achat, modification du VPS et déploiement.
+
+L’accès réel de santé a été vérifié par le connecteur Hermes de ce chat. Ce résultat ne prouve pas une configuration réseau ou des secrets dans le serveur Optivos. Un statut de mission réel exige d’abord une liaison persistante mission ↔ entreprise certifiée ; ce périmètre affiche seulement la santé et les capacités de suivi, sans importer les sessions d’autres clients.

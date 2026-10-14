@@ -5,8 +5,9 @@ import { useEffect, useState } from "react";
 import { Bot, CheckCircle2, ClipboardList, FileText, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { moveAgentMission, prepareAgentMission, type AgentMission } from "../domain/simulation";
+import { HermesConnectionPanel } from "./hermes-connection-panel";
 
-const tabs = ["Accueil", "Missions", "Résultats", "À valider", "Réglages"] as const;
+const tabs = ["Accueil", "Missions", "Résultats", "À valider", "Connexion", "Réglages"] as const;
 type Tab = (typeof tabs)[number];
 const labels = {
   ready: "Préparée",
@@ -273,6 +274,7 @@ export function AgentWorkspacePanel({ company }: { company: Company }) {
           ))}
         </div>
       )}
+      {tab === "Connexion" && <HermesConnectionPanel key={company.id} companyId={company.id} />}
       {tab === "Réglages" && (
         <div className="rounded-2xl border border-white/10 bg-slate-900/70 p-6">
           <h2 className="flex items-center gap-2 text-xl font-semibold">

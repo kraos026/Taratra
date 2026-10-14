@@ -59,3 +59,21 @@ Brancher la passerelle HTTP Hermes déjà testée dans le projet Hermes, puis d�
 Vue d’ensemble reste au premier niveau. Audit regroupe Mon entreprise, Parcours d’audit, Opportunités, ROI, Plan d’action et Résultats. Orchestrateur & agents regroupe l’Atelier IA ; compétences, connexions et Studio créatif sont annoncés comme extensions futures. Ce groupe suit le flag du laboratoire.
 
 Le groupe de la page courante s’ouvre initialement. Les groupes se déplient indépendamment ; leurs liens conservent les destinations canoniques et le contexte entreprise. Les boutons exposent aria-expanded/aria-controls, les liens aria-current. Sous 1024 px, un bouton Menu affiche la navigation avec défilement vertical borné ; Échap ferme le menu et rend le focus au bouton. Aucun menu exclusivement à icônes ni défilement horizontal.
+
+## Connexion Hermes en lecture seule
+
+La rubrique Connexion effectue une vérification manuelle via `GET /api/companies/[id]/atelier-ia/connection`. Aucun polling, chargement automatique de sessions ou appel de modèle. Chaque consultation passe d’abord par l’accès authentifié au dossier et les flags du laboratoire. Les réponses ne sont jamais mises en cache.
+
+Configuration exclusivement côté serveur :
+
+```text
+OPTIVOS_HERMES_COMPANY_ID=<UUID du dossier autorisé>
+OPTIVOS_HERMES_API_URL=http://127.0.0.1:8642
+OPTIVOS_HERMES_API_KEY=<clé privée de l’API Hermes>
+```
+
+Le serveur Optivos doit pouvoir joindre cette origine : localhost désigne sa propre machine. Depuis un PC, utiliser un tunnel SSH privé vers le VPS existant ; depuis un autre hébergement, fournir une origine HTTPS protégée déjà configurée. Ne pas ouvrir publiquement le port natif pour cette étape. La clé n’est jamais une variable NEXT_PUBLIC ni une clé OpenRouter. Elle ne doit pas être versionnée.
+
+Une seule entreprise est liée pour ce pilote ; toute autre entreprise reçoit « Ce dossier n’est pas lié à Hermes » sans requête externe. En l’absence des paramètres serveur, la vérification annonce « Connexion non configurée ». La destination provient exclusivement de la configuration : HTTPS ou HTTP sur 127.0.0.1/::1, sans identifiants dans l’URL, chemin, paramètres, fragments ou redirections. Lecture de /health uniquement, timeout de 3 secondes, réponse limitée à 16 Kio et contrat Hermes validé. Seuls l’état de connexion, l’heure et les deux capacités de suivi sont projetés au navigateur.
+
+La clé du connecteur Hermes de ce chat n’a pas été copiée dans Optivos. Une réponse positive obtenue via ce connecteur ne certifie pas la connexion serveur Optivos. Le suivi réel des missions reste FUTURE jusqu’à une liaison persistante mission ↔ entreprise et des tests RLS dédiés. Aucun historique global n’est exposé et aucun lancement, arrêt, approbation ou envoi réel n’est proposé.

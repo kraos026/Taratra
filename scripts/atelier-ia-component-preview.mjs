@@ -75,6 +75,17 @@ const checks = [];
 const errors = [];
 const blocked = [];
 let mutationCount = 0;
+let connectionCount = 0;
+let connectionStatus = 200;
+let connectionBody = {
+  data: {
+    state: "connected",
+    checkedAt: "2026-10-14T10:00:00.000Z",
+    monitoring: { status: true, events: true },
+    liveExecution: false,
+    modelCalls: 0,
+  },
+};
 try {
   const executablePath = "C:/Program Files/Google/Chrome/Application/chrome.exe";
   browser = await chromium.launch({
@@ -92,6 +103,14 @@ try {
       return route.abort();
     }
     if (request.method() !== "GET") mutationCount++;
+    if (url.pathname.endsWith("/atelier-ia/connection")) {
+      connectionCount++;
+      return route.fulfill({
+        status: connectionStatus,
+        contentType: "application/json",
+        body: JSON.stringify(connectionBody),
+      });
+    }
     if (url.pathname === "/api/companies")
       return route.fulfill({
         contentType: "application/json",
@@ -216,6 +235,42 @@ try {
   await page.getByRole("button", { name: "Missions", exact: true }).click();
   await page.getByText("Aucune mission dans cette rubrique.", { exact: false }).waitFor();
   checks.push("no cross-session mission persistence");
+  await page.getByRole("button", { name: "Connexion", exact: true }).click();
+  assert.equal(connectionCount, 0);
+  const checkConnection = page.getByRole("button", { name: "Vérifier la connexion", exact: true });
+  await checkConnection.click();
+  await page.getByRole("status").filter({ hasText: "Connexion Hermes vérifiée" }).waitFor();
+  assert.equal(connectionCount, 1);
+  await page.screenshot({ path: join(evidence, "optivos-hermes-connexion.png"), fullPage: true });
+  for (const [state, label] of [
+    ["unconfigured", "Connexion non configurée"],
+    ["unlinked", "Ce dossier n’est pas lié à Hermes"],
+    ["unavailable", "Hermes est temporairement indisponible"],
+  ]) {
+    connectionBody = {
+      data: {
+        state,
+        checkedAt: "2026-10-14T10:00:00.000Z",
+        monitoring: { status: false, events: false },
+        liveExecution: false,
+        modelCalls: 0,
+      },
+    };
+    await checkConnection.click();
+    await page.getByRole("status").filter({ hasText: label }).waitFor();
+    assert.equal(await page.getByText("disponible dans Hermes", { exact: true }).count(), 0);
+  }
+  connectionStatus = 403;
+  await checkConnection.click();
+  await page.getByRole("status").filter({ hasText: "Vérification impossible" }).waitFor();
+  connectionStatus = 200;
+  connectionBody = { data: { state: "connected", liveExecution: true } };
+  await checkConnection.click();
+  await page.getByRole("status").filter({ hasText: "Vérification impossible" }).waitFor();
+  assert.equal(connectionCount, 6);
+  checks.push(
+    "manual health only, four connection states, access failure and invalid live response",
+  );
   await page.goto(`${base}/?dashboard`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Bienvenue dans Optivos", exact: true }).waitFor();
   await page.getByRole("button", { name: "Menu", exact: true }).click();
@@ -256,6 +311,7 @@ try {
         checks,
         kind: "component fixture with mocked company navigation",
         realSupabaseAuth: false,
+        hermesHealthMocked: true,
         databaseMutations: 0,
         externalModelCalls: 0,
         stagingCertified: false,
