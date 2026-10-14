@@ -108,3 +108,24 @@ DB IMPACT: Aucun changement de schéma ou de données.
 SECURITY IMPACT: GET manuels existants ; aucun secret navigateur, dépense ou activation implicite. Budget de 0 € de nouveaux frais API conservé.
 TEST PLAN: Navigation desktop/mobile, absence de faux résultats, diagnostics, erreurs et absence de mutations ; isolation existante.
 OUT-OF-SCOPE: Production, moteur d'audit, achat, reset VPS, ouverture publique du serveur natif. Connexion HTTPS et contrôle des coûts requis avant exécution.
+
+## Entreprises IA inspirées de Paperclip — configuration persistante
+
+MISSION: Ajouter une option de création d'entreprise d'agents, indépendante d'un dossier d'audit et pouvant lui être reliée. Trois modes : guidé, modèle et manuel ; petite équipe d'abord.
+AFFECTED DOMAIN: Agent-workspace SHADOW, configurations organisationnelles et liaison facultative au Company canonique.
+CANONICAL OWNER: Auth/Organization et permissions Company existantes ; Supabase possède la nouvelle persistance ; Hermes reste le runtime, sans changement des moteurs d'audit.
+CURRENT STATUS: Configuration persistante en préparation ; exécution non raccordée. Aucune équipe n'est annoncée opérationnelle sur la seule création de configuration.
+FILES EXPECTED: Schéma/domain, routes et service de configuration, repository PostgREST/RLS, wizard/listing, migration et tests dédiés, documentation de l'analyse Paperclip/REA.
+DB IMPACT: Table agent_company_workspaces additive ; organization_id obligatoire, company_id facultatif avec FK composite ; pas de modèle Prisma supplémentaire ni duplication d'Auth.
+SECURITY IMPACT: Organisation sélectionnée selon le repository canonique ; droits owner/admin/consultant pour créer et lier, viewer pour consulter ; secrets exclus, état preparation et budget API 0 contraints en DB ; maximum trois profils et une exécution simultanée prévue.
+TEST PLAN: Validation stricte, replay idempotent, accès avant lecture/écriture, origine/JSON bornés, RLS A/B/viewer/anonyme, FK/liaison inactive, persistence et UI des trois modes. CI utilise Supabase LOCAL jetable avant application staging.
+OUT-OF-SCOPE: Dispatch, scheduler, installation complète de Paperclip, comptes clients, Production, moteur d'audit, abonnement, achats et inférence.
+
+TARGET: Supabase LOCAL CI jetable, puis automatex-staging ajvncwsazrhqjlktzojm seulement.
+PRODUCTION?: NON.
+DISPOSABLE?: CI oui ; staging persistante, aucun reset.
+BACKUP?: Migration additive, aucune donnée existante écrasée.
+MIGRATION REQUIRED?: Oui, agent_company_workspaces, propriété Supabase.
+RLS IMPACT?: Nouvelles politiques SELECT/INSERT et UPDATE de la seule liaison company_id. Pas de DELETE, déplacement de tenant ou activation.
+TENANT IMPACT?: Organisation obligatoire dès la création indépendante ; liaison uniquement à une entreprise active du même tenant.
+ROLLBACK PLAN?: Revenir à la Preview précédente ; conserver les configurations et la table, aucune suppression distante.

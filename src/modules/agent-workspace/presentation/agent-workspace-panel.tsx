@@ -49,6 +49,16 @@ export function AgentWorkspacePanel({ company }: { company: Company }) {
           Retour à mon entreprise
         </Link>
       </header>
+      <Link
+        href={`/atelier-ia/entreprises?company=${encodeURIComponent(company.id)}`}
+        className="block rounded-2xl border border-indigo-400/30 bg-indigo-400/10 p-5 focus-visible:ring-2 focus-visible:ring-indigo-400"
+      >
+        <h2 className="font-semibold">Créer une entreprise IA</h2>
+        <p className="mt-2 text-sm leading-6 text-slate-300">
+          Un objectif, une équipe d’agents et vos validations. Création guidée, modèle ou
+          composition manuelle ; lien avec ce dossier facultatif.
+        </p>
+      </Link>
       <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-amber-100">
         <strong>Connexion à finaliser · lancement désactivé</strong>
         <p className="mt-2 text-sm leading-6">

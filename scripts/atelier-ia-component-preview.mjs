@@ -37,8 +37,9 @@ writeFileSync(
 import {CompanyShell} from '@/components/dashboard/company-shell';
 import {InteractiveDashboard} from '@/components/dashboard/interactive-dashboard';
 import {AgentWorkspacePanel} from '@/modules/agent-workspace/presentation/agent-workspace-panel';
+import {AgentCompanyPanel} from '@/modules/agent-workspace/presentation/agent-company-panel';
 import './style.css';
-createRoot(document.getElementById('root')!).render(location.search.includes('dashboard') ? <InteractiveDashboard/> : <CompanyShell verifiedCompanyId='${companyId}'><AgentWorkspacePanel company={{id:'${companyId}',name:'Entreprise de démonstration',canWrite:true}}/></CompanyShell>);`,
+createRoot(document.getElementById('root')!).render(location.search.includes('dashboard') ? <InteractiveDashboard/> : location.search.includes('enterprise') ? <CompanyShell><AgentCompanyPanel initial={[]} companies={[{id:'${companyId}',name:'Entreprise de recette'}]} canWrite={true}/></CompanyShell> : <CompanyShell verifiedCompanyId='${companyId}'><AgentWorkspacePanel company={{id:'${companyId}',name:'Entreprise de démonstration',canWrite:true}}/></CompanyShell>);`,
 );
 // Preview only: avoid remote font requests and restrict Tailwind scanning.
 const css = readFileSync(join(root, "src/app/globals.css"), "utf8")
@@ -77,6 +78,8 @@ const blocked = [];
 let mutationCount = 0;
 let connectionCount = 0;
 let connectionStatus = 200;
+let teamRows = [];
+let teamWrites = 0;
 let inventoryCount = 0;
 let inventoryStatus = 200;
 let inventoryBody = {
@@ -128,6 +131,42 @@ try {
         status: connectionStatus,
         contentType: "application/json",
         body: JSON.stringify(connectionBody),
+      });
+    }
+    if (url.pathname === "/api/atelier-ia/entreprises" && request.method() === "POST") {
+      teamWrites++;
+      const input = request.postDataJSON();
+      assert.equal(Object.hasOwn(input, "organization_id"), false);
+      assert.equal(Object.hasOwn(input, "status"), false);
+      const row = {
+        ...input,
+        company_id: input.companyId,
+        status: "preparation",
+        api_budget_euro: 0,
+        concurrency_limit: 1,
+        created_at: "2026-10-14T10:00:00Z",
+      };
+      teamRows = [row, ...teamRows.filter((x) => x.id !== row.id)];
+      return route.fulfill({
+        status: 201,
+        contentType: "application/json",
+        body: JSON.stringify({ data: row }),
+      });
+    }
+    if (url.pathname === "/api/atelier-ia/entreprises")
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ data: { items: teamRows, hasMore: false, canWrite: true } }),
+      });
+    if (url.pathname.startsWith("/api/atelier-ia/entreprises/") && request.method() === "PATCH") {
+      teamWrites++;
+      const id = url.pathname.split("/").at(-1);
+      const company_id = request.postDataJSON().companyId;
+      const row = teamRows.find((x) => x.id === id);
+      row.company_id = company_id;
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ data: row }),
       });
     }
     if (url.pathname.endsWith("/atelier-ia/inventory")) {
@@ -312,6 +351,7 @@ try {
   inventoryBody.data.skills = { state: "unconfigured", items: [] };
   inventoryBody.data.toolsets = { state: "unconfigured", items: [] };
   await page.getByRole("button", { name: "Vérifier les capacités", exact: true }).click();
+  await page.getByText("Connexion non configurée", { exact: true }).first().waitFor();
   assert.equal(await page.getByText("Connexion non configurée", { exact: true }).count(), 2);
   checks.push(
     "manual inventory read, actual items rendered, enabled/configured distinction, failure clears stale data",
@@ -438,6 +478,59 @@ try {
   assert.equal(blocked.length, 0);
   assert.equal(mutationCount, 0);
   checks.push("no JS errors, remote requests or mutations");
+  await page.goto(`${base}/?enterprise`, { waitUntil: "networkidle" });
+  await page.getByRole("heading", { name: "Créer votre entreprise IA", exact: true }).waitFor();
+  await page.getByRole("radio", { name: "À partir d’un modèle", exact: false }).check();
+  await page.getByLabel("Modèle d’équipe", { exact: true }).selectOption("research");
+  assert.equal(
+    await page.getByLabel("Nom de l’agent 1", { exact: true }).inputValue(),
+    "Responsable de recherche",
+  );
+  await page.getByRole("radio", { name: "Manuel", exact: false }).check();
+  await page.getByRole("button", { name: "Ajouter un agent", exact: true }).click();
+  assert.equal(
+    await page.getByRole("button", { name: "Ajouter un agent", exact: true }).isDisabled(),
+    true,
+  );
+  await page.getByRole("button", { name: "Retirer l’agent 3", exact: true }).click();
+  await page.getByLabel("Nom de l’entreprise IA", { exact: true }).fill("Équipe recherche pilote");
+  await page
+    .getByLabel("Quel résultat doit produire cette équipe ?", { exact: true })
+    .fill("Produire un rapport avec des sources vérifiables.");
+  await page.getByRole("button", { name: "Enregistrer l’entreprise IA", exact: true }).click();
+  await page.getByRole("heading", { name: "Équipe recherche pilote", exact: true }).waitFor();
+  await page
+    .getByText("En préparation · agents non démarrés · budget API 0 €", { exact: true })
+    .waitFor();
+  await page
+    .getByLabel("Dossier lié à Équipe recherche pilote", { exact: true })
+    .selectOption(companyId);
+  await page.getByRole("button", { name: "Actualiser", exact: true }).click();
+  assert.equal(
+    await page.getByLabel("Dossier lié à Équipe recherche pilote", { exact: true }).inputValue(),
+    companyId,
+  );
+  assert.equal(teamWrites, 2);
+  assert.equal(mutationCount, 2);
+  assert.equal(blocked.length, 0);
+  assert.equal(errors.length, 0);
+  for (const width of [375, 820, 1440]) {
+    await page.setViewportSize({ width, height: 1000 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+  }
+  await page.screenshot({
+    path: join(evidence, "optivos-entreprises-ia-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.screenshot({
+    path: join(evidence, "optivos-entreprises-ia-mobile.png"),
+    fullPage: true,
+  });
+  checks.push(
+    "three company creation modes, small-team cap, configuration-only save, independent then linked, refreshed registry, responsive layouts; backend mocked",
+  );
+
   writeFileSync(
     join(evidence, "component-preview.json"),
     JSON.stringify(
@@ -448,6 +541,7 @@ try {
         realSupabaseAuth: false,
         hermesHealthMocked: true,
         databaseMutations: 0,
+        mockedConfigurationMutations: teamWrites,
         externalModelCalls: 0,
         stagingCertified: false,
       },

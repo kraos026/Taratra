@@ -29,6 +29,16 @@ export default async function AgentWorkspaceIndex({
             discussion, capacités et installation.
           </p>
         </header>
+        <Link
+          href="/atelier-ia/entreprises"
+          className="block rounded-2xl border border-indigo-400/30 bg-indigo-400/10 p-5 focus-visible:ring-2 focus-visible:ring-indigo-400"
+        >
+          <h2 className="font-semibold">Créer une entreprise IA</h2>
+          <p className="mt-2 text-sm leading-6 text-slate-300">
+            Définissez un objectif et une petite équipe : guidé, modèle ou manuel. Commencez dans un
+            espace indépendant ou reliez-le à un dossier Optivos.
+          </p>
+        </Link>
         <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm text-amber-100">
           Le suivi des missions liées est disponible après configuration de la connexion. Le
           lancement et la discussion restent à raccorder avec votre plafond de 0 € de nouveaux frais
