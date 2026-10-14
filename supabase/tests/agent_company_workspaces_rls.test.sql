@@ -13,8 +13,8 @@ insert into public.organization_members(organization_id,user_id,role) values
  ('a9222222-2222-4222-8222-222222222222','19222222-2222-4222-8222-222222222222','owner'),
  ('a9111111-1111-4111-8111-111111111111','19333333-3333-4333-8333-333333333333','viewer');
 insert into public.companies(id,organization_id,name,status) values
- ('c9111111-1111-4111-8111-111111111111','a9111111-1111-4111-8111-111111111111','Audit A','draft'),
- ('c9222222-2222-4222-8222-222222222222','a9222222-2222-4222-8222-222222222222','Audit B','draft'),
+ ('c9111111-1111-4111-8111-111111111111','a9111111-1111-4111-8111-111111111111','Audit A','prospect'),
+ ('c9222222-2222-4222-8222-222222222222','a9222222-2222-4222-8222-222222222222','Audit B','prospect'),
  ('c9333333-3333-4333-8333-333333333333','a9111111-1111-4111-8111-111111111111','Archived A','archived');
 insert into public.agent_company_workspaces(id,organization_id,created_by,name,objective,mode,agents) values
  ('d9111111-1111-4111-8111-111111111111','a9111111-1111-4111-8111-111111111111','19111111-1111-4111-8111-111111111111','Workspace A','Produce a verified report','guided','[{"name":"Coordinator","role":"Review work"}]'),
