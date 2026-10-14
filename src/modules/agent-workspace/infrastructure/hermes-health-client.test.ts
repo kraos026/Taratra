@@ -32,7 +32,7 @@ describe("Hermes read-only health boundary", () => {
     ).toBe("unlinked");
     expect(fetcher).not.toHaveBeenCalled();
   });
-  it("uses only authenticated GET /health with no redirects, caching or inference", async () => {
+  it("uses only authenticated GET /v1/capabilities with no redirects, caching or inference", async () => {
     const fetcher = vi.fn().mockResolvedValue(Response.json(healthy));
     const result = await readHermesConnection(id, env, fetcher);
     expect(result).toMatchObject({
@@ -43,7 +43,7 @@ describe("Hermes read-only health boundary", () => {
     });
     expect(isHermesConnection(result)).toBe(true);
     expect(fetcher).toHaveBeenCalledTimes(1);
-    expect(fetcher.mock.calls[0][0].href).toBe("http://127.0.0.1:8642/health");
+    expect(fetcher.mock.calls[0][0].href).toBe("http://127.0.0.1:8642/v1/capabilities");
     expect(fetcher.mock.calls[0][1]).toMatchObject({
       method: "GET",
       cache: "no-store",
@@ -105,7 +105,7 @@ describe("Hermes read-only health boundary", () => {
         fetcher,
       ),
     ).toMatchObject({ state: "connected", monitoring: { status: false, events: false } });
-    expect(fetcher.mock.calls[0][0].href).toBe("https://hermes.example/health");
+    expect(fetcher.mock.calls[0][0].href).toBe("https://hermes.example/v1/capabilities");
   });
   it("rejects malformed UI contracts and an accidental live execution response", async () => {
     for (const value of [

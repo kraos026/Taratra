@@ -10,7 +10,7 @@ const healthSchema = z.object({
   features: z.object({ run_status: z.boolean(), run_events_sse: z.boolean() }),
 });
 
-/** Adapted from HermesPilotClient: only native GET /health, never inference or global sessions. */
+/** Adapted from HermesPilotClient: only native GET /v1/capabilities, never inference or global sessions. */
 export async function readHermesConnection(
   companyId: string,
   env: Record<string, string | undefined> = process.env,
@@ -49,7 +49,7 @@ export async function readHermesConnection(
       !(url.protocol === "https:" || (url.protocol === "http:" && loopback))
     )
       return result("unconfigured");
-    const response = await fetcher(new URL("/health", url), {
+    const response = await fetcher(new URL("/v1/capabilities", url), {
       method: "GET",
       headers: {
         Authorization: `Bearer ${env.OPTIVOS_HERMES_API_KEY}`,

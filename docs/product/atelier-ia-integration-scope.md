@@ -37,7 +37,28 @@ CURRENT STATUS: SHADOW, lecture seule, budget IA 0 €.
 FILES EXPECTED: Adaptateur santé, contrat public minimal, route GET company-scoped, panneau et tests/documentation.
 DB IMPACT: Aucun. Pas de registre parallèle de missions.
 SECURITY IMPACT: Clé serveur privée, entreprise liée explicitement côté serveur, aucun identifiant de mission fourni par le navigateur, aucune redirection. Timeout et taille de réponse bornés.
-TEST PLAN: Auth/flag/entreprise avant requête externe, isolation A/B, statut indisponible, réponse malformée, secret non exposé, endpoints exclusivement GET /health, UI navigateur simulée.
+TEST PLAN: Auth/flag/entreprise avant requête externe, isolation A/B, statut indisponible, réponse malformée, secret non exposé, endpoints exclusivement GET /v1/capabilities, UI navigateur simulée.
 OUT-OF-SCOPE: Exécution, arrêt, approbations, sessions globales, historique des missions, achat, modification du VPS et déploiement.
 
 L’accès réel de santé a été vérifié par le connecteur Hermes de ce chat. Ce résultat ne prouve pas une configuration réseau ou des secrets dans le serveur Optivos. Un statut de mission réel exige d’abord une liaison persistante mission ↔ entreprise certifiée ; ce périmètre affiche seulement la santé et les capacités de suivi, sans importer les sessions d’autres clients.
+
+## Recette réelle locale du raccordement — 14 octobre 2026
+
+MISSION: Configurer la lecture de santé avec la clé Hermes existante et un tunnel déjà ouvert ; vérifier la route Optivos avec Auth/RLS réels pour deux comptes de certification locaux.
+AFFECTED DOMAIN: Recette du module agent-workspace et script de lancement privé.
+CANONICAL OWNER: Auth/CompanyService/RLS existants, runtime Hermes existant.
+CURRENT STATUS: SHADOW, lecture seule, aucun appel de modèle.
+FILES EXPECTED: Script de recette, documentation et preuves ; configuration privée hors Git.
+DB IMPACT: Supabase LOCAL de certification déjà présent ; réutilisation des comptes A/B et entreprises existants sans écriture métier. Les connexions créent les sessions Auth normales.
+SECURITY IMPACT: Secret DPAPI lu uniquement en mémoire, origine locale fixe, entreprise issue de la DB authentifiée, tests négatifs A/B.
+TEST PLAN: GET authentifié via vrai serveur Next ; refus sans compte et entre entreprises ; aucun lancement.
+OUT-OF-SCOPE: Modifications moteurs, écritures STAGING/PRODUCTION, déploiement public, sessions globales, appels payants.
+
+TARGET: LOCAL uniquement, projet Supabase automatex de certification existant.
+PRODUCTION?: NON.
+DISPOSABLE?: OUI, données de certification uniquement.
+BACKUP?: Aucun écrasement ni suppression de données existantes.
+MIGRATION REQUIRED?: Aucune migration et aucune initialisation ; base existante uniquement.
+RLS IMPACT?: Politiques existantes conservées et testées.
+TENANT IMPACT?: Deux comptes de test locaux isolés.
+ROLLBACK PLAN?: Fermer le serveur de recette ; conserver les conteneurs existants et fermer les processus créés par cette recette.
