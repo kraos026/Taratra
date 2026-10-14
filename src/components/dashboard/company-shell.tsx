@@ -17,10 +17,15 @@ import {
   LayoutDashboard,
   Sparkles,
   Target,
+  Bot,
 } from "lucide-react";
+import {
+  agentLabVisible,
+  agentWorkspaceHref,
+} from "@/modules/agent-workspace/application/agent-workspace-policy";
 import { OptivosLogo } from "@/components/brand/optivos-logo";
 
-const pilotNavigation = [
+const decisionNavigation = [
   [LayoutDashboard, "Vue d’ensemble", "/"],
   [Building2, "Mon entreprise", "/companies"],
   [CircleGauge, "Audit", "/companies"],
@@ -29,6 +34,9 @@ const pilotNavigation = [
   [FileText, "Plan d’action", "/recommendations"],
   [Target, "Résultats", "/companies"],
 ] as const;
+const pilotNavigation = agentLabVisible()
+  ? [...decisionNavigation, [Bot, "Atelier IA", "/atelier-ia"] as const]
+  : decisionNavigation;
 
 export function CompanyShell({
   children,
@@ -59,10 +67,13 @@ export function CompanyShell({
   }, [companyId, pathname]);
 
   function navigationHref(label: (typeof pilotNavigation)[number][1], fallback: string): string {
+    if (label === "Atelier IA") return agentWorkspaceHref(companyId);
     return companyNavigationHref(companyId, model, label, fallback);
   }
 
   function isActive(label: (typeof pilotNavigation)[number][1]): boolean {
+    if (pathname.endsWith("/atelier-ia") || pathname === "/atelier-ia")
+      return label === "Atelier IA";
     if (/\/results/.test(pathname)) return label === "Résultats";
     if (/\/recommendations\//.test(pathname)) return label === "Plan d’action";
     if (/\/roi\//.test(pathname)) return label === "ROI";
@@ -85,7 +96,7 @@ export function CompanyShell({
         </Link>
         <nav className="relative mt-9 space-y-1" aria-label="Navigation principale">
           <p className="mb-3 px-3 text-[11px] font-semibold tracking-[0.14em] text-slate-400 uppercase">
-            Espace de travail
+            Comprendre et décider
           </p>
           {pilotNavigation.map(([Icon, label, href]) => (
             <Link

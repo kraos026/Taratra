@@ -17,7 +17,12 @@ import {
   Search,
   Sparkles,
   Target,
+  Bot,
 } from "lucide-react";
+import {
+  agentLabVisible,
+  agentWorkspaceHref,
+} from "@/modules/agent-workspace/application/agent-workspace-policy";
 import type { AssistedAuditReadModel } from "@/modules/assisted-audit/application/assisted-audit-model";
 import {
   currentJourneyLabel,
@@ -110,7 +115,7 @@ export function InteractiveDashboard() {
         actionPlan: dashboardRoutes.companies,
         results: dashboardRoutes.companies,
       };
-  const navigation = [
+  const decisionNavigation = [
     [LayoutDashboard, "Vue d’ensemble", dashboardRoutes.overview],
     [Building2, "Mon entreprise", dashboardRoutes.companies],
     [CircleGauge, "Audit", activeRoutes.audit],
@@ -119,6 +124,9 @@ export function InteractiveDashboard() {
     [FileText, "Plan d’action", activeRoutes.actionPlan],
     [Target, "Résultats", activeRoutes.results],
   ] as const;
+  const navigation = agentLabVisible()
+    ? [...decisionNavigation, [Bot, "Atelier IA", agentWorkspaceHref(activeCompany?.id)] as const]
+    : decisionNavigation;
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -133,7 +141,7 @@ export function InteractiveDashboard() {
           <OptivosLogo subtitle="Espace de décision" />
         </Link>
         <nav aria-label="Navigation principale">
-          <p className="nav-label">ESPACE OPTIVOS</p>
+          <p className="nav-label">COMPRENDRE ET DÉCIDER</p>
           {navigation.map(([Icon, label, href]) => (
             <Link
               className={href === "/" ? "nav-item active" : "nav-item"}
@@ -189,6 +197,31 @@ export function InteractiveDashboard() {
         </header>
 
         <div className="page">
+          {agentLabVisible() && (
+            <section
+              className="mb-6 grid gap-4 rounded-2xl border border-indigo-300/20 bg-indigo-300/5 p-5 sm:grid-cols-2"
+              aria-label="Vos espaces Optivos"
+            >
+              <div>
+                <h2 className="font-semibold text-slate-100">Optivos · Décisions et preuves</h2>
+                <p className="mt-2 text-sm text-slate-300">
+                  Votre audit reste le point de départ pour choisir les prochaines actions.
+                </p>
+              </div>
+              <div>
+                <h2 className="font-semibold text-slate-100">Atelier IA · Missions et résultats</h2>
+                <p className="mt-2 text-sm text-slate-300">
+                  Explorez un parcours de mission en simulation, sans activer d’agent réel.
+                </p>
+                <Link
+                  href={agentWorkspaceHref(activeCompany?.id)}
+                  className="mt-3 inline-flex items-center gap-2 text-sm text-indigo-300 underline"
+                >
+                  Ouvrir l’atelier <ArrowRight size={15} />
+                </Link>
+              </div>
+            </section>
+          )}
           <div className="heading">
             <div>
               <p className="eyebrow">TABLEAU DE BORD</p>
