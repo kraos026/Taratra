@@ -1,5 +1,7 @@
 # Raccordement réel Hermes — diagnostic du 14 octobre 2026
 
+Mise à jour transport du 15 octobre : la passerelle HTTPS de consultation est active et ses onze contrôles publics passent. Voir [la preuve et les limites](./atelier-ia-gateway.md). Les variables privées et le binding du pilote Vercel ne sont pas configurés ; le dossier affiché était un dossier de certification. Les étapes d'exécution ci-dessous restent ouvertes, et aucun modèle n'a été appelé.
+
 ## Ce qui a été vérifié sans inférence
 
 - VPS Hostinger 2059450, srv2059450.hstgr.cloud, KVM 1 : running.
