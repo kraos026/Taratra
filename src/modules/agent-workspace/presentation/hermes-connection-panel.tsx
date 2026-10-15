@@ -2,13 +2,14 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { hermesConsultationPath, type HermesPanelScope } from "../domain/hermes-runtime-scope";
 import {
   hermesConnectionLabels,
   isHermesConnection,
   type HermesConnection,
 } from "../domain/hermes-connection";
 
-export function HermesConnectionPanel({ companyId }: { companyId: string }) {
+export function HermesConnectionPanel(scope: HermesPanelScope) {
   const [connection, setConnection] = useState<HermesConnection | null>(null);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
@@ -23,13 +24,10 @@ export function HermesConnectionPanel({ companyId }: { companyId: string }) {
     setConnection(null);
     setError("");
     try {
-      const response = await fetch(
-        `/api/companies/${encodeURIComponent(companyId)}/atelier-ia/connection`,
-        {
-          cache: "no-store",
-          signal: controller.signal,
-        },
-      );
+      const response = await fetch(`${hermesConsultationPath(scope)}/connection`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       if (!response.ok) throw new Error("Connection unavailable");
       const payload = (await response.json()) as { data?: unknown };
       const value = payload.data;
@@ -53,7 +51,7 @@ export function HermesConnectionPanel({ companyId }: { companyId: string }) {
     >
       <h2 className="text-xl font-semibold">Connexion Hermes</h2>
       <p className="mt-3 text-sm leading-6 text-slate-300">
-        Vérifiez si Hermes répond pour ce dossier. Cette vérification ne lance aucune mission et
+        Vérifiez si Hermes répond pour cet espace. Cette vérification ne lance aucune mission et
         n’appelle aucun modèle IA.
       </p>
       <Button className="mt-4 min-h-11" onClick={check} disabled={checking}>
@@ -82,9 +80,11 @@ export function HermesConnectionPanel({ companyId }: { companyId: string }) {
         </dl>
       )}
       <p className="mt-5 text-sm leading-6 text-slate-400">
-        Les missions déjà liées à ce dossier sont consultables dans Missions. Une connexion de suivi
-        réussie n’active ni la discussion ni le lancement : leur raccordement et le contrôle du
-        budget restent nécessaires.
+        {scope.workspaceId
+          ? "Cette connexion permet de consulter Hermes pour cette entreprise IA. "
+          : "Les missions déjà liées à ce dossier sont consultables dans Missions. "}
+        Une connexion de suivi réussie n’active ni la discussion ni le lancement : leur raccordement
+        et le contrôle du budget restent nécessaires.
       </p>
     </section>
   );

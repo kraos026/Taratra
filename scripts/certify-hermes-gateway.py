@@ -7,7 +7,12 @@ import re
 import ssl
 import subprocess
 from urllib.error import HTTPError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, HTTPSHandler, Request, build_opener
+
+
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, request, file, code, message, headers, new_url):
+        return None
 
 
 def main():
@@ -27,6 +32,7 @@ def main():
     if not re.fullmatch(r"[0-9a-f]{64}", key):
         raise RuntimeError("Dedicated gateway key unavailable; nothing printed")
     context = ssl.create_default_context()
+    opener = build_opener(HTTPSHandler(context=context), NoRedirect)
     checks = []
     cases = [
         ("GET", "/v1/capabilities", "missing", 404),
@@ -45,7 +51,7 @@ def main():
         headers = {} if auth == "missing" else {"Authorization": "Bearer " + (key if auth == "valid" else "wrong")}
         request = Request("https://srv2059450.hstgr.cloud" + path, headers=headers, method=method)
         try:
-            with urlopen(request, context=context, timeout=10) as response:
+            with opener.open(request, timeout=10) as response:
                 status = response.status
                 body = response.read(131073)
         except HTTPError as error:

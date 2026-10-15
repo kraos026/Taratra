@@ -18,6 +18,41 @@ const healthy = {
 };
 
 describe("Hermes read-only health boundary", () => {
+  it("keeps the standalone workspace binding distinct from an audit dossier binding", async () => {
+    const config = {
+      ...env,
+      OPTIVOS_HERMES_COMPANY_ID: undefined,
+      OPTIVOS_HERMES_WORKSPACE_ID: id,
+    };
+    const fetcher = vi.fn().mockImplementation(() => Promise.resolve(Response.json(healthy)));
+    expect((await readHermesConnection(id, config, fetcher)).state).toBe("unconfigured");
+    expect(
+      (
+        await readHermesConnection(
+          { workspaceId: "22222222-2222-4222-8222-222222222222" },
+          config,
+          fetcher,
+        )
+      ).state,
+    ).toBe("unlinked");
+    expect((await readHermesConnection({ workspaceId: id }, env, fetcher)).state).toBe(
+      "unconfigured",
+    );
+    expect(
+      (
+        await readHermesConnection(
+          { workspaceId: id },
+          { ...env, OPTIVOS_HERMES_WORKSPACE_ID: id },
+          fetcher,
+        )
+      ).state,
+    ).toBe("unconfigured");
+    expect(fetcher).not.toHaveBeenCalled();
+    expect((await readHermesConnection({ workspaceId: id }, config, fetcher)).state).toBe(
+      "connected",
+    );
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
   it("does not contact Hermes without explicit company binding and private configuration", async () => {
     const fetcher = vi.fn();
     for (const config of [

@@ -15,13 +15,18 @@ import socket
 import subprocess
 import time
 from urllib.error import HTTPError
-from urllib.request import Request, urlopen
+from urllib.request import HTTPRedirectHandler, Request, build_opener
 
 
 ROOT = Path("/opt/optivos-hermes-gateway")
 UNIT = Path("/etc/systemd/system/optivos-hermes-gateway.service")
 HOST = "srv2059450.hstgr.cloud"
 LOCAL_PORT = 18645
+
+
+class NoRedirect(HTTPRedirectHandler):
+    def redirect_request(self, request, file, code, message, headers, new_url):
+        return None
 
 
 def configuration(address):
@@ -82,6 +87,7 @@ def run_checked(command, env):
 
 
 def local_recipe(binary, env, config):
+    opener = build_opener(NoRedirect)
     # Prove the loopback port is unused before creating any process.
     with socket.socket() as probe:
         probe.bind(("127.0.0.1", LOCAL_PORT))
@@ -118,7 +124,7 @@ def local_recipe(binary, env, config):
             headers = {"Authorization": "Bearer " + key} if key else {}
             request = Request(f"http://127.0.0.1:{LOCAL_PORT}{path}", headers=headers, method=method)
             try:
-                with urlopen(request, timeout=8) as response:
+                with opener.open(request, timeout=8) as response:
                     status = response.status
                     body = response.read(131073)
             except HTTPError as error:

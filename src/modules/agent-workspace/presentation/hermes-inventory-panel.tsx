@@ -1,15 +1,16 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { hermesConsultationPath, type HermesPanelScope } from "../domain/hermes-runtime-scope";
 import { hermesInventorySchema, type HermesInventory } from "../domain/hermes-inventory";
 
 const labels = {
   available: "Inventaire vérifié",
   unconfigured: "Connexion non configurée",
-  unlinked: "Ce dossier n’est pas lié à Hermes",
+  unlinked: "Cet espace n’est pas lié à Hermes",
   unavailable: "Inventaire indisponible",
 };
-export function HermesInventoryPanel({ companyId }: { companyId: string }) {
+export function HermesInventoryPanel(scope: HermesPanelScope) {
   const [inventory, setInventory] = useState<HermesInventory | null>(null);
   const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
@@ -23,10 +24,10 @@ export function HermesInventoryPanel({ companyId }: { companyId: string }) {
     setInventory(null);
     setError("");
     try {
-      const response = await fetch(
-        `/api/companies/${encodeURIComponent(companyId)}/atelier-ia/inventory`,
-        { cache: "no-store", signal: controller.signal },
-      );
+      const response = await fetch(`${hermesConsultationPath(scope)}/inventory`, {
+        cache: "no-store",
+        signal: controller.signal,
+      });
       if (!response.ok) throw new Error("Unavailable");
       const body = (await response.json()) as { data?: unknown };
       const parsed = hermesInventorySchema.safeParse(body.data);

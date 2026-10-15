@@ -1,21 +1,27 @@
 import "server-only";
 import { companyIdSchema } from "@/modules/companies/application/company-schemas";
+import type { HermesRuntimeScope } from "../domain/hermes-runtime-scope";
 
 type Result =
   | { state: "available"; data: unknown }
   | { state: "unconfigured" | "unlinked" | "unavailable" | "not_found" };
 /** Trusted configuration and fixed native GET paths; keys and raw responses stay on the server. */
 export async function readHermesJson(
-  companyId: string,
+  scope: HermesRuntimeScope,
   path: string,
   env: Record<string, string | undefined> = process.env,
   fetcher: typeof fetch = fetch,
 ): Promise<Result> {
   if (!/^\/(?:v1\/(?:capabilities|skills|toolsets)|v1\/runs\/run_[0-9a-f]{32})$/.test(path))
     return { state: "unavailable" };
-  const owner = companyIdSchema.safeParse(env.OPTIVOS_HERMES_COMPANY_ID);
+  if (env.OPTIVOS_HERMES_COMPANY_ID && env.OPTIVOS_HERMES_WORKSPACE_ID)
+    return { state: "unconfigured" };
+  const workspace = typeof scope !== "string";
+  const owner = companyIdSchema.safeParse(
+    workspace ? env.OPTIVOS_HERMES_WORKSPACE_ID : env.OPTIVOS_HERMES_COMPANY_ID,
+  );
   if (!owner.success) return { state: "unconfigured" };
-  if (owner.data !== companyId) return { state: "unlinked" };
+  if (owner.data !== (workspace ? scope.workspaceId : scope)) return { state: "unlinked" };
   if (!env.OPTIVOS_HERMES_API_KEY || !env.OPTIVOS_HERMES_API_URL) return { state: "unconfigured" };
   let url: URL;
   try {

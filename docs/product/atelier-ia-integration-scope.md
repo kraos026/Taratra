@@ -129,3 +129,24 @@ MIGRATION REQUIRED?: Oui, agent_company_workspaces, propriété Supabase.
 RLS IMPACT?: Nouvelles politiques SELECT/INSERT et UPDATE de la seule liaison company_id. Pas de DELETE, déplacement de tenant ou activation.
 TENANT IMPACT?: Organisation obligatoire dès la création indépendante ; liaison uniquement à une entreprise active du même tenant.
 ROLLBACK PLAN?: Revenir à la Preview précédente ; conserver les configurations et la table, aucune suppression distante.
+
+## Espace pilote personnel et consultation Hermes — 15 octobre 2026
+
+MISSION: Creer l'espace reel demande par l'utilisateur et raccorder sa consultation Hermes.
+AFFECTED DOMAIN: Agent-workspace SHADOW uniquement.
+CANONICAL OWNER: Auth/Organization existants, agent_company_workspaces et Hermes.
+CURRENT STATUS: Configuration persistante et consultation ; aucun dispatch.
+FILES EXPECTED: Clients Hermes partages avec scope entreprise IA, routes Auth/RLS et panneaux existants reutilises, tests.
+DB IMPACT: Une configuration personnelle creee dans la table existante ; aucune migration ni table metier modifiee.
+SECURITY IMPACT: Proprietaire reel verifie par adresse connue et membership canonique ; ecriture sous role authenticated/RLS ; binding explicite par workspace, distinct des dossiers d'audit. Aucun run global.
+TEST PLAN: Refus anonyme/autre org/espace inconnu avant reseau ; scope configure exact ; sante/inventaire publics ; UI de composants ; CI.
+OUT-OF-SCOPE: Moteurs d'audit, Production, inférence, budget payant, execution, modifications du modele global.
+
+TARGET: automatex-staging ajvncwsazrhqjlktzojm, compte reel kraosltd2@gmail.com et son organisation existante.
+PRODUCTION?: NON.
+DISPOSABLE?: NON ; donnees personnelles du pilote demandees par l'utilisateur.
+BACKUP?: Aucune donnee existante ecrasee ; ajout unique avec UUID fixe pour eviter les doublons.
+MIGRATION REQUIRED?: NON.
+RLS IMPACT?: Politiques existantes conservees ; role authenticated et auth.uid du proprietaire verifie.
+TENANT IMPACT?: Organisation canonique du compte uniquement ; aucun dossier CERT reutilise.
+ROLLBACK PLAN?: Revenir a la Preview precedente, conserver la configuration ; aucune suppression distante.

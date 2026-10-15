@@ -2,15 +2,16 @@ import "server-only";
 import { z } from "zod";
 import { skillSchema, toolsetSchema, type HermesInventory } from "../domain/hermes-inventory";
 import { readHermesJson } from "./hermes-json-client";
+import type { HermesRuntimeScope } from "../domain/hermes-runtime-scope";
 
 export async function readHermesInventory(
-  companyId: string,
+  scope: HermesRuntimeScope,
   env: Record<string, string | undefined> = process.env,
   fetcher: typeof fetch = fetch,
 ): Promise<HermesInventory> {
   const [skills, toolsets] = await Promise.all([
-    readHermesJson(companyId, "/v1/skills", env, fetcher),
-    readHermesJson(companyId, "/v1/toolsets", env, fetcher),
+    readHermesJson(scope, "/v1/skills", env, fetcher),
+    readHermesJson(scope, "/v1/toolsets", env, fetcher),
   ]);
   function list<T>(
     response: Awaited<ReturnType<typeof readHermesJson>>,

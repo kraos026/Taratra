@@ -3,6 +3,7 @@ import "server-only";
 import { z } from "zod";
 import { readHermesJson } from "./hermes-json-client";
 import type { HermesConnection } from "../domain/hermes-connection";
+import type { HermesRuntimeScope } from "../domain/hermes-runtime-scope";
 
 const healthSchema = z.object({
   object: z.literal("hermes.api_server.capabilities"),
@@ -12,7 +13,7 @@ const healthSchema = z.object({
 
 /** Adapted from HermesPilotClient: only native GET /v1/capabilities, never inference or global sessions. */
 export async function readHermesConnection(
-  companyId: string,
+  scope: HermesRuntimeScope,
   env: Record<string, string | undefined> = process.env,
   fetcher: typeof fetch = fetch,
 ): Promise<HermesConnection> {
@@ -27,7 +28,7 @@ export async function readHermesConnection(
     liveExecution: false,
     modelCalls: 0,
   });
-  const response = await readHermesJson(companyId, "/v1/capabilities", env, fetcher);
+  const response = await readHermesJson(scope, "/v1/capabilities", env, fetcher);
   if (response.state !== "available")
     return result(response.state === "not_found" ? "unavailable" : response.state);
   const data = healthSchema.safeParse(response.data);

@@ -125,7 +125,10 @@ try {
       return route.abort();
     }
     if (request.method() !== "GET") mutationCount++;
-    if (url.pathname.endsWith("/atelier-ia/connection")) {
+    if (
+      url.pathname.endsWith("/atelier-ia/connection") ||
+      /^\/api\/atelier-ia\/entreprises\/[^/]+\/connection$/.test(url.pathname)
+    ) {
       connectionCount++;
       return route.fulfill({
         status: connectionStatus,
@@ -169,7 +172,10 @@ try {
         body: JSON.stringify({ data: row }),
       });
     }
-    if (url.pathname.endsWith("/atelier-ia/inventory")) {
+    if (
+      url.pathname.endsWith("/atelier-ia/inventory") ||
+      /^\/api\/atelier-ia\/entreprises\/[^/]+\/inventory$/.test(url.pathname)
+    ) {
       inventoryCount++;
       return route.fulfill({
         status: inventoryStatus,
@@ -419,7 +425,7 @@ try {
   await page.screenshot({ path: join(evidence, "optivos-hermes-connexion.png"), fullPage: true });
   for (const [state, label] of [
     ["unconfigured", "Connexion non configurée"],
-    ["unlinked", "Ce dossier n’est pas lié à Hermes"],
+    ["unlinked", "Cet espace n’est pas lié à Hermes"],
     ["unavailable", "Hermes est temporairement indisponible"],
   ]) {
     connectionBody = {
@@ -512,6 +518,40 @@ try {
   );
   assert.equal(teamWrites, 2);
   assert.equal(mutationCount, 2);
+  connectionBody = {
+    data: {
+      state: "connected",
+      checkedAt: "2026-10-15T08:00:00Z",
+      monitoring: { status: true, events: true },
+      liveExecution: false,
+      modelCalls: 0,
+    },
+  };
+  inventoryBody.data.skills = {
+    state: "available",
+    items: [{ name: "research", description: "Sources vérifiables" }],
+  };
+  const enterprise = page
+    .getByRole("article")
+    .filter({ has: page.getByRole("heading", { name: "Équipe recherche pilote", exact: true }) });
+  const countBefore = connectionCount;
+  await enterprise.getByText("Connexion et compétences Hermes", { exact: true }).click();
+  assert.equal(connectionCount, countBefore);
+  const connectionRequest = page.waitForRequest((request) =>
+    request.url().endsWith(`/api/atelier-ia/entreprises/${teamRows[0].id}/connection`),
+  );
+  await enterprise.getByRole("button", { name: "Vérifier la connexion", exact: true }).click();
+  await connectionRequest;
+  await enterprise.getByText(/Connexion Hermes vérifiée/).waitFor();
+  const inventoryRequest = page.waitForRequest((request) =>
+    request.url().endsWith(`/api/atelier-ia/entreprises/${teamRows[0].id}/inventory`),
+  );
+  await enterprise.getByRole("button", { name: "Vérifier les capacités", exact: true }).click();
+  await inventoryRequest;
+  await enterprise.getByText("research", { exact: true }).waitFor();
+  checks.push(
+    "standalone workspace health and inventory use workspace routes on manual action only; responses mocked",
+  );
   assert.equal(blocked.length, 0);
   assert.equal(errors.length, 0);
   for (const width of [375, 820, 1440]) {

@@ -2,6 +2,8 @@
 import Link from "next/link";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { HermesConnectionPanel } from "./hermes-connection-panel";
+import { HermesInventoryPanel } from "./hermes-inventory-panel";
 import {
   agentCompanySchema,
   agentCompanyListSchema,
@@ -407,6 +409,15 @@ export function AgentCompanyPanel({
                 </li>
               ))}
             </ol>
+            <details className="rounded-xl border border-white/10 p-4">
+              <summary className="min-h-11 cursor-pointer text-sm font-semibold text-indigo-200">
+                Connexion et compétences Hermes
+              </summary>
+              <div className="mt-3 grid gap-4 xl:grid-cols-2">
+                <HermesConnectionPanel workspaceId={item.id} />
+                <HermesInventoryPanel workspaceId={item.id} />
+              </div>
+            </details>
             <div className="grid gap-2 text-sm font-semibold">
               <label htmlFor={`agent-company-link-${item.id}`}>Dossier lié à {item.name}</label>
               <select

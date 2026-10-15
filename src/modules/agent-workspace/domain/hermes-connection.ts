@@ -8,7 +8,7 @@ export type HermesConnection = {
 
 export const hermesConnectionLabels = {
   unconfigured: "Connexion non configurée",
-  unlinked: "Ce dossier n’est pas lié à Hermes",
+  unlinked: "Cet espace n’est pas lié à Hermes",
   unavailable: "Hermes est temporairement indisponible",
   connected: "Connexion Hermes vérifiée",
 } as const;

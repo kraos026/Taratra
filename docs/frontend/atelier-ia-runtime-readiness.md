@@ -1,6 +1,6 @@
 # Raccordement réel Hermes — diagnostic du 14 octobre 2026
 
-Mise à jour transport du 15 octobre : la passerelle HTTPS de consultation est active et ses onze contrôles publics passent. Voir [la preuve et les limites](./atelier-ia-gateway.md). Les variables privées et le binding du pilote Vercel ne sont pas configurés ; le dossier affiché était un dossier de certification. Les étapes d'exécution ci-dessous restent ouvertes, et aucun modèle n'a été appelé.
+Mise à jour du 15 octobre : la passerelle HTTPS de consultation est active et ses onze contrôles publics passent. L'espace réel « Optivos — équipe IA » est créé sur demande humaine dans l'organisation propriétaire ; les variables privées de sa seule branche Preview sont configurées, avec binding WORKSPACE_ID distinct des dossiers d'audit. Santé et inventaire ont des routes Auth/RLS et des boutons manuels. Voir [la preuve et les limites](./atelier-ia-gateway.md). Le dossier affiché auparavant était un dossier de certification et reste non lié. Auth navigateur staging : NOT RUN. Les étapes d'exécution ci-dessous restent ouvertes, et aucun modèle n'a été appelé.
 
 ## Ce qui a été vérifié sans inférence
 
