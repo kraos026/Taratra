@@ -81,10 +81,8 @@ export function HermesConnectionPanel(scope: HermesPanelScope) {
       )}
       <p className="mt-5 text-sm leading-6 text-slate-400">
         {scope.workspaceId
-          ? "Cette connexion permet de consulter Hermes pour cette entreprise IA. "
-          : "Les missions déjà liées à ce dossier sont consultables dans Missions. "}
-        Une connexion de suivi réussie n’active ni la discussion ni le lancement : leur raccordement
-        et le contrôle du budget restent nécessaires.
+          ? "Cette vérification consulte Hermes pour cette entreprise IA. Les missions textuelles se lancent séparément dans Missions textuelles pilotes, après contrôle de gratuité. La discussion et les actions externes restent à raccorder."
+          : "Les missions déjà liées à ce dossier sont consultables dans Missions. Une connexion de suivi réussie n’active ni la discussion ni le lancement : leur raccordement et le contrôle du budget restent nécessaires."}
       </p>
     </section>
   );
