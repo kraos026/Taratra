@@ -150,3 +150,15 @@ MIGRATION REQUIRED?: NON.
 RLS IMPACT?: Politiques existantes conservees ; role authenticated et auth.uid du proprietaire verifie.
 TENANT IMPACT?: Organisation canonique du compte uniquement ; aucun dossier CERT reutilise.
 ROLLBACK PLAN?: Revenir a la Preview precedente, conserver la configuration ; aucune suppression distante.
+
+## Premier contrôle zéro frais — 15 octobre 2026
+
+MISSION: Vérifier puis construire une barrière effective avant le premier dispatch réel.
+AFFECTED DOMAIN: Agent-workspace SHADOW, adaptateur runtime du pilote.
+CANONICAL OWNER: Auth/Organization et registre agent-workspace existants ; Hermes pour l'exécution.
+CURRENT STATUS: Consultation raccordée ; lancement interdit tant que la barrière n'est pas éprouvée.
+FILES EXPECTED: Politique déterministe de prix/outils/fallback et tests, documentation ; éventuel proxy privé borné du pilote.
+DB IMPACT: Aucun au diagnostic. Toute persistance de nouvelles missions sera cadrée séparément avant migration.
+SECURITY IMPACT: Modèle explicitement gratuit, tarification fraîche, aucun repli payant ; aucune modification des accès canoniques ou du modèle global existant.
+TEST PLAN: Prix inconnu/payant/refusé, modèle non autorisé, prix/cache périmé, repli, outils externes payants ; contrôles négatifs avant toute inférence.
+OUT-OF-SCOPE: Production Optivos, moteurs d'audit, achat/abonnement et appels payants.

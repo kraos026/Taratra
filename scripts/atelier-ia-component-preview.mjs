@@ -80,6 +80,11 @@ let connectionCount = 0;
 let connectionStatus = 200;
 let teamRows = [];
 let teamWrites = 0;
+let pilotReads = 0;
+let pilotWrites = 0;
+let pilotReadinessStatus = 503;
+const pilotRequestIds = [];
+let pilotRows = [];
 let inventoryCount = 0;
 let inventoryStatus = 200;
 let inventoryBody = {
@@ -125,6 +130,73 @@ try {
       return route.abort();
     }
     if (request.method() !== "GET") mutationCount++;
+    if (/^\/api\/atelier-ia\/entreprises\/[^/]+\/readiness$/.test(url.pathname)) {
+      pilotReads++;
+      return route.fulfill({
+        status: pilotReadinessStatus,
+        contentType: "application/json",
+        body: JSON.stringify(
+          pilotReadinessStatus === 200
+            ? {
+                data: {
+                  state: "ready",
+                  toolsAllowed: 0,
+                  fallbackAllowed: false,
+                  policy: {
+                    model: "nvidia/nemotron-3.5-lightning:free",
+                    checkedAt: 1792080000,
+                    pricing: { prompt: "0", completion: "0" },
+                  },
+                },
+              }
+            : { error: { message: "Pilote temporairement indisponible." } },
+        ),
+      });
+    }
+    if (/^\/api\/atelier-ia\/entreprises\/[^/]+\/missions\/[0-9a-f-]+\/stop$/.test(url.pathname)) {
+      pilotWrites++;
+      const row = pilotRows.find((item) => item.id === url.pathname.split("/").at(-2));
+      row.status = "stopping";
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ data: { stopping: true } }),
+      });
+    }
+    if (/^\/api\/atelier-ia\/entreprises\/[^/]+\/missions$/.test(url.pathname)) {
+      if (request.method() === "POST") {
+        pilotWrites++;
+        const input = request.postDataJSON();
+        pilotRequestIds.push(input.id);
+        assert.deepEqual(Object.keys(input).sort(), ["id", "prompt"]);
+        let row = pilotRows.find((item) => item.id === input.id);
+        if (!row) {
+          row = {
+            ...input,
+            status: "queued",
+            created_at: 1792080000,
+            updated_at: 1792080000,
+            output: null,
+            error: null,
+            proof: null,
+          };
+          pilotRows.push(row);
+        }
+        return route.fulfill({
+          status: pilotRequestIds.length === 1 ? 503 : 202,
+          contentType: "application/json",
+          body: JSON.stringify(
+            pilotRequestIds.length === 1
+              ? { error: { message: "Accusé de réception perdu : reprenez la même demande." } }
+              : { data: row },
+          ),
+        });
+      }
+      pilotReads++;
+      return route.fulfill({
+        contentType: "application/json",
+        body: JSON.stringify({ data: { items: pilotRows, hasMore: false } }),
+      });
+    }
     if (
       url.pathname.endsWith("/atelier-ia/connection") ||
       /^\/api\/atelier-ia\/entreprises\/[^/]+\/connection$/.test(url.pathname)
@@ -505,9 +577,7 @@ try {
     .fill("Produire un rapport avec des sources vérifiables.");
   await page.getByRole("button", { name: "Enregistrer l’entreprise IA", exact: true }).click();
   await page.getByRole("heading", { name: "Équipe recherche pilote", exact: true }).waitFor();
-  await page
-    .getByText("En préparation · agents non démarrés · budget API 0 €", { exact: true })
-    .waitFor();
+  await page.getByText("Équipe en préparation · budget API 0 €", { exact: true }).waitFor();
   await page
     .getByLabel("Dossier lié à Équipe recherche pilote", { exact: true })
     .selectOption(companyId);
@@ -552,6 +622,67 @@ try {
   checks.push(
     "standalone workspace health and inventory use workspace routes on manual action only; responses mocked",
   );
+  await enterprise.getByText("Missions textuelles pilotes", { exact: true }).click();
+  assert.equal(pilotReads, 0);
+  await enterprise.getByRole("button", { name: "Vérifier le pilote gratuit", exact: true }).click();
+  await enterprise.getByText("Pilote temporairement indisponible.", { exact: true }).waitFor();
+  assert.equal(
+    await enterprise
+      .getByRole("button", { name: "Lancer la mission textuelle", exact: true })
+      .isDisabled(),
+    true,
+  );
+  pilotReadinessStatus = 200;
+  await enterprise.getByRole("button", { name: "Vérifier le pilote gratuit", exact: true }).click();
+  await enterprise
+    .getByText("Pilote gratuit vérifié. Aucun outil externe ni repli autorisé.", { exact: true })
+    .waitFor();
+  await enterprise
+    .getByLabel("Quelle mission textuelle confier à Hermes ?", { exact: true })
+    .fill("Prépare une procédure de recette pour notre accueil client.");
+  await enterprise
+    .getByRole("button", { name: "Lancer la mission textuelle", exact: true })
+    .click();
+  await enterprise
+    .getByText("Accusé de réception perdu : reprenez la même demande.", { exact: true })
+    .waitFor();
+  assert.equal(
+    await enterprise
+      .getByLabel("Quelle mission textuelle confier à Hermes ?", { exact: true })
+      .isDisabled(),
+    true,
+  );
+  await enterprise.getByRole("button", { name: "Reprendre la même demande", exact: true }).click();
+  await enterprise.getByText("En attente", { exact: true }).waitFor();
+  assert.equal(pilotRequestIds[0], pilotRequestIds[1]);
+  assert.equal(pilotRows.length, 1);
+  await enterprise.getByRole("button", { name: "Demander l’arrêt", exact: true }).click();
+  await enterprise.getByText("Arrêt demandé", { exact: true }).waitFor();
+  pilotRows[0].status = "stopped";
+  pilotRows.push({
+    ...pilotRows[0],
+    id: "33333333-3333-4333-8333-333333333333",
+    prompt: "Ancienne mission de recette terminée",
+    status: "completed",
+    output: "Résultat de recette uniquement : procédure d’accueil en cinq étapes.",
+    proof: {
+      model: "nvidia/nemotron-3.5-lightning:free",
+      verifiedApiCostUsd: "0",
+      llmRequests: 1,
+      verifiedResponses: 1,
+      tools: 0,
+      fallbacks: 0,
+      runtime: "Hermes AIAgent",
+    },
+  });
+  await enterprise.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
+  await enterprise.getByText("Arrêtée", { exact: true }).waitFor();
+  await enterprise.getByText(/Réponse réelle Hermes · coût API vérifié : 0 \$/).waitFor();
+  assert.equal(pilotWrites, 3);
+  assert.equal(mutationCount, 5);
+  checks.push(
+    "text pilot manual readiness, blocked unavailable launch, lost-ack idempotent retry, real-state stop and verified-cost result presentation; backend mocked",
+  );
   assert.equal(blocked.length, 0);
   assert.equal(errors.length, 0);
   for (const width of [375, 820, 1440]) {
@@ -582,6 +713,7 @@ try {
         hermesHealthMocked: true,
         databaseMutations: 0,
         mockedConfigurationMutations: teamWrites,
+        mockedMissionMutationRequests: pilotWrites,
         externalModelCalls: 0,
         stagingCertified: false,
       },

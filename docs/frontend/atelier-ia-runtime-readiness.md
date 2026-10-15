@@ -1,5 +1,7 @@
 # Raccordement réel Hermes — diagnostic du 14 octobre 2026
 
+Étape du 15 octobre : un [pilote textuel réel à zéro nouveaux frais API](./atelier-ia-free-pilot.md) est maintenant construit et vérifié sur le VPS. Une mission est terminée avec une réponse fournisseur de coût retourné 0 USD (608 tokens d'entrée, 133 de sortie). Les profils d'équipe restent en préparation : outils externes, discussion, délégation et validations métier ne sont pas activés. Les constats ci-dessous décrivent les étapes précédentes.
+
 Mise à jour du 15 octobre : la passerelle HTTPS de consultation est active et ses onze contrôles publics passent. L'espace réel « Optivos — équipe IA » est créé sur demande humaine dans l'organisation propriétaire ; les variables privées de sa seule branche Preview sont configurées, avec binding WORKSPACE_ID distinct des dossiers d'audit. Santé et inventaire ont des routes Auth/RLS et des boutons manuels. Voir [la preuve et les limites](./atelier-ia-gateway.md). Le dossier affiché auparavant était un dossier de certification et reste non lié. Auth navigateur staging : NOT RUN. Les étapes d'exécution ci-dessous restent ouvertes, et aucun modèle n'a été appelé.
 
 ## Ce qui a été vérifié sans inférence

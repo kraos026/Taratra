@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { HermesConnectionPanel } from "./hermes-connection-panel";
 import { HermesInventoryPanel } from "./hermes-inventory-panel";
+import { FreePilotPanel } from "./free-pilot-panel";
 import {
   agentCompanySchema,
   agentCompanyListSchema,
@@ -150,11 +151,11 @@ export function AgentCompanyPanel({
         </Link>
       </header>
       <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm leading-6 text-amber-100">
-        <strong>Configuration réelle · agents à connecter</strong>
+        <strong>Équipe enregistrée · activation progressive</strong>
         <p className="mt-2">
-          La création conserve votre objectif et les profils de l’équipe. Elle ne démarre pas
-          Hermes. Le lancement attend la connexion au VPS et un modèle respectant le plafond de 0 €
-          de nouveaux frais API.
+          La création conserve votre objectif et les profils de l’équipe. Les missions textuelles
+          pilotes se lancent séparément, dans un espace relié au VPS et soumis au contrôle de
+          gratuité. Les actions externes et la délégation restent à raccorder.
         </p>
       </div>
       {unavailable && (
@@ -360,9 +361,9 @@ export function AgentCompanyPanel({
             </select>
           </div>
           <p className="text-sm leading-6 text-slate-400">
-            Hermes, skills, plugins, API et MCP seront liés à chaque profil au raccordement. Aucun
-            secret ou droit d’exécution n’est enregistré par ce formulaire. Une seule exécution
-            simultanée sera prévue pour le pilote.
+            Les skills, plugins, API et MCP de chaque profil demanderont des permissions au
+            raccordement. Aucun secret ou droit d’action externe n’est enregistré par ce formulaire.
+            Les missions textuelles pilotes s’exécutent une par une.
           </p>
         </fieldset>
         <Button disabled={saving || !canWrite || unavailable} type="submit" className="min-h-11">
@@ -391,9 +392,7 @@ export function AgentCompanyPanel({
           >
             <div>
               <h3 className="text-lg font-semibold">{item.name}</h3>
-              <p className="mt-1 text-sm text-amber-200">
-                En préparation · agents non démarrés · budget API 0 €
-              </p>
+              <p className="mt-1 text-sm text-amber-200">Équipe en préparation · budget API 0 €</p>
             </div>
             <p className="text-sm leading-6 whitespace-pre-wrap text-slate-300">{item.objective}</p>
             <ol className="grid gap-3 sm:grid-cols-3">
@@ -416,6 +415,14 @@ export function AgentCompanyPanel({
               <div className="mt-3 grid gap-4 xl:grid-cols-2">
                 <HermesConnectionPanel workspaceId={item.id} />
                 <HermesInventoryPanel workspaceId={item.id} />
+              </div>
+            </details>
+            <details className="rounded-xl border border-white/10 p-4">
+              <summary className="min-h-11 cursor-pointer text-sm font-semibold text-indigo-200">
+                Missions textuelles pilotes
+              </summary>
+              <div className="mt-3">
+                <FreePilotPanel workspaceId={item.id} canWrite={canWrite} />
               </div>
             </details>
             <div className="grid gap-2 text-sm font-semibold">
