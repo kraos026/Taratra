@@ -1,6 +1,16 @@
 "use client";
 import { useEffect, useRef } from "react";
-import { Search, SquarePen, Clock3, Bot, Blocks, Sparkles, Settings, Ellipsis } from "lucide-react";
+import {
+  Search,
+  SquarePen,
+  Clock3,
+  Bot,
+  Blocks,
+  Sparkles,
+  Settings,
+  Ellipsis,
+  Layers3,
+} from "lucide-react";
 import { CodexMenu, type MenuEntry } from "./codex-menu";
 import type { CodexFeatureId, CodexSettingId } from "../domain/codex-navigation";
 
@@ -236,6 +246,10 @@ export function CodexSidebarTools(props: Props) {
         <Search size={17} aria-hidden="true" />
         <span>Rechercher</span>
         <kbd>⌃K</kbd>
+      </button>
+      <button type="button" onClick={() => props.onFeature("engines")}>
+        <Layers3 size={17} aria-hidden="true" />
+        <span>Moteurs et intégrations</span>
       </button>
       <button type="button" onClick={() => props.onFeature("scheduled")}>
         <Clock3 size={17} aria-hidden="true" />

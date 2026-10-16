@@ -57,6 +57,7 @@ export const codexSettingAliases: Record<string, CodexSettingId> = {
   "settings.nav.environments": "cloud",
 };
 export const featureLabels = {
+  engines: "Moteurs et intégrations",
   scheduled: "Planifiées",
   agents: "Agents",
   review: "Revue de code",

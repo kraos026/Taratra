@@ -12,6 +12,7 @@ import type { AgentCompany } from "../domain/agent-company";
 import { HermesConnectionPanel } from "./hermes-connection-panel";
 import { HermesInventoryPanel } from "./hermes-inventory-panel";
 import { AgentAvatar } from "./agent-avatar";
+import { EngineLibrary } from "./engine-library";
 
 export function CodexDialog({
   title,
@@ -332,16 +333,30 @@ export function CodexFeature({
   onClose,
   onNewProject,
   canWrite,
+  onNewMission,
 }: {
   feature: CodexFeatureId;
   workspace?: AgentCompany;
   onClose: () => void;
   onNewProject: () => void;
   canWrite: boolean;
+  onNewMission: () => void;
 }) {
   const title = featureLabels[feature];
   let content: ReactNode;
-  if (feature === "agents" && workspace)
+  if (feature === "engines")
+    content = (
+      <EngineLibrary
+        key={workspace?.id || "none"}
+        workspaceId={workspace?.id}
+        canWrite={canWrite}
+        onNewMission={() => {
+          onClose();
+          onNewMission();
+        }}
+      />
+    );
+  else if (feature === "agents" && workspace)
     content = (
       <div className="space-y-5">
         <p>{workspace.objective}</p>

@@ -16,7 +16,7 @@ const failure = (
   message = "Le pilote gratuit est indisponible. Aucun repli payant n’est autorisé.",
 ) => json({ error: { message } }, status);
 
-async function readInput(request: Request) {
+export async function readInput(request: Request) {
   if (request.headers.get("origin") !== new URL(request.url).origin)
     throw failure(403, "Origine refusée.");
   if (request.headers.get("content-type")?.split(";")[0].trim() !== "application/json")

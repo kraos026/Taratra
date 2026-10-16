@@ -868,6 +868,7 @@ export function AgentCompanyPanel({
           workspace={items.find((item) => item.id === selectedId)}
           onClose={() => setFeature(null)}
           onNewProject={() => command("create")}
+          onNewMission={() => command("new")}
         />
       )}
     </div>

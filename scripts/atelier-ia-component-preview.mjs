@@ -38,6 +38,8 @@ import {CompanyShell} from '@/components/dashboard/company-shell';
 import {InteractiveDashboard} from '@/components/dashboard/interactive-dashboard';
 import {AgentWorkspacePanel} from '@/modules/agent-workspace/presentation/agent-workspace-panel';
 import {AgentCompanyPanel} from '@/modules/agent-workspace/presentation/agent-company-panel';
+import {engineRegistry} from '@/modules/agent-workspace/domain/engine-registry';
+(globalThis as typeof globalThis & {__fixtureEngines: typeof engineRegistry}).__fixtureEngines = engineRegistry;
 import './style.css';
 createRoot(document.getElementById('root')!).render(location.search.includes('dashboard') ? <InteractiveDashboard/> : location.search.includes('enterprise') ? <CompanyShell><AgentCompanyPanel initial={[]} companies={[{id:'${companyId}',name:'Entreprise de recette'}]} canWrite={true}/></CompanyShell> : <CompanyShell verifiedCompanyId='${companyId}'><AgentWorkspacePanel company={{id:'${companyId}',name:'Entreprise de démonstration',canWrite:true}}/></CompanyShell>);`,
 );
@@ -103,6 +105,8 @@ let inventoryBody = {
   },
 };
 let registryCount = 0;
+let engineCatalogReads = 0;
+let engineCatalogStatus = 200;
 let registryStatus = 200;
 let registryBody = { data: { items: [], hasMore: false } };
 let connectionBody = {
@@ -123,7 +127,7 @@ try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1100 } });
   const page = await context.newPage();
   page.on("pageerror", (error) => errors.push(error.message));
-  await page.route("**/*", (route) => {
+  await page.route("**/*", async (route) => {
     const request = route.request();
     const url = new URL(request.url());
     if (url.hostname !== "127.0.0.1") {
@@ -188,10 +192,41 @@ try {
         body: JSON.stringify({ data: { stopping: true } }),
       });
     }
-    if (/^\/api\/atelier-ia\/entreprises\/[^/]+\/missions$/.test(url.pathname)) {
+    if (/^\/api\/atelier-ia\/entreprises\/[^/]+\/engines$/.test(url.pathname)) {
+      engineCatalogReads++;
+      return route.fulfill({
+        status: engineCatalogStatus,
+        contentType: "application/json",
+        body: JSON.stringify(
+          engineCatalogStatus === 200
+            ? {
+                data: {
+                  version: 1,
+                  engines: await page.evaluate(() => globalThis.__fixtureEngines),
+                  canWrite: true,
+                  health: "not-checked",
+                  apiBudgetEuro: 0,
+                },
+              }
+            : { error: { message: "Access refused" } },
+        ),
+      });
+    }
+    if (/^\/api\/atelier-ia\/entreprises\/[^/]+\/(?:missions|dispatch)$/.test(url.pathname)) {
       if (request.method() === "POST") {
         pilotWrites++;
-        const input = request.postDataJSON();
+        const envelope = request.postDataJSON();
+        assert.equal(url.pathname.endsWith("/dispatch"), true);
+        assert.deepEqual(Object.keys(envelope).sort(), [
+          "capability",
+          "engineId",
+          "mission",
+          "version",
+        ]);
+        assert.equal(envelope.version, 1);
+        assert.equal(envelope.engineId, "hermes");
+        assert.equal(envelope.capability, "text.generate");
+        const input = envelope.mission;
         pilotRequestIds.push(input.id);
         assert.deepEqual(Object.keys(input).sort(), ["id", "prompt"]);
         let row = pilotRows.find((item) => item.id === input.id);
@@ -1090,6 +1125,74 @@ try {
     "three company creation modes, small-team cap, configuration-only save, independent then linked, refreshed registry, responsive layouts; backend mocked",
   );
 
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.getByRole("button", { name: "Moteurs et intégrations", exact: true }).click();
+  const engineDialog = page.getByRole("dialog", { name: "Moteurs et intégrations", exact: true });
+  assert.equal(await engineDialog.locator(".engine-library-card").count(), 9);
+  assert.equal(engineCatalogReads, 0);
+  const engineSearch = engineDialog.getByLabel("Rechercher un moteur", { exact: true });
+  await engineSearch.fill("n8n");
+  assert.equal(await engineDialog.locator(".engine-library-card").count(), 1);
+  await engineDialog.getByText("À raccorder", { exact: true }).waitFor();
+  await engineSearch.fill("");
+  assert.equal(
+    await engineDialog
+      .getByRole("link", { name: "Ouvrir l’audit", exact: true })
+      .getAttribute("href"),
+    "/?view=audit",
+  );
+  await engineDialog
+    .getByRole("button", { name: "Vérifier l’accès au catalogue", exact: true })
+    .click();
+  await engineDialog
+    .getByText("Accès à cet espace vérifié. La santé des moteurs n’a pas été testée.", {
+      exact: true,
+    })
+    .waitFor();
+  engineCatalogStatus = 403;
+  await engineDialog
+    .getByRole("button", { name: "Vérifier l’accès au catalogue", exact: true })
+    .click();
+  await engineDialog
+    .getByText("Accès non vérifié. Aucun moteur n’a été lancé.", { exact: true })
+    .waitFor();
+  assert.equal(
+    await engineDialog
+      .getByRole("button", { name: "Préparer une mission Hermes", exact: true })
+      .isDisabled(),
+    true,
+  );
+  engineCatalogStatus = 200;
+  await engineDialog
+    .getByRole("button", { name: "Vérifier l’accès au catalogue", exact: true })
+    .click();
+  await engineDialog
+    .getByText("Accès à cet espace vérifié. La santé des moteurs n’a pas été testée.", {
+      exact: true,
+    })
+    .waitFor();
+  await page.screenshot({
+    path: join(evidence, "optivos-engine-library-desktop.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 375, height: 812 });
+  assert.ok(await engineDialog.evaluate((node) => node.scrollWidth <= node.clientWidth));
+  await page.screenshot({
+    path: join(evidence, "optivos-engine-library-mobile.png"),
+    fullPage: true,
+  });
+  await engineDialog
+    .getByRole("button", { name: "Préparer une mission Hermes", exact: true })
+    .click();
+  assert.equal(await page.getByRole("dialog").count(), 0);
+  assert.equal(engineCatalogReads, 3);
+  assert.equal(pilotWrites, 6);
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  checks.push(
+    "universal engine library: nine declared integrations, search, canonical audit link, explicit scoped catalog verification, denied access clears launch, mobile layout, prepare Hermes without execution; mission POSTs use the versioned dispatch envelope",
+  );
+  assert.equal(blocked.length, 0);
+  assert.equal(errors.length, 0);
   writeFileSync(
     join(evidence, "component-preview.json"),
     JSON.stringify(

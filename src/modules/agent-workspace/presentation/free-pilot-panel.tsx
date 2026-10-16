@@ -145,7 +145,14 @@ export function FreePilotPanel({
     intent.current = proposed;
     setUncertain(true);
     try {
-      const item = freeMissionSchema.parse(await call("/missions", signal, proposed));
+      const item = freeMissionSchema.parse(
+        await call("/dispatch", signal, {
+          version: 1,
+          engineId: "hermes",
+          capability: "text.generate",
+          mission: proposed,
+        }),
+      );
       setItems((current) =>
         [item, ...(current || []).filter((row) => row.id !== item.id)].slice(0, 20),
       );
