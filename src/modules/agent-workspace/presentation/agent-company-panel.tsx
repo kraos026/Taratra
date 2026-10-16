@@ -33,7 +33,7 @@ export function AgentCompanyPanel({
 }) {
   const [items, setItems] = useState(initial);
   const [selectedId, setSelectedId] = useState(initial[0]?.id || "");
-  const [creating, setCreating] = useState(initial.length === 0);
+  const [creating, setCreating] = useState(initial.length === 0 && canWrite && !unavailable);
   const [view, setView] = useState("Missions");
   const [mode, setMode] = useState<AgentCompanyInput["mode"]>("guided");
   const [template, setTemplate] = useState<keyof typeof teamTemplates>("general");
@@ -162,7 +162,7 @@ export function AgentCompanyPanel({
               type="button"
               variant="outline"
               className="min-h-11"
-              disabled={saving}
+              disabled={saving || !canWrite}
               onClick={() => setCreating(!creating)}
             >
               {creating ? (

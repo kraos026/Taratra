@@ -752,11 +752,13 @@ try {
     await page.setViewportSize({ width, height: 1000 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
   }
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: join(evidence, "optivos-entreprises-ia-desktop.png"),
     fullPage: true,
   });
   await page.setViewportSize({ width: 375, height: 812 });
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: join(evidence, "optivos-entreprises-ia-mobile.png"),
     fullPage: true,
@@ -771,6 +773,7 @@ try {
     false,
   );
   await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
     path: join(evidence, "optivos-agent-characters-desktop.png"),
     fullPage: true,
