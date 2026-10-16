@@ -1192,3 +1192,32 @@
     transition: none !important;
   }
 }
+@media (min-width: 768px) and (max-height: 800px) {
+  .platform-studio .studio-rail {
+    padding-top: 12px;
+    gap: 4px;
+  }
+  .platform-studio .codex-rail-header {
+    padding-bottom: 8px;
+  }
+  .platform-studio .workspace-setup {
+    padding-top: 20px;
+    padding-bottom: 20px;
+  }
+  .platform-studio .setup-steps {
+    margin: 12px 0 18px;
+  }
+  .platform-studio .setup-title {
+    margin-bottom: 20px;
+  }
+  .platform-studio .setup-fields {
+    gap: 16px;
+  }
+  .platform-studio .setup-fields textarea {
+    min-height: 100px;
+  }
+  .platform-studio .setup-footer {
+    margin-top: 24px;
+    padding-top: 16px;
+  }
+}

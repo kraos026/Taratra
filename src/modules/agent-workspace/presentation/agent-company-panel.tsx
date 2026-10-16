@@ -467,7 +467,7 @@ export function AgentCompanyPanel({
               <p className="text-xs text-slate-400">Les vingt équipes les plus récentes.</p>
             )}
           </div>
-          <div ref={setHistoryTarget} className="studio-history-slot" />
+          <div ref={setHistoryTarget} className="studio-history-slot" hidden={items.length === 0} />
           <div className="studio-rail-footer">
             <span className="studio-budget-dot" aria-hidden="true" />
             Budget API : 0 €<span>Vous validez les résultats.</span>

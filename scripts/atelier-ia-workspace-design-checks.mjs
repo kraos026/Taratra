@@ -67,6 +67,12 @@ export async function checkWorkspaceDesign(page, context, base, evidence, checks
     assert.equal(requests, 0);
     await page.getByRole("button", { name: "Options des projets", exact: true }).click();
     await page.getByRole("menuitem", { name: "Nouveau projet", exact: true }).click();
+    await page.setViewportSize({ width: 1280, height: 720 });
+    const nextAction = await page
+      .getByRole("button", { name: "Continuer", exact: true })
+      .boundingBox();
+    assert.ok(nextAction && nextAction.y + nextAction.height <= 720);
+    await page.screenshot({ path: join(evidence, "workspace-setup-720.png"), fullPage: true });
     await page.setViewportSize({ width: 375, height: 812 });
     for (const [theme, label] of [
       ["light", "Thème clair"],
@@ -119,6 +125,19 @@ export async function checkWorkspaceDesign(page, context, base, evidence, checks
       await memoryPage
         .getByRole("status")
         .getByText(/ne permet pas de le mémoriser/)
+        .waitFor();
+      await memoryPage
+        .getByRole("button", { name: "Ouvrir le menu du profil", exact: true })
+        .click();
+      await memoryPage.getByRole("menuitem", { name: "Paramètres", exact: true }).click();
+      const memorySettings = memoryPage.getByRole("dialog", { name: "Paramètres", exact: true });
+      await memorySettings.getByRole("button", { name: "Apparence", exact: true }).click();
+      await memorySettings.getByLabel("Thème", { exact: true }).selectOption("dark");
+      await memorySettings
+        .getByRole("status")
+        .getByText("Le thème reste actif pour cette session ; son enregistrement a été refusé.", {
+          exact: true,
+        })
         .waitFor();
     } finally {
       await memoryPage.close();

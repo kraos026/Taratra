@@ -100,7 +100,10 @@ export function CodexSettings({
   const [query, setQuery] = useState("");
   const [browsing, setBrowsing] = useState(initialCategory === "general");
   const [availableOnly, setAvailableOnly] = useState(true);
-  const [theme, setTheme] = useWorkspaceTheme();
+  const [themeNotice, setThemeNotice] = useState("");
+  const [theme, setTheme] = useWorkspaceTheme(() =>
+    setThemeNotice("Le thème reste actif pour cette session ; son enregistrement a été refusé."),
+  );
   const heading = useRef<HTMLHeadingElement>(null);
   const categoryList = useRef<HTMLElement>(null);
   const focusIntent = useRef<"heading" | "category" | null>(null);
@@ -158,12 +161,20 @@ export function CodexSettings({
           <select
             aria-label="Thème"
             value={theme}
-            onChange={(event) => setTheme(event.target.value as "light" | "dark")}
+            onChange={(event) => {
+              setThemeNotice("");
+              setTheme(event.target.value as "light" | "dark");
+            }}
           >
             <option value="light">Clair</option>
             <option value="dark">Sombre</option>
           </select>
         </label>
+        {themeNotice && (
+          <p role="status" className="codex-setting-note">
+            {themeNotice}
+          </p>
+        )}
         <label className="codex-setting-row">
           <span>Taille du texte des messages</span>
           <select
