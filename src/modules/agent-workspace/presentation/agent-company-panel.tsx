@@ -1,7 +1,9 @@
 "use client";
 import Link from "next/link";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { OptivosLogo } from "@/components/brand/optivos-logo";
+import { WorkspaceSetup } from "./workspace-setup";
+import { WorkspaceThemeContext, useWorkspaceTheme } from "./workspace-theme";
+import "./workspace-platform.css";
 import { Button } from "@/components/ui/button";
 import { HermesConnectionPanel } from "./hermes-connection-panel";
 import { HermesInventoryPanel } from "./hermes-inventory-panel";
@@ -26,6 +28,9 @@ import {
   SlidersHorizontal,
   PanelLeftClose,
   PanelLeftOpen,
+  Sun,
+  Moon,
+  Command,
 } from "lucide-react";
 import {
   agentCompanySchema,
@@ -86,6 +91,11 @@ export function AgentCompanyPanel({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [theme, setTheme] = useWorkspaceTheme(() =>
+    setNotice(
+      "Le thème est appliqué pour cette session ; le navigateur ne permet pas de le mémoriser.",
+    ),
+  );
   const [hasMore, setHasMore] = useState(initialHasMore);
   const [appearance, setAppearance] = useWorkspaceAppearance(setNotice);
   function command(type: WorkspaceCommand) {
@@ -256,621 +266,472 @@ export function AgentCompanyPanel({
     }
   }
   return (
-    <div
-      className="agent-studio codex-studio"
-      data-creating={creating}
-      data-compact={appearance.compact}
-      data-sidebar-hidden={!sidebarVisible}
-      data-reduce-motion={appearance.reduceMotion}
-      style={{ "--message-size": `${appearance.messageSize}px` } as CSSProperties}
-      onKeyDown={(event) => {
-        if (event.key === "Escape" && railOpen) {
-          setRailOpen(false);
-          railTrigger.current?.focus();
-        } else if (event.key === "Escape" && view !== "Missions") {
-          closeInspector();
-        }
-      }}
-    >
-      <CodexApplicationMenus {...menuProps} />
-      <aside
-        id="studio-rail-content"
-        className="studio-rail"
-        data-open={railOpen}
-        aria-label="Équipes et missions"
+    <WorkspaceThemeContext.Provider value={theme}>
+      <div
+        className="agent-studio platform-studio"
+        data-platform-theme={theme}
+        data-creating={creating}
+        data-compact={appearance.compact}
+        data-sidebar-hidden={!sidebarVisible}
+        data-reduce-motion={appearance.reduceMotion}
+        style={{ "--message-size": `${appearance.messageSize}px` } as CSSProperties}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && railOpen) {
+            setRailOpen(false);
+            railTrigger.current?.focus();
+          } else if (event.key === "Escape" && view !== "Missions") {
+            closeInspector();
+          }
+        }}
       >
-        <div className="codex-rail-header">
-          <Link href="/" aria-label="Accueil Optivos" className="studio-brand">
-            <OptivosLogo compact />
-            <span>Optivos</span>
-          </Link>
-          <button
-            type="button"
-            className="codex-rail-collapse"
-            aria-label="Replier la barre latérale"
-            onClick={() => {
-              if (window.matchMedia("(max-width: 767px)").matches) {
-                setRailOpen(false);
-                railTrigger.current?.focus();
-              } else {
-                command("sidebar");
-                requestAnimationFrame(() =>
-                  document.getElementById("studio-sidebar-reopen")?.focus(),
-                );
-              }
-            }}
-          >
-            <PanelLeftClose size={18} aria-hidden="true" />
-          </button>
-        </div>
-        <CodexSidebarTools {...menuProps} />
-        <details className="codex-audit-menu">
-          <summary>Audit Optivos</summary>
-          <nav aria-label="Navigation de l’espace" className="studio-rail-nav">
-            <Link href="/?view=audit">Vue d’ensemble des audits</Link>
-            <Link href="/companies">Dossiers d’audit</Link>
-          </nav>
-        </details>
-        <details className="codex-audit-menu">
-          <summary>Épinglés</summary>
-          <p className="codex-setting-note">
-            L’épinglage des missions Hermes n’est pas encore raccordé.
-          </p>
-        </details>
-        <div className="studio-rail-section">
-          <div className="studio-rail-label">
-            <span>Projets</span>
-            <CodexMenu
-              label="Options des projets"
-              items={[
-                {
-                  label: "Nouveau projet",
-                  action: () => command("create"),
-                  unavailable: canWrite ? undefined : "Votre rôle est limité à la consultation.",
-                },
-                { label: "Actualiser les projets", action: refresh },
-                {
-                  label: "Organiser la barre latérale",
-                  children: [
-                    {
-                      label: "Par projet",
-                      unavailable: "Le regroupement par entreprise IA est imposé pour ce pilote.",
-                    },
-                    {
-                      label: "Par connexion",
-                      unavailable: "Une seule connexion VPS est raccordée.",
-                    },
-                    {
-                      label: "Nouvelle section",
-                      unavailable: "Les sections personnalisées ne sont pas raccordées.",
-                    },
-                  ],
-                },
-              ]}
-            >
-              <Plus size={16} aria-hidden="true" />
-            </CodexMenu>
+        <div className="platform-appbar">
+          <CodexApplicationMenus {...menuProps} />
+          <div className="platform-theme-switch" aria-label="Thème de l’interface">
             <button
               type="button"
-              disabled={saving}
-              onClick={refresh}
-              aria-label="Actualiser"
-              title="Actualiser les équipes"
+              aria-label="Thème clair"
+              aria-pressed={theme === "light"}
+              onClick={() => setTheme("light")}
             >
-              ↻
+              <Sun size={15} aria-hidden="true" />
+              <span>Clair</span>
+            </button>
+            <button
+              type="button"
+              aria-label="Thème sombre"
+              aria-pressed={theme === "dark"}
+              onClick={() => setTheme("dark")}
+            >
+              <Moon size={15} aria-hidden="true" />
+              <span>Sombre</span>
             </button>
           </div>
-          {items.map((item) => (
-            <div
-              key={item.id}
-              className="codex-project-row"
-              onContextMenu={(event) => {
-                event.preventDefault();
-                event.currentTarget
-                  .querySelector<HTMLButtonElement>("[aria-haspopup=menu]")
-                  ?.click();
+        </div>
+        <aside
+          id="studio-rail-content"
+          className="studio-rail"
+          data-open={railOpen}
+          aria-label="Équipes et missions"
+        >
+          <div className="codex-rail-header">
+            <Link href="/" aria-label="Accueil Optivos" className="studio-brand">
+              <span className="platform-brand-mark">
+                <Command size={19} aria-hidden="true" />
+              </span>
+              <span>
+                Optivos<small>Workspace</small>
+              </span>
+            </Link>
+            <button
+              type="button"
+              className="codex-rail-collapse"
+              aria-label="Replier la barre latérale"
+              onClick={() => {
+                if (window.matchMedia("(max-width: 767px)").matches) {
+                  setRailOpen(false);
+                  railTrigger.current?.focus();
+                } else {
+                  command("sidebar");
+                  requestAnimationFrame(() =>
+                    document.getElementById("studio-sidebar-reopen")?.focus(),
+                  );
+                }
               }}
             >
-              <button
-                type="button"
-                disabled={saving}
-                aria-pressed={selectedId === item.id && !creating}
-                className="studio-team-choice"
-                onClick={() => {
-                  setSelectedId(item.id);
-                  setCreating(false);
-                  setView("Missions");
-                  setRailOpen(false);
-                }}
-              >
-                <AgentAvatar size={28} />
-                <span>{item.name}</span>
-              </button>
+              <PanelLeftClose size={18} aria-hidden="true" />
+            </button>
+          </div>
+          <CodexSidebarTools {...menuProps} />
+          <details className="codex-audit-menu">
+            <summary>Audit Optivos</summary>
+            <nav aria-label="Navigation de l’espace" className="studio-rail-nav">
+              <Link href="/?view=audit">Vue d’ensemble des audits</Link>
+              <Link href="/companies">Dossiers d’audit</Link>
+            </nav>
+          </details>
+          <div className="studio-rail-section">
+            <div className="studio-rail-label">
+              <span>Mes espaces</span>
               <CodexMenu
-                label={`Options de ${item.name}`}
+                label="Options des projets"
                 items={[
                   {
-                    label: "Ouvrir",
-                    action: () => {
-                      setSelectedId(item.id);
-                      setCreating(false);
-                    },
+                    label: "Nouveau projet",
+                    action: () => command("create"),
+                    unavailable: canWrite ? undefined : "Votre rôle est limité à la consultation.",
                   },
+                  { label: "Actualiser les projets", action: refresh },
                   {
-                    label: "Paramètres du projet",
-                    action: () => {
-                      setSelectedId(item.id);
-                      setCreating(false);
-                      setView("Réglages");
-                    },
-                  },
-                  {
-                    label: "Épingler",
-                    unavailable: "L’épinglage n’est pas raccordé au registre Optivos.",
-                  },
-                  {
-                    label: "Renommer",
-                    unavailable: "La modification du nom n’est pas exposée par le registre actuel.",
-                  },
-                  {
-                    label: "Archiver",
-                    unavailable: "L’archivage des entreprises IA n’est pas raccordé.",
-                  },
-                  {
-                    label: "Supprimer",
-                    unavailable:
-                      "Aucune suppression d’entreprise IA n’est autorisée depuis ce menu.",
+                    label: "Organiser la barre latérale",
+                    children: [
+                      {
+                        label: "Par projet",
+                        unavailable: "Le regroupement par entreprise IA est imposé pour ce pilote.",
+                      },
+                      {
+                        label: "Par connexion",
+                        unavailable: "Une seule connexion VPS est raccordée.",
+                      },
+                      {
+                        label: "Nouvelle section",
+                        unavailable: "Les sections personnalisées ne sont pas raccordées.",
+                      },
+                    ],
                   },
                 ]}
               >
-                <span aria-hidden="true">···</span>
+                <Plus size={16} aria-hidden="true" />
               </CodexMenu>
-            </div>
-          ))}
-          {items.length === 0 && (
-            <p className="text-sm text-slate-400">Aucune équipe enregistrée.</p>
-          )}
-          {hasMore && (
-            <p className="text-xs text-slate-400">Les vingt équipes les plus récentes.</p>
-          )}
-        </div>
-        <div ref={setHistoryTarget} className="studio-history-slot" />
-        <div className="studio-rail-footer">
-          <span className="studio-budget-dot" aria-hidden="true" />
-          Budget API : 0 €<span>Vous validez les résultats.</span>
-          <CodexProfileMenu {...menuProps} />
-        </div>
-      </aside>
-      <section className="studio-desk" aria-label="Espace de travail de l’équipe">
-        <header className="studio-titlebar">
-          {!sidebarVisible && (
-            <button
-              type="button"
-              id="studio-sidebar-reopen"
-              className="codex-rail-reopen"
-              aria-label="Afficher la barre latérale"
-              onClick={() => {
-                command("sidebar");
-                requestAnimationFrame(() =>
-                  document.querySelector<HTMLButtonElement>(".codex-rail-collapse")?.focus(),
-                );
-              }}
-            >
-              <PanelLeftOpen size={18} aria-hidden="true" />
-            </button>
-          )}
-          <button
-            ref={railTrigger}
-            type="button"
-            className="studio-mobile-toggle"
-            aria-expanded={railOpen}
-            aria-controls="studio-rail-content"
-            onClick={() => setRailOpen(!railOpen)}
-          >
-            Équipes & missions
-          </button>
-          <div className="studio-title">
-            <span className="studio-breadcrumb">Atelier IA /</span>
-            <h1>
-              {creating
-                ? "Créer votre entreprise IA"
-                : items.find((item) => item.id === selectedId)?.name || "Votre espace IA"}
-            </h1>
-          </div>
-          {creating && items.length > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              disabled={saving}
-              onClick={() => setCreating(false)}
-            >
-              Revenir à mon équipe
-            </Button>
-          ) : (
-            !creating && (
-              <nav className="studio-context-actions" aria-label="Vues de l’équipe">
-                {[
-                  ["Missions", MessagesSquare],
-                  ["Équipe", Users],
-                  ["Connexion", Plug],
-                  ["Réglages", SlidersHorizontal],
-                ].map(([label, Icon]) => {
-                  const TabIcon = Icon as typeof Users;
-                  return (
-                    <button
-                      type="button"
-                      key={String(label)}
-                      aria-label={String(label)}
-                      aria-current={view === label ? "page" : undefined}
-                      onClick={(event) => {
-                        setView(String(label));
-                        if (label !== "Missions") inspectorTrigger.current = event.currentTarget;
-                      }}
-                    >
-                      <TabIcon size={16} aria-hidden="true" />
-                      <span>{String(label)}</span>
-                    </button>
-                  );
-                })}
-                <CodexConversationMenu {...menuProps} />
-              </nav>
-            )
-          )}
-        </header>
-        {unavailable && (
-          <p role="alert" className="studio-alert">
-            Le registre est indisponible ; la création est désactivée.
-          </p>
-        )}
-        {error && (
-          <p role="alert" className="studio-alert">
-            {error}
-          </p>
-        )}
-        {notice && (
-          <p role="status" aria-live="polite" className="studio-notice">
-            {notice}
-          </p>
-        )}
-        <form hidden={!creating} onSubmit={create} className="studio-create space-y-5">
-          <h2 className="text-xl font-semibold">1. Choisir votre façon de commencer</h2>
-          <fieldset
-            disabled={saving || !canWrite || unavailable}
-            className="grid gap-3 sm:grid-cols-3"
-          >
-            <legend className="sr-only">Mode de création</legend>
-            {[
-              ["guided", "Guidé", "Une équipe simple proposée, que vous pouvez adapter."],
-              [
-                "template",
-                "À partir d’un modèle",
-                "Une équipe de recherche ou de création de contenu.",
-              ],
-              ["manual", "Manuel", "Choisissez chaque nom et responsabilité."],
-            ].map(([value, label, description]) => (
-              <label
-                key={value}
-                className={`cursor-pointer rounded-xl border p-4 ${mode === value ? "border-indigo-400/50 bg-indigo-400/10" : "border-white/10"}`}
+              <button
+                type="button"
+                disabled={saving}
+                onClick={refresh}
+                aria-label="Actualiser"
+                title="Actualiser les équipes"
               >
-                <span className="flex min-h-11 items-center gap-2">
-                  <input
-                    type="radio"
-                    name="creation-mode"
-                    value={value}
-                    checked={mode === value}
-                    onChange={() => {
-                      setMode(value as AgentCompanyInput["mode"]);
-                      setAgents(
-                        teamTemplates[value === "template" ? template : "general"].map((a) => ({
-                          ...a,
-                        })),
-                      );
-                    }}
-                  />
-                  <strong className="text-sm">{label}</strong>
-                </span>
-                <span className="block text-sm leading-6 text-slate-400">{description}</span>
-              </label>
-            ))}
-          </fieldset>
-          <fieldset disabled={saving || !canWrite || unavailable} className="grid gap-4">
-            <legend className="text-xl font-semibold">2. Définir votre objectif</legend>
-            <label className="mt-3 grid gap-2 text-sm font-semibold">
-              Nom de l’entreprise IA
-              <input
-                required
-                minLength={2}
-                maxLength={120}
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className={inputClass}
-              />
-            </label>
-            <label className="grid gap-2 text-sm font-semibold">
-              Quel résultat doit produire cette équipe ?
-              <textarea
-                required
-                minLength={10}
-                maxLength={2000}
-                rows={3}
-                value={objective}
-                onChange={(e) => setObjective(e.target.value)}
-                className={inputClass}
-              />
-            </label>
-            <div className="grid gap-2 text-sm font-semibold">
-              <label htmlFor="agent-company-audit">Lien avec un dossier Optivos</label>
-              <select
-                id="agent-company-audit"
-                value={companyId}
-                onChange={(e) => setCompanyId(e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Espace indépendant — relier plus tard</option>
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
+                ↻
+              </button>
             </div>
-            <p className="text-sm leading-6 text-slate-400">
-              L’espace indépendant appartient à votre organisation. Un lien avec l’audit conserve
-              les moteurs et les données du dossier existant.
-            </p>
-          </fieldset>
-          <fieldset disabled={saving || !canWrite || unavailable} className="space-y-4">
-            <legend className="text-xl font-semibold">3. Composer votre petite équipe</legend>
-            {mode === "guided" && (
-              <p className="mt-3 text-sm leading-6 text-slate-300">
-                Point de départ : un coordinateur et un exécutant. Cette proposition est un modèle
-                de configuration, sans appel IA ; adaptez les responsabilités à votre objectif.
-              </p>
-            )}
-            {mode === "template" && (
-              <div className="grid gap-2 text-sm font-semibold">
-                <label htmlFor="agent-team-template">Modèle d’équipe</label>
-                <select
-                  id="agent-team-template"
-                  className={inputClass}
-                  value={template}
-                  onChange={(e) => {
-                    const key = e.target.value as keyof typeof teamTemplates;
-                    setTemplate(key);
-                    setAgents(teamTemplates[key].map((a) => ({ ...a })));
+            {items.map((item) => (
+              <div
+                key={item.id}
+                className="codex-project-row"
+                onContextMenu={(event) => {
+                  event.preventDefault();
+                  event.currentTarget
+                    .querySelector<HTMLButtonElement>("[aria-haspopup=menu]")
+                    ?.click();
+                }}
+              >
+                <button
+                  type="button"
+                  disabled={saving}
+                  aria-pressed={selectedId === item.id && !creating}
+                  className="studio-team-choice"
+                  onClick={() => {
+                    setSelectedId(item.id);
+                    setCreating(false);
+                    setView("Missions");
+                    setRailOpen(false);
                   }}
                 >
-                  <option value="general">Équipe généraliste</option>
-                  <option value="research">Recherche et rapports</option>
-                  <option value="content">Création de contenu</option>
-                </select>
+                  <AgentAvatar size={28} />
+                  <span>{item.name}</span>
+                </button>
+                <CodexMenu
+                  label={`Options de ${item.name}`}
+                  items={[
+                    {
+                      label: "Ouvrir",
+                      action: () => {
+                        setSelectedId(item.id);
+                        setCreating(false);
+                      },
+                    },
+                    {
+                      label: "Paramètres du projet",
+                      action: () => {
+                        setSelectedId(item.id);
+                        setCreating(false);
+                        setView("Réglages");
+                      },
+                    },
+                    {
+                      label: "Épingler",
+                      unavailable: "L’épinglage n’est pas raccordé au registre Optivos.",
+                    },
+                    {
+                      label: "Renommer",
+                      unavailable:
+                        "La modification du nom n’est pas exposée par le registre actuel.",
+                    },
+                    {
+                      label: "Archiver",
+                      unavailable: "L’archivage des entreprises IA n’est pas raccordé.",
+                    },
+                    {
+                      label: "Supprimer",
+                      unavailable:
+                        "Aucune suppression d’entreprise IA n’est autorisée depuis ce menu.",
+                    },
+                  ]}
+                >
+                  <span aria-hidden="true">···</span>
+                </CodexMenu>
+              </div>
+            ))}
+            {items.length === 0 && (
+              <p className="text-sm text-slate-400">Aucune équipe enregistrée.</p>
+            )}
+            {hasMore && (
+              <p className="text-xs text-slate-400">Les vingt équipes les plus récentes.</p>
+            )}
+          </div>
+          <div ref={setHistoryTarget} className="studio-history-slot" />
+          <div className="studio-rail-footer">
+            <span className="studio-budget-dot" aria-hidden="true" />
+            Budget API : 0 €<span>Vous validez les résultats.</span>
+            <CodexProfileMenu {...menuProps} />
+          </div>
+        </aside>
+        <section className="studio-desk" aria-label="Espace de travail de l’équipe">
+          <header className="studio-titlebar">
+            {!sidebarVisible && (
+              <button
+                type="button"
+                id="studio-sidebar-reopen"
+                className="codex-rail-reopen"
+                aria-label="Afficher la barre latérale"
+                onClick={() => {
+                  command("sidebar");
+                  requestAnimationFrame(() =>
+                    document.querySelector<HTMLButtonElement>(".codex-rail-collapse")?.focus(),
+                  );
+                }}
+              >
+                <PanelLeftOpen size={18} aria-hidden="true" />
+              </button>
+            )}
+            <button
+              ref={railTrigger}
+              type="button"
+              className="studio-mobile-toggle"
+              aria-label="Équipes & missions"
+              aria-expanded={railOpen}
+              aria-controls="studio-rail-content"
+              onClick={() => setRailOpen(!railOpen)}
+            >
+              <PanelLeftOpen size={18} aria-hidden="true" />
+              <span>Espaces</span>
+            </button>
+            <div className="studio-title">
+              <span className="studio-breadcrumb">Atelier IA /</span>
+              <h1>
+                {creating
+                  ? "Créer votre entreprise IA"
+                  : items.find((item) => item.id === selectedId)?.name || "Votre espace IA"}
+              </h1>
+            </div>
+            {creating && items.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={saving}
+                onClick={() => setCreating(false)}
+              >
+                Revenir à mon équipe
+              </Button>
+            ) : (
+              !creating && (
+                <nav className="studio-context-actions" aria-label="Vues de l’équipe">
+                  {[
+                    ["Missions", MessagesSquare],
+                    ["Équipe", Users],
+                    ["Connexion", Plug],
+                    ["Réglages", SlidersHorizontal],
+                  ].map(([label, Icon]) => {
+                    const TabIcon = Icon as typeof Users;
+                    return (
+                      <button
+                        type="button"
+                        key={String(label)}
+                        aria-label={String(label)}
+                        aria-current={view === label ? "page" : undefined}
+                        onClick={(event) => {
+                          setView(String(label));
+                          if (label !== "Missions") inspectorTrigger.current = event.currentTarget;
+                        }}
+                      >
+                        <TabIcon size={16} aria-hidden="true" />
+                        <span>{String(label)}</span>
+                      </button>
+                    );
+                  })}
+                  <CodexConversationMenu {...menuProps} />
+                </nav>
+              )
+            )}
+          </header>
+          {unavailable && (
+            <p role="alert" className="studio-alert">
+              Le registre est indisponible ; la création est désactivée.
+            </p>
+          )}
+          {error && (
+            <p role="alert" className="studio-alert">
+              {error}
+            </p>
+          )}
+          {notice && (
+            <p role="status" aria-live="polite" className="studio-notice">
+              {notice}
+            </p>
+          )}
+          {creating && (
+            <WorkspaceSetup
+              value={{ name, objective, mode, agents, autonomy, companyId: companyId || null }}
+              template={template}
+              onTemplate={setTemplate}
+              onChange={(patch) => {
+                if (patch.name !== undefined) setName(patch.name);
+                if (patch.objective !== undefined) setObjective(patch.objective);
+                if (patch.mode !== undefined) setMode(patch.mode);
+                if (patch.agents !== undefined) setAgents(patch.agents);
+                if (patch.autonomy !== undefined) setAutonomy(patch.autonomy);
+                if (patch.companyId !== undefined) setCompanyId(patch.companyId || "");
+              }}
+              companies={companies}
+              disabled={saving || !canWrite || unavailable}
+              saving={saving}
+              onSubmit={create}
+            />
+          )}
+          <div hidden={creating} className="studio-active-workspace">
+            {items.length === 0 && (
+              <div className="pilot-empty">
+                <AgentAvatar size={80} />
+                <h2>Aucune entreprise IA enregistrée dans votre organisation.</h2>
               </div>
             )}
-            <p className="text-sm text-indigo-200">
-              Vous → premier agent coordinateur → autres agents. Trois profils maximum pour
-              commencer.
-            </p>
-            {agents.map((agent, index) => (
-              <div
-                key={index}
-                className="grid gap-3 rounded-xl border border-white/10 p-4 sm:grid-cols-2"
-              >
-                <div className="flex items-center gap-3 sm:col-span-2">
-                  <AgentAvatar variant={index} />
-                  <span className="text-sm text-slate-300">
-                    {index === 0 ? "Votre coordinateur" : "Votre spécialiste"} · profil à configurer
-                  </span>
-                </div>
-                <label className="grid gap-2 text-sm font-semibold">
-                  Nom de l’agent {index + 1}
-                  <input
-                    required
-                    minLength={2}
-                    maxLength={80}
-                    value={agent.name}
-                    onChange={(e) =>
-                      setAgents((current) =>
-                        current.map((a, i) => (i === index ? { ...a, name: e.target.value } : a)),
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </label>
-                <label className="grid gap-2 text-sm font-semibold">
-                  Responsabilité de l’agent {index + 1}
-                  <input
-                    required
-                    minLength={2}
-                    maxLength={160}
-                    value={agent.role}
-                    onChange={(e) =>
-                      setAgents((current) =>
-                        current.map((a, i) => (i === index ? { ...a, role: e.target.value } : a)),
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </label>
-                {index > 0 && (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-11 w-fit"
-                    onClick={() => setAgents((current) => current.filter((_, i) => i !== index))}
-                  >
-                    Retirer l’agent {index + 1}
-                  </Button>
-                )}
-              </div>
-            ))}
-            <Button
-              type="button"
-              variant="outline"
-              className="min-h-11"
-              disabled={agents.length >= 3}
-              onClick={() => setAgents((current) => [...current, { name: "", role: "" }])}
-            >
-              Ajouter un agent
-            </Button>
-            <div className="grid gap-2 text-sm font-semibold">
-              <label htmlFor="agent-company-autonomy">Autonomie souhaitée au raccordement</label>
-              <select
-                id="agent-company-autonomy"
-                className={inputClass}
-                value={autonomy}
-                onChange={(e) => setAutonomy(e.target.value as AgentCompanyInput["autonomy"])}
-              >
-                <option value="approval">Validation préalable des actions importantes</option>
-                <option value="scoped">Actions précises autorisées à l’avance</option>
-                <option value="bounded">Autonomie avec limites définies</option>
-              </select>
-            </div>
-            <p className="text-sm leading-6 text-slate-400">
-              Les skills, plugins, API et MCP de chaque profil demanderont des permissions au
-              raccordement. Aucun secret ou droit d’action externe n’est enregistré par ce
-              formulaire. Les missions textuelles pilotes s’exécutent une par une.
-            </p>
-          </fieldset>
-          <Button disabled={saving || !canWrite || unavailable} type="submit" className="min-h-11">
-            {saving ? "Enregistrement en cours…" : "Enregistrer l’entreprise IA"}
-          </Button>
-          {!canWrite && !unavailable && (
-            <p className="text-sm text-slate-300">Votre rôle permet uniquement la consultation.</p>
-          )}
-        </form>
-        <div hidden={creating} className="studio-active-workspace">
-          {items.length === 0 && (
-            <div className="pilot-empty">
-              <AgentAvatar size={80} />
-              <h2>Aucune entreprise IA enregistrée dans votre organisation.</h2>
-            </div>
-          )}
-          {items
-            .filter((item) => item.id === selectedId)
-            .map((item) => (
-              <div className="studio-desk-body" data-inspector={view !== "Missions"} key={item.id}>
-                <article className="studio-conversation" aria-label={item.name}>
-                  <FreePilotPanel
-                    ref={pilot}
-                    workspaceId={item.id}
-                    canWrite={canWrite}
-                    historyTarget={historyTarget}
-                    onMissionSelected={() => setRailOpen(false)}
-                  />
-                </article>
-                <aside
-                  className="studio-inspector"
-                  hidden={view === "Missions"}
-                  aria-label="Détails de l’équipe"
+            {items
+              .filter((item) => item.id === selectedId)
+              .map((item) => (
+                <div
+                  className="studio-desk-body"
+                  data-inspector={view !== "Missions"}
+                  key={item.id}
                 >
-                  <div className="studio-inspector-title">
-                    <h2>{view}</h2>
-                    <button type="button" onClick={closeInspector} aria-label="Fermer les détails">
-                      ×
-                    </button>
-                  </div>
-                  <div hidden={view !== "Équipe"} className="space-y-5">
-                    <p className="text-sm text-slate-400">{item.objective}</p>
-                    <p className="text-xs text-amber-200">Équipe en préparation · budget API 0 €</p>
-                    <ol className="space-y-4">
-                      {item.agents.map((agent, index) => (
-                        <li key={index} className="studio-agent-profile">
-                          <AgentAvatar variant={index} size={48} />
-                          <div>
-                            <strong>{agent.name}</strong>
-                            <p className="mt-1 text-xs text-slate-400">
-                              {index === 0
-                                ? "Sous votre direction"
-                                : "Sous la coordination de " + item.agents[0].name}
-                            </p>
-                            <p className="mt-2 text-sm leading-6 text-slate-300">{agent.role}</p>
-                          </div>
-                        </li>
-                      ))}
-                    </ol>
-                    <p className="text-xs leading-5 text-slate-400">
-                      Profils configurés. Le pilote est exécuté par Hermes ; la délégation entre
-                      profils reste à raccorder.
-                    </p>
-                    <details>
-                      <summary className="min-h-11 cursor-pointer py-3 text-sm">
-                        Activation progressive
-                      </summary>
-                      <p className="text-sm leading-6 text-slate-400">
-                        La création conserve l’objectif et les profils. Les actions externes et la
-                        délégation restent à raccorder.
-                      </p>
-                    </details>
-                  </div>
-                  <section
-                    hidden={view !== "Connexion"}
-                    aria-label="Connexion et compétences Hermes"
-                    className="space-y-4"
+                  <article className="studio-conversation" aria-label={item.name}>
+                    <FreePilotPanel
+                      ref={pilot}
+                      workspaceId={item.id}
+                      canWrite={canWrite}
+                      historyTarget={historyTarget}
+                      onMissionSelected={() => setRailOpen(false)}
+                    />
+                  </article>
+                  <aside
+                    className="studio-inspector"
+                    hidden={view === "Missions"}
+                    aria-label="Détails de l’équipe"
                   >
-                    <HermesConnectionPanel workspaceId={item.id} />
-                    <HermesInventoryPanel workspaceId={item.id} />
-                  </section>
-                  <div hidden={view !== "Réglages"} className="space-y-4">
-                    <label htmlFor={`agent-company-link-${item.id}`} className="block text-sm">
-                      Dossier lié à {item.name}
-                    </label>
-                    <select
-                      id={`agent-company-link-${item.id}`}
-                      className={inputClass}
-                      value={item.company_id || ""}
-                      disabled={saving || !canWrite}
-                      onChange={(event) => link(item.id, event.target.value)}
-                    >
-                      <option value="">Espace indépendant</option>
-                      {item.company_id &&
-                        !companies.some((company) => company.id === item.company_id) && (
-                          <option value={item.company_id}>Dossier lié (hors de cette liste)</option>
-                        )}
-                      {companies.map((company) => (
-                        <option key={company.id} value={company.id}>
-                          {company.name}
-                        </option>
-                      ))}
-                    </select>
-                    <p className="text-sm leading-6 text-slate-400">
-                      Les missions textuelles sont soumises au plafond API de 0 €. Aucune action
-                      externe n’est activée.
-                    </p>
-                    {item.company_id && (
-                      <Link
-                        href={`/companies/${encodeURIComponent(item.company_id)}/atelier-ia`}
-                        className="inline-flex min-h-11 items-center text-sm text-indigo-200 underline"
+                    <div className="studio-inspector-title">
+                      <h2>{view}</h2>
+                      <button
+                        type="button"
+                        onClick={closeInspector}
+                        aria-label="Fermer les détails"
                       >
-                        Ouvrir l’atelier du dossier
-                      </Link>
-                    )}
-                  </div>
-                </aside>
-              </div>
-            ))}
-        </div>
-      </section>
-      {settings && (
-        <CodexSettings
-          key={settings}
-          initialCategory={settings}
-          workspace={items.find((item) => item.id === selectedId)}
-          canWrite={canWrite}
-          appearance={appearance}
-          onAppearance={setAppearance}
-          onClose={() => setSettings(null)}
-        />
-      )}
-      {feature && (
-        <CodexFeature
-          feature={feature}
-          canWrite={canWrite}
-          workspace={items.find((item) => item.id === selectedId)}
-          onClose={() => setFeature(null)}
-          onNewProject={() => command("create")}
-          onNewMission={() => command("new")}
-        />
-      )}
-    </div>
+                        ×
+                      </button>
+                    </div>
+                    <div hidden={view !== "Équipe"} className="space-y-5">
+                      <p className="text-sm text-slate-400">{item.objective}</p>
+                      <p className="text-xs text-amber-200">
+                        Équipe en préparation · budget API 0 €
+                      </p>
+                      <ol className="space-y-4">
+                        {item.agents.map((agent, index) => (
+                          <li key={index} className="studio-agent-profile">
+                            <AgentAvatar variant={index} size={48} />
+                            <div>
+                              <strong>{agent.name}</strong>
+                              <p className="mt-1 text-xs text-slate-400">
+                                {index === 0
+                                  ? "Sous votre direction"
+                                  : "Sous la coordination de " + item.agents[0].name}
+                              </p>
+                              <p className="mt-2 text-sm leading-6 text-slate-300">{agent.role}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                      <p className="text-xs leading-5 text-slate-400">
+                        Profils configurés. Le pilote est exécuté par Hermes ; la délégation entre
+                        profils reste à raccorder.
+                      </p>
+                      <details>
+                        <summary className="min-h-11 cursor-pointer py-3 text-sm">
+                          Activation progressive
+                        </summary>
+                        <p className="text-sm leading-6 text-slate-400">
+                          La création conserve l’objectif et les profils. Les actions externes et la
+                          délégation restent à raccorder.
+                        </p>
+                      </details>
+                    </div>
+                    <section
+                      hidden={view !== "Connexion"}
+                      aria-label="Connexion et compétences Hermes"
+                      className="space-y-4"
+                    >
+                      <HermesConnectionPanel workspaceId={item.id} />
+                      <HermesInventoryPanel workspaceId={item.id} />
+                    </section>
+                    <div hidden={view !== "Réglages"} className="space-y-4">
+                      <label htmlFor={`agent-company-link-${item.id}`} className="block text-sm">
+                        Dossier lié à {item.name}
+                      </label>
+                      <select
+                        id={`agent-company-link-${item.id}`}
+                        className={inputClass}
+                        value={item.company_id || ""}
+                        disabled={saving || !canWrite}
+                        onChange={(event) => link(item.id, event.target.value)}
+                      >
+                        <option value="">Espace indépendant</option>
+                        {item.company_id &&
+                          !companies.some((company) => company.id === item.company_id) && (
+                            <option value={item.company_id}>
+                              Dossier lié (hors de cette liste)
+                            </option>
+                          )}
+                        {companies.map((company) => (
+                          <option key={company.id} value={company.id}>
+                            {company.name}
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-sm leading-6 text-slate-400">
+                        Les missions textuelles sont soumises au plafond API de 0 €. Aucune action
+                        externe n’est activée.
+                      </p>
+                      {item.company_id && (
+                        <Link
+                          href={`/companies/${encodeURIComponent(item.company_id)}/atelier-ia`}
+                          className="inline-flex min-h-11 items-center text-sm text-indigo-200 underline"
+                        >
+                          Ouvrir l’atelier du dossier
+                        </Link>
+                      )}
+                    </div>
+                  </aside>
+                </div>
+              ))}
+          </div>
+        </section>
+        {settings && (
+          <CodexSettings
+            key={settings}
+            initialCategory={settings}
+            workspace={items.find((item) => item.id === selectedId)}
+            canWrite={canWrite}
+            appearance={appearance}
+            onAppearance={setAppearance}
+            onClose={() => setSettings(null)}
+          />
+        )}
+        {feature && (
+          <CodexFeature
+            feature={feature}
+            canWrite={canWrite}
+            workspace={items.find((item) => item.id === selectedId)}
+            onClose={() => setFeature(null)}
+            onNewProject={() => command("create")}
+            onNewMission={() => command("new")}
+          />
+        )}
+      </div>
+    </WorkspaceThemeContext.Provider>
   );
 }

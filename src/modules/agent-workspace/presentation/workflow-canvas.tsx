@@ -13,6 +13,7 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import { AgentAvatar } from "./agent-avatar";
+import { useWorkspaceTheme } from "./workspace-theme";
 import {
   createWorkflowDraft,
   editWorkflow,
@@ -107,6 +108,7 @@ export default function WorkflowCanvas({
   canWrite: boolean;
   onDirty: (dirty: boolean) => void;
 }) {
+  const [theme] = useWorkspaceTheme();
   const [draft, setDraft] = useState<WorkflowDraft>(() => makeDraft("generalHermes"));
   const [selected, setSelected] = useState(draft.workflow.nodes[0].id);
   const [issues, setIssues] = useState<ContractIssue[] | null>(null);
@@ -514,7 +516,7 @@ export default function WorkflowCanvas({
             fitViewOptions={{ padding: 0.2 }}
             minZoom={0.2}
             maxZoom={1.5}
-            colorMode="dark"
+            colorMode={theme}
             ariaLabelConfig={{
               "controls.zoomIn.ariaLabel": "Agrandir le canevas",
               "controls.zoomOut.ariaLabel": "Réduire le canevas",
@@ -619,93 +621,105 @@ export default function WorkflowCanvas({
               </button>
             </>
           )}
-        </aside>
-      </div>
-      <details className="workflow-connections" open={advanced}>
-        <summary>Blocs et connexions · édition sans glisser-déposer</summary>
-        <div className="workflow-add">
-          <label>
-            Ajouter un bloc
-            <select
-              aria-label="Ajouter un bloc"
-              value={palette}
-              onChange={(e) => setPalette(e.target.value)}
-            >
-              <option value="text">Consigne textuelle</option>
-              <option value="transform">Préparer un document</option>
-              <option value="review">Relecture humaine</option>
-              <option value="deliverable">Livrable</option>
-              {referencePluginContracts.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.title}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button type="button" disabled={!canWrite || flow.nodes.length >= 64} onClick={addNode}>
-            Ajouter le bloc
-          </button>
-        </div>
-        <form
-          className="workflow-add"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const [sourceId, sourceHandle] = source.split("/"),
-              [targetId, targetHandle] = target.split("/");
-            connect({ source: sourceId, target: targetId, sourceHandle, targetHandle });
-          }}
-        >
-          <label>
-            Sortie
-            <select aria-label="Sortie" value={source} onChange={(e) => setSource(e.target.value)}>
-              <option value="">Choisir une sortie</option>
-              {endpoints("outputs").map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label>
-            Entrée
-            <select aria-label="Entrée" value={target} onChange={(e) => setTarget(e.target.value)}>
-              <option value="">Choisir une entrée</option>
-              {endpoints("inputs").map((p) => (
-                <option key={p.value} value={p.value}>
-                  {p.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          <button
-            type="submit"
-            disabled={!canWrite || !source || !target || flow.edges.length >= 128}
-          >
-            Relier les blocs
-          </button>
-        </form>
-        <ul>
-          {flow.edges.map((edge, index) => (
-            <li key={edge.id}>
-              <span>
-                {nodeLabel(flow.nodes.find((n) => n.id === edge.from.nodeId)!)} →{" "}
-                {nodeLabel(flow.nodes.find((n) => n.id === edge.to.nodeId)!)}
-                {advanced && ` · ${edge.from.portId} → ${edge.to.portId}`}
-              </span>
+          <details className="workflow-connections" open={advanced}>
+            <summary>Blocs et connexions · édition sans glisser-déposer</summary>
+            <div className="workflow-add">
+              <label>
+                Ajouter un bloc
+                <select
+                  aria-label="Ajouter un bloc"
+                  value={palette}
+                  onChange={(e) => setPalette(e.target.value)}
+                >
+                  <option value="text">Consigne textuelle</option>
+                  <option value="transform">Préparer un document</option>
+                  <option value="review">Relecture humaine</option>
+                  <option value="deliverable">Livrable</option>
+                  {referencePluginContracts.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.title}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <button
                 type="button"
-                disabled={!canWrite}
-                aria-label={`Retirer la connexion ${index + 1}`}
-                onClick={() =>
-                  changeGraph({ ...flow, edges: flow.edges.filter((e) => e.id !== edge.id) })
-                }
+                disabled={!canWrite || flow.nodes.length >= 64}
+                onClick={addNode}
               >
-                Retirer
+                Ajouter le bloc
               </button>
-            </li>
-          ))}
-        </ul>
-      </details>
+            </div>
+            <form
+              className="workflow-add"
+              onSubmit={(e) => {
+                e.preventDefault();
+                const [sourceId, sourceHandle] = source.split("/"),
+                  [targetId, targetHandle] = target.split("/");
+                connect({ source: sourceId, target: targetId, sourceHandle, targetHandle });
+              }}
+            >
+              <label>
+                Sortie
+                <select
+                  aria-label="Sortie"
+                  value={source}
+                  onChange={(e) => setSource(e.target.value)}
+                >
+                  <option value="">Choisir une sortie</option>
+                  {endpoints("outputs").map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Entrée
+                <select
+                  aria-label="Entrée"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value)}
+                >
+                  <option value="">Choisir une entrée</option>
+                  {endpoints("inputs").map((p) => (
+                    <option key={p.value} value={p.value}>
+                      {p.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <button
+                type="submit"
+                disabled={!canWrite || !source || !target || flow.edges.length >= 128}
+              >
+                Relier les blocs
+              </button>
+            </form>
+            <ul>
+              {flow.edges.map((edge, index) => (
+                <li key={edge.id}>
+                  <span>
+                    {nodeLabel(flow.nodes.find((n) => n.id === edge.from.nodeId)!)} →{" "}
+                    {nodeLabel(flow.nodes.find((n) => n.id === edge.to.nodeId)!)}
+                    {advanced && ` · ${edge.from.portId} → ${edge.to.portId}`}
+                  </span>
+                  <button
+                    type="button"
+                    disabled={!canWrite}
+                    aria-label={`Retirer la connexion ${index + 1}`}
+                    onClick={() =>
+                      changeGraph({ ...flow, edges: flow.edges.filter((e) => e.id !== edge.id) })
+                    }
+                  >
+                    Retirer
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </details>
+        </aside>
+      </div>
     </section>
   );
 }

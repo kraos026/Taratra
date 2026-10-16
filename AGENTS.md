@@ -1,5 +1,9 @@
 # AutomateX Project Governance
 
+## New workspace UI direction — 2026-10-16
+
+The user explicitly replaces the former Optivos visual rules. Treat the agent platform as a new product interface with light/dark themes and a short, task-focused navigation. The previous Optivos palette, visual identity, dashboard conventions and global `optivos-ui-ux` color-preservation guidance do not constrain this workspace. Use `design-system/optivos-workspace/MASTER.md` for the new interface. Retain canonical business engines, API contracts, Auth, Organization and tenant protections; a UI reset does not authorize rebuilding or replacing those engines.
+
 ## Optivos platform direction — 2026-10-16
 
 The user now requests a multi-engine Optivos platform with the existing audit exposed through a first-party business plugin and a nodal interface. This changes the product direction below; it does not replace the canonical business engines or promote the lab/runtime to Production. Read [the current blueprint](docs/architecture/optivos-platform-blueprint.md) and [ADR-0030](docs/adr/0030-optivos-platform-and-nodal-boundary.md) for the phased plan. Planning precedes new implementation in this mission.

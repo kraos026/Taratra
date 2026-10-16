@@ -4,6 +4,7 @@ import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import assert from "node:assert/strict";
 import { checkNodalCanvas } from "./atelier-ia-nodal-checks.mjs";
+import { checkWorkspaceDesign } from "./atelier-ia-workspace-design-checks.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const require = createRequire(join(root, "package.json"));
@@ -620,6 +621,24 @@ try {
   checks.push("no JS errors, remote requests or mutations");
   await page.goto(`${base}/?enterprise`, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Créer votre entreprise IA", exact: true }).waitFor();
+  await page.getByRole("button", { name: "Continuer", exact: true }).click();
+  await page
+    .getByRole("alert")
+    .getByText(/Donnez un nom/)
+    .waitFor();
+  assert.equal(teamWrites, 0);
+  await page.getByRole("button", { name: "Thème clair", exact: true }).click();
+  assert.equal(await page.locator(".platform-studio").getAttribute("data-platform-theme"), "light");
+  await page.reload({ waitUntil: "networkidle" });
+  assert.equal(await page.locator(".platform-studio").getAttribute("data-platform-theme"), "light");
+  await page.screenshot({ path: join(evidence, "workspace-setup-light.png"), fullPage: true });
+  await page.getByRole("button", { name: "Thème sombre", exact: true }).click();
+  await page.screenshot({ path: join(evidence, "workspace-setup-dark.png"), fullPage: true });
+  await page.getByLabel("Nom de l’entreprise IA", { exact: true }).fill("Équipe recherche pilote");
+  await page
+    .getByLabel("Quel résultat doit produire cette équipe ?", { exact: true })
+    .fill("Produire un rapport avec des sources vérifiables.");
+  await page.getByRole("button", { name: "Continuer", exact: true }).click();
   await page.getByRole("radio", { name: "À partir d’un modèle", exact: false }).check();
   await page.getByLabel("Modèle d’équipe", { exact: true }).selectOption("research");
   assert.equal(
@@ -633,10 +652,14 @@ try {
     true,
   );
   await page.getByRole("button", { name: "Retirer l’agent 3", exact: true }).click();
-  await page.getByLabel("Nom de l’entreprise IA", { exact: true }).fill("Équipe recherche pilote");
-  await page
-    .getByLabel("Quel résultat doit produire cette équipe ?", { exact: true })
-    .fill("Produire un rapport avec des sources vérifiables.");
+  await page.getByRole("button", { name: "Continuer", exact: true }).click();
+  await page.getByRole("button", { name: "Retour", exact: true }).click();
+  assert.equal(
+    await page.getByLabel("Nom de l’agent 1", { exact: true }).inputValue(),
+    "Coordinateur",
+  );
+  await page.getByRole("button", { name: "Continuer", exact: true }).click();
+  assert.equal(teamWrites, 0);
   await page.getByRole("button", { name: "Enregistrer l’entreprise IA", exact: true }).click();
   await page.getByRole("heading", { name: "Équipe recherche pilote", exact: true }).waitFor();
   await page.getByText("Équipe en préparation · budget API 0 €", { exact: true }).waitFor();
@@ -895,10 +918,11 @@ try {
     )
     .waitFor();
   await page.keyboard.press("Escape");
-  await page.getByRole("button", { name: "Planifiées", exact: true }).click();
+  await page.getByRole("button", { name: "Plus de menus", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Planifiées", exact: true }).click();
   await page
     .getByRole("dialog", { name: "Planifiées", exact: true })
-    .getByText("Sa fonction n’est pas raccordée à Optivos.", { exact: false })
+    .getByText("Cette fonction n’est pas encore disponible dans cet espace.", { exact: true })
     .waitFor();
   await page.keyboard.press("Escape");
   await page.getByRole("button", { name: "Ouvrir le menu du profil", exact: true }).click();
@@ -920,12 +944,10 @@ try {
     .getByRole("button", { name: "Vérifier les capacités", exact: true })
     .waitFor();
   await settingsDialog.getByLabel("Rechercher dans les paramètres", { exact: true }).fill("");
+  await settingsDialog.getByLabel("Utilisables ici uniquement", { exact: true }).uncheck();
   await settingsDialog.getByRole("button", { name: "Git", exact: true }).click();
   await settingsDialog
-    .getByText(
-      "Ce menu est présent dans le catalogue de Codex. Sa fonction n’est pas raccordée à Optivos.",
-      { exact: true },
-    )
+    .getByText("Cette fonction n’est pas encore disponible dans cet espace.", { exact: true })
     .waitFor();
   await settingsDialog.getByRole("button", { name: "Apparence", exact: true }).click();
   await page.screenshot({ path: join(evidence, "optivos-codex-settings.png"), fullPage: true });
@@ -1193,6 +1215,7 @@ try {
     "universal engine library: nine declared integrations, search, canonical audit link, explicit scoped catalog verification, denied access clears launch, mobile layout, prepare Hermes without execution; mission POSTs use the versioned dispatch envelope",
   );
   await checkNodalCanvas(page, evidence, checks);
+  await checkWorkspaceDesign(page, context, base, evidence, checks);
   assert.equal(blocked.length, 0);
   assert.equal(errors.length, 0);
   writeFileSync(

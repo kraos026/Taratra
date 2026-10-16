@@ -21,6 +21,7 @@ import { HermesConnectionPanel } from "./hermes-connection-panel";
 import { HermesInventoryPanel } from "./hermes-inventory-panel";
 import { AgentAvatar } from "./agent-avatar";
 import { EngineLibrary } from "./engine-library";
+import { useWorkspaceTheme } from "./workspace-theme";
 const WorkflowCanvas = lazy(() => import("./workflow-canvas"));
 
 export function CodexDialog({
@@ -74,9 +75,7 @@ function Unavailable({ title }: { title: string }) {
   return (
     <div className="codex-unavailable">
       <h3>{title}</h3>
-      <p>
-        Ce menu est présent dans le catalogue de Codex. Sa fonction n’est pas raccordée à Optivos.
-      </p>
+      <p>Cette fonction n’est pas encore disponible dans cet espace.</p>
       <p>Aucun service, installation, accès externe ou appel IA n’est déclenché ici.</p>
     </div>
   );
@@ -100,7 +99,8 @@ export function CodexSettings({
   const [category, setCategory] = useState<CodexSettingId>(initialCategory);
   const [query, setQuery] = useState("");
   const [browsing, setBrowsing] = useState(initialCategory === "general");
-  const [availableOnly, setAvailableOnly] = useState(false);
+  const [availableOnly, setAvailableOnly] = useState(true);
+  const [theme, setTheme] = useWorkspaceTheme();
   const heading = useRef<HTMLHeadingElement>(null);
   const categoryList = useRef<HTMLElement>(null);
   const focusIntent = useRef<"heading" | "category" | null>(null);
@@ -153,7 +153,17 @@ export function CodexSettings({
   else if (category === "appearance")
     content = (
       <div className="codex-setting-rows">
-        <Setting label="Thème" value="Sombre" />
+        <label className="codex-setting-row">
+          <span>Thème</span>
+          <select
+            aria-label="Thème"
+            value={theme}
+            onChange={(event) => setTheme(event.target.value as "light" | "dark")}
+          >
+            <option value="light">Clair</option>
+            <option value="dark">Sombre</option>
+          </select>
+        </label>
         <label className="codex-setting-row">
           <span>Taille du texte des messages</span>
           <select
@@ -445,14 +455,14 @@ export function CodexFeature({
   else if (feature === "about")
     content = (
       <>
-        <h3>Optivos · Atelier IA</h3>
+        <h3>Optivos Workspace</h3>
         <p>
-          Interface reconstruite à partir de l’organisation et des menus de Codex Desktop
-          26.1007.9446.0. Le moteur utilisé reste Hermes.
+          Un espace pour préparer vos missions, organiser une équipe et construire vos workflows. Le
+          module audit s’appuie sur le moteur métier Optivos existant.
         </p>
         <p>
-          Laboratoire Preview ; les services Codex ne sont pas intégrés. Les missions et contrôles
-          Optivos existants sont conservés.
+          Version pilote : Hermes exécute les missions textuelles. Le canevas permet de préparer et
+          d’exporter les graphes ; leur exécution reste à raccorder.
         </p>
       </>
     );

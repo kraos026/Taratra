@@ -9,6 +9,8 @@ metadata:
 
 Consulter le [plan directeur](../../../docs/architecture/optivos-platform-blueprint.md) et les instructions du checkout actif. Il actualise la direction produit ; les moteurs métier, droits et statuts restent ceux des propriétaires existants.
 
+Pour la présentation du poste agentique, appliquer le [nouveau système visuel](../../../design-system/optivos-workspace/MASTER.md). L’utilisateur a remplacé les anciennes règles visuelles Optivos et choisi deux thèmes avec sélecteur. Ne pas réintroduire l’ancienne palette ou ses contraintes de conservation ; les moteurs et protections métier restent canoniques.
+
 Pour un état des lieux, exécuter `scripts/inventory_project.py --root <checkout>` avec Python. Le helper lit les fichiers suivis et le manifeste de dépendances ; il ne contacte aucun service. Ses compteurs ne prouvent ni raccordement ni certification. Compléter uniquement par les contrats/services pertinents à la demande.
 
 Produire une décision qui distingue : existant vérifié, cible, travail manquant et preuve attendue. Associer chaque capacité à un propriétaire, un statut et une interface publique. Une disponibilité dans le chat opérateur n’établit pas son isolation client dans Optivos.

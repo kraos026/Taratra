@@ -1,17 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import {
-  Search,
-  SquarePen,
-  Clock3,
-  Bot,
-  Blocks,
-  Sparkles,
-  Settings,
-  Ellipsis,
-  Layers3,
-  Workflow,
-} from "lucide-react";
+import { Search, SquarePen, Bot, Settings, Ellipsis, Layers3, Workflow } from "lucide-react";
 import { CodexMenu, type MenuEntry } from "./codex-menu";
 import type { CodexFeatureId, CodexSettingId } from "../domain/codex-navigation";
 
@@ -185,19 +174,11 @@ export function CodexApplicationMenus(props: Props) {
       [
         {
           label: "Documentation",
-          action: () => {
-            window.open("https://developers.openai.com/codex/app", "_blank", "noopener,noreferrer");
-          },
+          action: () => props.onFeature("about"),
         },
         {
           label: "Nouveautés",
-          action: () => {
-            window.open(
-              "https://developers.openai.com/codex/changelog",
-              "_blank",
-              "noopener,noreferrer",
-            );
-          },
+          action: () => props.onFeature("about"),
         },
         { label: "Raccourcis clavier", action: () => props.onSettings("shortcuts") },
         { label: "Dépannage", action: () => props.onFeature("connections") },
@@ -240,7 +221,7 @@ export function CodexSidebarTools(props: Props) {
         onClick={() => props.onCommand("new")}
       >
         <SquarePen size={17} aria-hidden="true" />
-        <span>Nouveau chat</span>
+        <span>Nouvelle mission</span>
         <kbd>⌃⌥N</kbd>
       </button>
       <button type="button" aria-label="Rechercher" onClick={() => props.onCommand("search")}>
@@ -256,25 +237,16 @@ export function CodexSidebarTools(props: Props) {
         <Workflow size={17} aria-hidden="true" />
         <span>Workflows</span>
       </button>
-      <button type="button" onClick={() => props.onFeature("scheduled")}>
-        <Clock3 size={17} aria-hidden="true" />
-        <span>Planifiées</span>
-      </button>
       <button type="button" onClick={() => props.onFeature("agents")}>
         <Bot size={17} aria-hidden="true" />
         <span>Agents</span>
       </button>
-      <button type="button" onClick={() => props.onFeature("skills")}>
-        <Sparkles size={17} aria-hidden="true" />
-        <span>Compétences</span>
-      </button>
-      <button type="button" onClick={() => props.onFeature("plugins")}>
-        <Blocks size={17} aria-hidden="true" />
-        <span>Plugins</span>
-      </button>
       <CodexMenu
         label="Plus de menus"
         items={[
+          { label: "Compétences", action: () => props.onFeature("skills") },
+          { label: "Plugins", action: () => props.onFeature("plugins") },
+          { label: "Planifiées", action: () => props.onFeature("scheduled") },
           { label: "Serveurs MCP", action: () => props.onFeature("mcp") },
           { label: "Revue de code", action: () => props.onFeature("review") },
           { label: "Votre point", action: () => props.onFeature("orbit") },

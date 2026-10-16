@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useContext, useEffect, useRef, useState, type ReactNode } from "react";
+import { WorkspaceThemeContext } from "./workspace-theme";
 import { createPortal } from "react-dom";
 import { ChevronRight } from "lucide-react";
 
@@ -21,6 +22,7 @@ export function CodexMenu({
   children?: ReactNode;
   className?: string;
 }) {
+  const theme = useContext(WorkspaceThemeContext);
   const trigger = useRef<HTMLButtonElement>(null);
   const popup = useRef<HTMLDivElement>(null);
   const [position, setPosition] = useState<{ top: number; left: number } | null>(null);
@@ -94,6 +96,7 @@ export function CodexMenu({
         createPortal(
           <div
             ref={popup}
+            data-platform-theme={theme}
             role="menu"
             aria-label={label}
             className="codex-popup"

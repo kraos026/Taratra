@@ -8,6 +8,9 @@ Last verified: 2026-08-23
 
 The new product direction is planned separately from the canonical audit and current Preview runtime:
 
+- [New workspace visual system: independent light/dark themes](../../design-system/optivos-workspace/MASTER.md)
+- [Workspace interface reset: scope and verification](workspace-interface-reset.md)
+
 - [Platform blueprint and action plan](optivos-platform-blueprint.md)
 - [A1: tested mission, plugin and workflow contracts](orchestration-contracts-v1.md)
 - [A3: nodal draft editor, scope and verification](nodal-canvas-a3.md)
