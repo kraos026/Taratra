@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import {
   freeMissionListSchema,
   freeMissionSchema,
+  freeReviewInput,
   freePilotReadinessSchema,
   type FreeMission,
 } from "../domain/free-pilot";
@@ -34,6 +35,16 @@ export function FreePilotPanel({
   const request = useRef<AbortController | null>(null);
   const intent = useRef<{ id: string; prompt: string } | null>(null);
   const [uncertain, setUncertain] = useState(false);
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [reviewIntent, setReviewIntent] = useState<{
+    missionId: string;
+    body: {
+      id: string;
+      decision: "accepted" | "changes_requested";
+      comment: string;
+      previousId: string | null;
+    };
+  } | null>(null);
   useEffect(() => () => request.current?.abort(), []);
   const base = `/api/atelier-ia/entreprises/${encodeURIComponent(workspaceId)}`;
   async function call(path: string, signal: AbortSignal, body?: unknown) {
@@ -73,6 +84,15 @@ export function FreePilotPanel({
     const result = freeMissionListSchema.parse(await call("/missions", signal));
     setItems(result.items);
     setHasMore(result.hasMore);
+    if (
+      reviewIntent &&
+      result.items.some(
+        (item) =>
+          item.id === reviewIntent.missionId &&
+          item.reviews.some((review) => review.id === reviewIntent.body.id),
+      )
+    )
+      setReviewIntent(null);
     if (intent.current && result.items.some((item) => item.id === intent.current?.id)) {
       intent.current = null;
       setUncertain(false);
@@ -104,6 +124,43 @@ export function FreePilotPanel({
         intent.current = null;
         setUncertain(false);
       }
+      throw caught;
+    }
+  }
+  async function review(
+    signal: AbortSignal,
+    item: FreeMission,
+    decision: "accepted" | "changes_requested",
+  ) {
+    const proposed = reviewIntent || {
+      missionId: item.id,
+      body: {
+        id: crypto.randomUUID(),
+        decision,
+        comment: (comments[item.id] || "").trim(),
+        previousId: item.reviews.at(-1)?.id || null,
+      },
+    };
+    if (!freeReviewInput.safeParse(proposed.body).success)
+      throw new Error("Décrivez la correction en 10 à 500 caractères.");
+    setReviewIntent(proposed);
+    try {
+      const updated = freeMissionSchema.parse(
+        await call(`/missions/${proposed.missionId}/review`, signal, proposed.body),
+      );
+      setItems(
+        (current) => current?.map((row) => (row.id === updated.id ? updated : row)) || [updated],
+      );
+      setReviewIntent(null);
+      setMessage("Relecture enregistrée. Aucune nouvelle mission n’a été lancée.");
+    } catch (caught) {
+      if (
+        caught &&
+        typeof caught === "object" &&
+        "status" in caught &&
+        [400, 403, 404, 409, 413, 415, 429].includes(Number(caught.status))
+      )
+        setReviewIntent(null);
       throw caught;
     }
   }
@@ -192,7 +249,13 @@ export function FreePilotPanel({
       <div className="space-y-3">
         {items?.map((item) => (
           <article key={item.id} className="space-y-3 rounded-xl border border-white/10 p-4">
-            <p className="text-sm font-semibold">{labels[item.status]}</p>
+            <p className="text-sm font-semibold">
+              {item.status === "completed" && item.reviews.length
+                ? item.reviews.at(-1)?.decision === "accepted"
+                  ? "Résultat accepté"
+                  : "Correction demandée"
+                : labels[item.status]}
+            </p>
             <p className="text-sm break-words whitespace-pre-wrap text-slate-300">{item.prompt}</p>
             {item.output && (
               <div className="text-sm leading-6 break-words whitespace-pre-wrap">{item.output}</div>
@@ -204,6 +267,91 @@ export function FreePilotPanel({
               </p>
             )}
             {item.error && <p className="text-sm text-amber-200">{item.error}</p>}
+            {item.reviews.length > 0 && (
+              <details className="text-sm">
+                <summary className="min-h-11 cursor-pointer py-3">
+                  Historique des relectures ({item.reviews.length})
+                </summary>
+                <ol className="space-y-2">
+                  {item.reviews.map((entry) => (
+                    <li key={entry.id} className="break-words whitespace-pre-wrap">
+                      {entry.decision === "accepted" ? "Accepté" : "Correction demandée"} ·{" "}
+                      {new Date(entry.created_at * 1000).toLocaleString("fr-FR")}
+                      {entry.comment ? ` : ${entry.comment}` : ""}
+                    </li>
+                  ))}
+                </ol>
+              </details>
+            )}
+            {canWrite && item.status === "completed" && item.proof && item.output && (
+              <div className="space-y-3">
+                <label htmlFor={`review-${item.id}`} className="block text-sm">
+                  Votre retour sur ce résultat
+                </label>
+                <textarea
+                  id={`review-${item.id}`}
+                  maxLength={500}
+                  rows={3}
+                  value={comments[item.id] || ""}
+                  disabled={busy || !!reviewIntent}
+                  onChange={(event) =>
+                    setComments((current) => ({ ...current, [item.id]: event.target.value }))
+                  }
+                  className="w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm"
+                  placeholder="Indiquez précisément les changements souhaités."
+                />
+                <div className="flex flex-wrap gap-3">
+                  <Button
+                    type="button"
+                    className="min-h-11"
+                    disabled={busy || !!reviewIntent || item.reviews.length >= 20}
+                    onClick={() => run((signal) => review(signal, item, "accepted"))}
+                  >
+                    Accepter le résultat
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="min-h-11"
+                    disabled={
+                      busy ||
+                      !!reviewIntent ||
+                      item.reviews.length >= 20 ||
+                      (comments[item.id] || "").trim().length < 10
+                    }
+                    onClick={() => run((signal) => review(signal, item, "changes_requested"))}
+                  >
+                    Demander une correction
+                  </Button>
+                  {reviewIntent?.missionId === item.id && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="min-h-11"
+                      disabled={busy}
+                      onClick={() =>
+                        run((signal) => review(signal, item, reviewIntent.body.decision))
+                      }
+                    >
+                      Reprendre la même relecture
+                    </Button>
+                  )}
+                </div>
+                {item.reviews.at(-1)?.decision === "changes_requested" && (
+                  <p className="text-sm text-slate-300">
+                    La demande est enregistrée. Pour obtenir une nouvelle version, confiez
+                    explicitement une nouvelle mission en reprenant votre retour et les éléments
+                    utiles du texte.
+                  </p>
+                )}
+                {reviewIntent?.missionId === item.id && (
+                  <p className="text-sm text-amber-200">
+                    Enregistrement incertain : reprenez la même relecture ou actualisez les
+                    missions.
+                  </p>
+                )}
+              </div>
+            )}
             {canWrite && ["queued", "running"].includes(item.status) && (
               <Button
                 className="min-h-11"

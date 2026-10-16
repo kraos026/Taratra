@@ -85,6 +85,7 @@ let pilotWrites = 0;
 let pilotReadinessStatus = 503;
 const pilotRequestIds = [];
 let pilotRows = [];
+const reviewRequestIds = [];
 let inventoryCount = 0;
 let inventoryStatus = 200;
 let inventoryBody = {
@@ -150,6 +151,31 @@ try {
                 },
               }
             : { error: { message: "Pilote temporairement indisponible." } },
+        ),
+      });
+    }
+    if (
+      /^\/api\/atelier-ia\/entreprises\/[^/]+\/missions\/[0-9a-f-]+\/review$/.test(url.pathname)
+    ) {
+      pilotWrites++;
+      const row = pilotRows.find((item) => item.id === url.pathname.split("/").at(-2));
+      const input = request.postDataJSON();
+      reviewRequestIds.push(input.id);
+      row.reviews ||= [];
+      if (!row.reviews.some((entry) => entry.id === input.id))
+        row.reviews.push({
+          id: input.id,
+          decision: input.decision,
+          comment: input.comment,
+          created_at: 1792080001,
+        });
+      return route.fulfill({
+        status: reviewRequestIds.length === 1 ? 503 : 200,
+        contentType: "application/json",
+        body: JSON.stringify(
+          reviewRequestIds.length === 1
+            ? { error: { message: "Enregistrement incertain" } }
+            : { data: row },
         ),
       });
     }
@@ -679,7 +705,35 @@ try {
   await enterprise.getByText("Arrêtée", { exact: true }).waitFor();
   await enterprise.getByText(/Réponse réelle Hermes · coût API vérifié : 0 \$/).waitFor();
   assert.equal(pilotWrites, 3);
-  assert.equal(mutationCount, 5);
+  assert.equal(
+    await enterprise
+      .getByRole("button", { name: "Demander une correction", exact: true })
+      .isDisabled(),
+    true,
+  );
+  await enterprise
+    .getByLabel("Votre retour sur ce résultat", { exact: true })
+    .fill("Préciser les responsabilités de chaque personne.");
+  await enterprise.getByRole("button", { name: "Demander une correction", exact: true }).click();
+  await enterprise
+    .getByRole("button", { name: "Reprendre la même relecture", exact: true })
+    .waitFor();
+  await enterprise
+    .getByRole("button", { name: "Reprendre la même relecture", exact: true })
+    .click();
+  await enterprise.getByText("Correction demandée", { exact: true }).waitFor();
+  assert.equal(reviewRequestIds[0], reviewRequestIds[1]);
+  await enterprise.getByRole("button", { name: "Accepter le résultat", exact: true }).click();
+  await enterprise.getByText("Résultat accepté", { exact: true }).waitFor();
+  await enterprise.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
+  await enterprise.getByText("Résultat accepté", { exact: true }).waitFor();
+  assert.equal(pilotRows.at(-1).reviews.length, 2);
+  assert.equal(pilotRows.length, 2);
+  assert.equal(pilotRequestIds.length, 2);
+  checks.push(
+    "human review: bounded feedback, lost acknowledgement retries the same UUID, correction then acceptance persists without generation; backend mocked",
+  );
+  assert.equal(mutationCount, 8);
   checks.push(
     "text pilot manual readiness, blocked unavailable launch, lost-ack idempotent retry, real-state stop and verified-cost result presentation; backend mocked",
   );

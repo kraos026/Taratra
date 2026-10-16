@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 const mocks = vi.hoisted(() => ({ access: vi.fn(), call: vi.fn() }));
 vi.mock("./agent-company-runtime", () => ({ agentCompanyRuntimeAccess: mocks.access }));
 vi.mock("../infrastructure/free-pilot-client", () => ({ callFreePilot: mocks.call }));
-import { freePilotCreate, freePilotRead, freePilotStop } from "./free-pilot";
+import { freePilotCreate, freePilotRead, freePilotStop, freePilotReview } from "./free-pilot";
 const id = "11111111-1111-4111-8111-111111111111";
 const body = { id, prompt: "Produire un plan d’accueil client" };
 const item = {
@@ -25,6 +25,37 @@ beforeEach(() => {
   mocks.access.mockResolvedValue({ userId: "verified-owner", canWrite: true });
 });
 describe("real text mission application boundary", () => {
+  it("checks review identity, role, origin and schema before forwarding the server author", async () => {
+    const review = {
+      id,
+      decision: "changes_requested",
+      comment: "Préciser les responsabilités",
+      previousId: null,
+    };
+    mocks.access.mockResolvedValue(new Response(null, { status: 404 }));
+    expect((await freePilotReview(id, id, request(review))).status).toBe(404);
+    mocks.access.mockResolvedValue({ canWrite: false });
+    expect((await freePilotReview(id, id, request(review))).status).toBe(403);
+    mocks.access.mockResolvedValue({ canWrite: true, userId: "owner" });
+    expect((await freePilotReview(id, id, request(review, "https://foreign.test"))).status).toBe(
+      403,
+    );
+    expect((await freePilotReview(id, id, request({ ...review, userId: "forged" }))).status).toBe(
+      400,
+    );
+    expect((await freePilotReview(id, id, request({ ...review, comment: "court" }))).status).toBe(
+      400,
+    );
+    expect(mocks.call).not.toHaveBeenCalled();
+    mocks.call.mockResolvedValue({ status: 200, data: { data: item } });
+    expect((await freePilotReview(id, id, request(review))).status).toBe(200);
+    expect(mocks.call).toHaveBeenCalledExactlyOnceWith(id, `/pilot/missions/${id}/review`, {
+      ...review,
+      userId: "owner",
+    });
+    mocks.call.mockResolvedValue({ status: 409 });
+    expect((await freePilotReview(id, id, request(review))).status).toBe(409);
+  });
   it("checks workspace access before every read, create and stop", async () => {
     mocks.access.mockResolvedValue(new Response(null, { status: 404 }));
     expect((await freePilotCreate(id, request())).status).toBe(404);

@@ -19,7 +19,7 @@ export async function callFreePilot(
   const allowed =
     body === undefined
       ? /^\/pilot\/(?:readiness|missions|missions\/[0-9a-f-]{36})$/
-      : /^\/pilot\/(?:missions|missions\/[0-9a-f-]{36}\/stop)$/;
+      : /^\/pilot\/(?:missions|missions\/[0-9a-f-]{36}\/(?:stop|review))$/;
   if (!allowed.test(path)) throw new Error("Pilot path refused");
   const origin = new URL(env.OPTIVOS_HERMES_API_URL);
   if (

@@ -44,6 +44,47 @@ class DurablePilotTests(unittest.TestCase):
             self.pilot.create(self.body)
         self.assertEqual(self.pilot.listing()["items"], [])
 
+    def completed_mission(self):
+        self.pilot.create(self.body)
+        with self.pilot.db() as con:
+            con.execute("update missions set status='completed',output='Texte original',proof='{}' where id=?", (self.body["id"],))
+        return {"id": str(uuid4()), "userId": self.user, "decision": "changes_requested", "comment": "Préciser le rôle de chaque personne", "previousId": None}
+
+    def test_review_is_durable_idempotent_and_never_generates(self):
+        review = self.completed_mission()
+        with patch.object(self.pilot, "fresh_policy", side_effect=AssertionError("No inference or catalogue read")):
+            self.assertEqual(self.pilot.review(self.body["id"], review), 200)
+            self.assertEqual(self.pilot.review(self.body["id"], review), 200)
+        restarted = Pilot(self.path, self.workspace, self.organization, "gate", "upstream")
+        self.assertEqual(restarted.review(self.body["id"], review), 200)
+        result = restarted.listing()["items"][0]
+        self.assertEqual(result["output"], "Texte original")
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(len(result["reviews"]), 1)
+        self.assertNotIn("user_id", result["reviews"][0])
+
+    def test_review_rejects_conflicts_incomplete_runs_unknown_missions_and_invalid_feedback(self):
+        review = self.completed_mission()
+        self.assertEqual(self.pilot.review(str(uuid4()), review), 404)
+        self.assertEqual(self.pilot.review(self.body["id"], review), 200)
+        self.assertEqual(self.pilot.review(self.body["id"], {**review, "comment": "Une autre correction"}), 409)
+        self.assertEqual(self.pilot.review(self.body["id"], {**review, "id": str(uuid4())}), 409)
+        acceptance = {**review, "id": str(uuid4()), "decision": "accepted", "comment": "", "previousId": review["id"]}
+        self.assertEqual(self.pilot.review(self.body["id"], acceptance), 200)
+        with self.assertRaises(ValueError):
+            self.pilot.review(self.body["id"], {**review, "comment": "court"})
+        with self.pilot.db() as con:
+            con.execute("update missions set status='failed'")
+        self.assertEqual(self.pilot.review(self.body["id"], acceptance), 409)
+
+    def test_review_history_is_bounded_without_deleting_previous_decisions(self):
+        review = self.completed_mission()
+        for _ in range(20):
+            self.assertEqual(self.pilot.review(self.body["id"], review), 200)
+            review = {**review, "previousId": review["id"], "id": str(uuid4())}
+        self.assertEqual(self.pilot.review(self.body["id"], review), 429)
+        self.assertEqual(len(self.pilot.listing()["items"][0]["reviews"]), 20)
+
     def test_rebinding_persisted_tenant_is_refused(self):
         with self.assertRaises(RuntimeError):
             Pilot(self.path, str(uuid4()), self.organization, "gate", "upstream")

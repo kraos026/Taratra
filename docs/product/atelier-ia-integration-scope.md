@@ -162,3 +162,21 @@ DB IMPACT: Aucun au diagnostic. Toute persistance de nouvelles missions sera cad
 SECURITY IMPACT: Modèle explicitement gratuit, tarification fraîche, aucun repli payant ; aucune modification des accès canoniques ou du modèle global existant.
 TEST PLAN: Prix inconnu/payant/refusé, modèle non autorisé, prix/cache périmé, repli, outils externes payants ; contrôles négatifs avant toute inférence.
 OUT-OF-SCOPE: Production Optivos, moteurs d'audit, achat/abonnement et appels payants.
+
+## Mission 2026-10-16 : relecture humaine du pilote
+
+MISSION: accepter un résultat ou enregistrer une demande de correction, sans génération automatique.
+AFFECTED DOMAIN: Atelier IA / pilote textuel.
+CANONICAL OWNER: agent-workspace pour les accès ; adaptateur VPS pour les missions.
+CURRENT STATUS: SHADOW / Preview.
+FILES EXPECTED: free-pilot domaine/application/UI, API review, adaptateur et tests.
+DB IMPACT: table SQLite additive de relectures ; aucune évolution Supabase.
+SECURITY IMPACT: rôle écrivain, origine, organisation et espace vérifiés ; historique immuable.
+TEST PLAN: persistance, idempotence, concurrence, refus des états non terminés, contrôles API et compilation.
+OUT-OF-SCOPE: moteur d’audit, production, actions externes, inférence automatique.
+
+TARGET: SQLite privé du pilote VPS ; PRODUCTION? non, pilote staging.
+DISPOSABLE? non ; BACKUP? sauvegarde SQLite cohérente avant déploiement.
+MIGRATION REQUIRED? création additive versionnée dans l’adaptateur.
+RLS IMPACT? aucun ; TENANT IMPACT? même liaison espace/organisation, aucune réaffectation.
+ROLLBACK PLAN? restaurer le service précédent ; conserver la table additive et la sauvegarde.

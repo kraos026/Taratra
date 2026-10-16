@@ -3,6 +3,7 @@ import { agentCompanyRuntimeAccess } from "./agent-company-runtime";
 import { callFreePilot } from "../infrastructure/free-pilot-client";
 import {
   freeMissionInput,
+  freeReviewInput,
   freeMissionListSchema,
   freeMissionSchema,
   freePilotReadinessSchema,
@@ -122,5 +123,34 @@ export async function freePilotStop(id: string, missionId: string, request: Requ
     return json({ data: { stopping: true } });
   } catch (error) {
     return error instanceof Response ? error : failure(503);
+  }
+}
+
+export async function freePilotReview(id: string, missionId: string, request: Request) {
+  const access = await agentCompanyRuntimeAccess(id);
+  if (access instanceof Response) return access;
+  if (!access.canWrite) return failure(403, "Votre rôle permet uniquement la consultation.");
+  try {
+    if (!z.string().uuid().safeParse(missionId).success) return failure(404);
+    const parsed = freeReviewInput.safeParse(await readInput(request));
+    if (!parsed.success) return failure(400, "Précisez la correction en 10 à 500 caractères.");
+    const response = await callFreePilot(id, `/pilot/missions/${missionId}/review`, {
+      ...parsed.data,
+      userId: access.userId,
+    });
+    if ([404, 409, 429].includes(response.status))
+      return failure(
+        response.status,
+        "Relecture refusée : actualisez les missions avant de réessayer. L’historique est limité à vingt décisions par résultat.",
+      );
+    if (response.status !== 200) return failure(503);
+    return json({ data: z.object({ data: freeMissionSchema }).parse(response.data).data });
+  } catch (error) {
+    return error instanceof Response
+      ? error
+      : failure(
+          503,
+          "Enregistrement incertain. Reprenez la même relecture ou actualisez les missions.",
+        );
   }
 }

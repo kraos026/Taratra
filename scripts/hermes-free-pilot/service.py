@@ -52,6 +52,7 @@ class Pilot:
                 con.execute("insert or ignore into pilot_state values(?,?)", (key, value))
             self.suspended = con.execute("select 1 from pilot_state where key='suspended'").fetchone() is not None
             con.execute("create table if not exists missions(id text primary key,workspace_id text not null,organization_id text not null,created_by text not null,prompt text not null,status text not null,created_at real not null,updated_at real not null,output text,error text,proof text)")
+            con.execute("create table if not exists reviews(sequence integer primary key autoincrement,id text unique not null,mission_id text not null,user_id text not null,decision text not null,comment text not null,previous_id text,created_at real not null)")
             con.execute("update missions set status='interrupted',error='Exécution interrompue ; aucun rejeu automatique.',updated_at=? where status in ('running','stopping')", (time.time(),))
         self.path.chmod(0o600)
 
@@ -96,8 +97,37 @@ class Pilot:
             item.pop("organization_id")
             item.pop("created_by")
             item["proof"] = json.loads(item["proof"]) if item["proof"] else None
+            with self.db() as con:
+                item["reviews"] = [dict(review) for review in con.execute("select id,decision,comment,created_at from reviews where mission_id=? order by sequence", (item["id"],))]
             items.append(item)
         return {"items": items, "hasMore": len(rows) > 20}
+
+    def review(self, mission_id, body):
+        mission_id = uuid(mission_id)
+        if not isinstance(body, dict) or set(body) != {"id", "userId", "decision", "comment", "previousId"}:
+            raise ValueError("Invalid review")
+        review_id, user_id = uuid(body["id"]), uuid(body["userId"])
+        previous = uuid(body["previousId"]) if body["previousId"] is not None else None
+        decision, comment = body["decision"], body["comment"]
+        if decision not in ("accepted", "changes_requested") or not isinstance(comment, str) or len(comment) > 500 or (decision == "changes_requested" and len(comment.strip()) < 10):
+            raise ValueError("Invalid review")
+        comment = comment.strip()
+        with self.lock, self.db() as con:
+            mission = con.execute("select * from missions where id=? and workspace_id=? and organization_id=?", (mission_id, self.workspace, self.organization)).fetchone()
+            if not mission:
+                return 404
+            if mission["status"] != "completed" or not mission["output"] or not mission["proof"]:
+                return 409
+            existing = con.execute("select * from reviews where id=?", (review_id,)).fetchone()
+            if existing:
+                return 200 if (existing["mission_id"], existing["user_id"], existing["decision"], existing["comment"], existing["previous_id"]) == (mission_id, user_id, decision, comment, previous) else 409
+            rows = con.execute("select id from reviews where mission_id=? order by sequence", (mission_id,)).fetchall()
+            if (rows[-1]["id"] if rows else None) != previous:
+                return 409
+            if len(rows) >= 20:
+                return 429
+            con.execute("insert into reviews(id,mission_id,user_id,decision,comment,previous_id,created_at) values(?,?,?,?,?,?,?)", (review_id, mission_id, user_id, decision, comment, previous, time.time()))
+        return 200
 
     def create(self, body):
         if not isinstance(body, dict) or set(body) != {"id", "prompt", "userId"}:
@@ -306,6 +336,10 @@ def handler(pilot, broker=False):
                     return self.send(code, {"data": pilot.listing(body["id"])["items"][0]} if code in (200, 202) else {"error": "Mission refused"})
             if self.path.startswith("/pilot/missions/"):
                 tail = self.path.removeprefix("/pilot/missions/")
+                if self.command == "POST" and tail.endswith("/review"):
+                    mission_id = uuid(tail.removesuffix("/review"))
+                    code = pilot.review(mission_id, body)
+                    return self.send(code, {"data": pilot.listing(mission_id)["items"][0]} if code == 200 else {"error": "Review refused"})
                 if self.command == "POST" and tail.endswith("/stop") and body == {}:
                     if not pilot.stop(tail.removesuffix("/stop")):
                         return self.send(404, {"error": "Not found"})

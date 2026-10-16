@@ -102,7 +102,7 @@ WantedBy=multi-user.target
     }
     @pilot_write {
         method POST
-        path_regexp pilotwrite ^/pilot/(missions|missions/[0-9a-f-]{36}/stop)$
+        path_regexp pilotwrite ^/pilot/(missions|missions/[0-9a-f-]{36}/(stop|review))$
         header Authorization "Bearer {$OPTIVOS_PILOT_KEY}"
         expression `{http.request.uri.query} == ""`
     }
@@ -126,10 +126,12 @@ WantedBy=multi-user.target
         }
     }
 '''
-    if marker not in original:
-        if original.count('    handle {\n        respond "Not found" 404') != 1:
+    old_route = '        path_regexp pilotwrite ^/pilot/(missions|missions/[0-9a-f-]{36}/stop)$'
+    new_route = '        path_regexp pilotwrite ^/pilot/(missions|missions/[0-9a-f-]{36}/(stop|review))$'
+    if marker not in original or old_route in original:
+        if original.count('    handle {\n        respond "Not found" 404') != 1 or original.count(old_route) > 1:
             raise RuntimeError("Unexpected existing gateway config; no overwrite")
-        candidate = original.replace('    handle {\n        respond "Not found" 404', addition + '    handle {\n        respond "Not found" 404')
+        candidate = original.replace(old_route, new_route) if marker in original else original.replace('    handle {\n        respond "Not found" 404', addition + '    handle {\n        respond "Not found" 404')
         candidate_path = ROOT / "config" / "Caddyfile.pilot-candidate"
         write(candidate_path, candidate, 0o644)
         env = dict(os.environ)
@@ -138,7 +140,7 @@ WantedBy=multi-user.target
         validation = subprocess.run([str(ROOT / "runtime/usr/bin/caddy"), "validate", "--config", str(candidate_path), "--adapter", "caddyfile"], env=env, capture_output=True)
         if validation.returncode:
             raise RuntimeError("Gateway validation failed; no secret-bearing diagnostics printed")
-        write(ROOT / "config" / "Caddyfile.before-pilot", original, 0o644)
+        write(ROOT / "config" / ("Caddyfile.before-review" if marker in original else "Caddyfile.before-pilot"), original, 0o644)
         os.replace(candidate_path, config_path)
     print(json.dumps({"prepared": True, "activated": False, "modelCalls": 0, "nativeHermesConfigChanged": False}))
 

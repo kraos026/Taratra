@@ -1,5 +1,13 @@
 # Premier pilote textuel Hermes à zéro nouveaux frais API
 
+## Relecture humaine — 16 octobre 2026
+
+Un résultat terminé et vérifié peut être accepté ou recevoir une demande de correction de 10 à 500 caractères. Ces décisions sont des événements immuables dans une table SQLite additive du même adaptateur, limités à vingt par résultat. Le texte, son état technique et sa preuve de coût restent conservés. Le dernier événement détermine seulement le libellé de relecture affiché.
+
+Le rôle écrivain, l’origine et l’espace sont vérifiés avant chaque action ; l’auteur vient de la session serveur. Un UUID rend les reprises idempotentes. L’identifiant de la décision précédente empêche une décision concurrente de remplacer silencieusement un retour plus récent. Un refus 409 impose une actualisation. En cas d’accusé de réception incertain, le navigateur conserve la même intention en mémoire jusqu’à reprise ou lecture confirmée ; cette intention locale ne survit pas au rechargement.
+
+La relecture ne consulte aucun fournisseur et ne crée aucune mission. Une correction est enregistrée comme retour humain ; pour produire une nouvelle version, l’utilisateur lance explicitement une nouvelle mission avec les éléments utiles. Le contrôle financier existant s’applique à ce nouveau lancement. Les relectures ne constituent pas une certification métier ou production.
+
 MISSION: Permettre une première mission textuelle réelle sur le VPS, avec preuve de réponse et de coût, idempotence et arrêt au prochain point sûr.
 AFFECTED DOMAIN: Agent-workspace SHADOW et adaptateur privé de lancement.
 CANONICAL OWNER: Auth/Organization et agent_company_workspaces pour les accès ; AIAgent Hermes existant pour le travail. Le moteur d'audit reste inchangé.
