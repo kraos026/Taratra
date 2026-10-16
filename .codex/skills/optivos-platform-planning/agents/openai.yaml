@@ -1,0 +1,4 @@
+interface:
+  display_name: "Optivos — plan de plateforme"
+  short_description: "Analyser les frontières et ordonner les lots Optivos"
+  default_prompt: "Utilise $optivos-platform-planning pour analyser l’existant et définir le prochain lot vérifiable d’Optivos."

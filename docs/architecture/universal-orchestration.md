@@ -1,5 +1,7 @@
 # Optivos : socle d’orchestration universelle
 
+Direction produit et plan actualisés le 16 octobre 2026 : [plan directeur](optivos-platform-blueprint.md). L’audit devient un plugin métier de premier niveau par façade sur les services canoniques ; l’entrée de navigation décrite ici reste l’état réellement livré. La vue nodale xyflow et l’évaluation Rete sont planifiées, pas implémentées.
+
 MISSION: ajouter une couche commune de capacités et de dispatch pour les moteurs existants et futurs.
 AFFECTED DOMAIN: agent-workspace, SHADOW / Preview.
 CANONICAL OWNER: Auth/Organization et registre agent-company existants ; audit canonique inchangé ; missions, preuve de coût, UUID et relectures restent au pilote Hermes.
