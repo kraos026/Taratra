@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { AgentAvatar } from "./agent-avatar";
+import { ArrowUpRight, MessageSquare } from "lucide-react";
 import {
   freeMissionListSchema,
   freeMissionSchema,
@@ -18,6 +20,13 @@ const labels: Record<FreeMission["status"], string> = {
   stopped: "Arrêtée",
   interrupted: "Interrompue, sans rejeu automatique",
 };
+function missionLabel(item: FreeMission) {
+  return item.status === "completed" && item.reviews.length
+    ? item.reviews.at(-1)?.decision === "accepted"
+      ? "Résultat accepté"
+      : "Correction demandée"
+    : labels[item.status];
+}
 export function FreePilotPanel({
   workspaceId,
   canWrite,
@@ -28,6 +37,7 @@ export function FreePilotPanel({
   const [ready, setReady] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [items, setItems] = useState<FreeMission[] | null>(null);
+  const [selectedMission, setSelectedMission] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -83,6 +93,9 @@ export function FreePilotPanel({
   async function load(signal: AbortSignal) {
     const result = freeMissionListSchema.parse(await call("/missions", signal));
     setItems(result.items);
+    setSelectedMission((current) =>
+      result.items.some((item) => item.id === current) ? current : result.items[0]?.id || null,
+    );
     setHasMore(result.hasMore);
     if (
       reviewIntent &&
@@ -108,6 +121,7 @@ export function FreePilotPanel({
       setItems((current) =>
         [item, ...(current || []).filter((row) => row.id !== item.id)].slice(0, 20),
       );
+      setSelectedMission(item.id);
       intent.current = null;
       setUncertain(false);
       setPrompt("");
@@ -165,16 +179,24 @@ export function FreePilotPanel({
     }
   }
   return (
-    <section
-      aria-label="Missions textuelles pilotes"
-      className="space-y-4 rounded-xl border border-white/10 p-4"
-    >
-      <h4 className="font-semibold">Confier une mission textuelle à Hermes</h4>
-      <p className="text-sm leading-6 text-slate-300">
-        Ce premier pilote produit un texte : plan, synthèse ou procédure. Les outils externes,
-        skills, plugins et actions sur vos comptes restent désactivés. Chaque lancement contrôle le
-        modèle gratuit et refuse tout repli payant.
-      </p>
+    <section aria-label="Missions textuelles pilotes" className="pilot-workspace space-y-4">
+      <div className="flex items-center gap-3">
+        <AgentAvatar variant={1} size={44} />
+        <div>
+          <h4 className="font-semibold">Travailler avec Hermes</h4>
+          <p className="text-xs text-slate-400">
+            Pilote textuel · une mission à la fois · plafond API 0 €
+          </p>
+        </div>
+      </div>
+      <details className="text-sm text-slate-400">
+        <summary className="min-h-11 cursor-pointer py-3">Ce que Hermes peut faire ici</summary>
+        <p className="text-sm leading-6 text-slate-300">
+          Ce premier pilote produit un texte : plan, synthèse ou procédure. Les outils externes,
+          skills, plugins et actions sur vos comptes restent désactivés. Chaque lancement contrôle
+          le modèle gratuit et refuse tout repli payant.
+        </p>
+      </details>
       <div className="flex flex-wrap gap-3">
         <Button
           className="min-h-11"
@@ -202,177 +224,234 @@ export function FreePilotPanel({
           Actualiser les missions
         </Button>
       </div>
-      {canWrite && (
-        <form
-          className="space-y-3"
-          onSubmit={(event) => {
-            event.preventDefault();
-            void run(submit);
-          }}
-        >
-          <label htmlFor={`pilot-prompt-${workspaceId}`} className="block text-sm font-semibold">
-            Quelle mission textuelle confier à Hermes ?
-          </label>
-          <textarea
-            id={`pilot-prompt-${workspaceId}`}
-            value={prompt}
-            onChange={(event) => setPrompt(event.target.value)}
-            required
-            minLength={10}
-            maxLength={2000}
-            disabled={busy || uncertain}
-            rows={4}
-            className="w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm"
-            placeholder="Exemple : prépare une procédure d’accueil client en cinq étapes."
-          />
-          <Button
-            className="min-h-11"
-            type="submit"
-            disabled={busy || !ready || (!uncertain && prompt.trim().length < 10)}
-          >
-            {uncertain ? "Reprendre la même demande" : "Lancer la mission textuelle"}
-          </Button>
-          {uncertain && (
-            <p className="text-sm text-amber-200">
-              La même demande et son identifiant sont conservés pour éviter un double lancement.
-              Actualisez les missions ou reprenez cette demande.
+      <div className="pilot-conversation-layout">
+        <details className="pilot-history" aria-label="Historique des missions">
+          <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+            <MessageSquare className="mr-2 inline" size={14} aria-hidden="true" />
+            Missions récentes ({items?.length || 0})
+          </summary>
+          {items?.map((item) => (
+            <button
+              type="button"
+              key={item.id}
+              disabled={busy}
+              aria-pressed={selectedMission === item.id}
+              onClick={() => setSelectedMission(item.id)}
+              className={`mb-2 block min-h-11 w-full rounded-xl p-3 text-left text-sm ${selectedMission === item.id ? "bg-indigo-400/10 text-indigo-100" : "text-slate-300 hover:bg-white/5"}`}
+            >
+              <span className="line-clamp-2 break-words">{item.prompt}</span>
+              <span className="mt-1 block text-xs text-slate-400">État : {missionLabel(item)}</span>
+            </button>
+          ))}
+          {!items?.length && (
+            <p className="text-sm leading-6 text-slate-400">
+              Actualisez pour retrouver vos missions enregistrées.
             </p>
           )}
-        </form>
-      )}
-      <div role="status" aria-live="polite" className="text-sm text-slate-300">
-        {error || message || "Aucune lecture automatique. Commencez par vérifier le pilote."}
-      </div>
-      {items?.length === 0 && (
-        <p className="text-sm text-slate-400">Aucune mission enregistrée pour cet espace.</p>
-      )}
-      <div className="space-y-3">
-        {items?.map((item) => (
-          <article key={item.id} className="space-y-3 rounded-xl border border-white/10 p-4">
-            <p className="text-sm font-semibold">
-              {item.status === "completed" && item.reviews.length
-                ? item.reviews.at(-1)?.decision === "accepted"
-                  ? "Résultat accepté"
-                  : "Correction demandée"
-                : labels[item.status]}
-            </p>
-            <p className="text-sm break-words whitespace-pre-wrap text-slate-300">{item.prompt}</p>
-            {item.output && (
-              <div className="text-sm leading-6 break-words whitespace-pre-wrap">{item.output}</div>
-            )}
-            {item.proof && (
-              <p className="text-xs text-emerald-200">
-                Réponse réelle Hermes · coût API vérifié : 0 $ · {item.proof.model} · aucun outil,
-                aucun repli
+        </details>
+        <div className="pilot-thread min-w-0">
+          {!selectedMission && (
+            <div className="pilot-empty">
+              <AgentAvatar variant={1} size={80} />
+              <h5 className="mt-4 text-xl font-semibold">Quel travail voulez-vous avancer ?</h5>
+              <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+                Décrivez un résultat concret. Hermes prépare un texte que vous pourrez relire et
+                valider.
               </p>
-            )}
-            {item.error && <p className="text-sm text-amber-200">{item.error}</p>}
-            {item.reviews.length > 0 && (
-              <details className="text-sm">
-                <summary className="min-h-11 cursor-pointer py-3">
-                  Historique des relectures ({item.reviews.length})
-                </summary>
-                <ol className="space-y-2">
-                  {item.reviews.map((entry) => (
-                    <li key={entry.id} className="break-words whitespace-pre-wrap">
-                      {entry.decision === "accepted" ? "Accepté" : "Correction demandée"} ·{" "}
-                      {new Date(entry.created_at * 1000).toLocaleString("fr-FR")}
-                      {entry.comment ? ` : ${entry.comment}` : ""}
-                    </li>
-                  ))}
-                </ol>
-              </details>
-            )}
-            {canWrite && item.status === "completed" && item.proof && item.output && (
-              <div className="space-y-3">
-                <label htmlFor={`review-${item.id}`} className="block text-sm">
-                  Votre retour sur ce résultat
-                </label>
-                <textarea
-                  id={`review-${item.id}`}
-                  maxLength={500}
-                  rows={3}
-                  value={comments[item.id] || ""}
-                  disabled={busy || !!reviewIntent}
-                  onChange={(event) =>
-                    setComments((current) => ({ ...current, [item.id]: event.target.value }))
-                  }
-                  className="w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm"
-                  placeholder="Indiquez précisément les changements souhaités."
-                />
-                <div className="flex flex-wrap gap-3">
-                  <Button
-                    type="button"
-                    className="min-h-11"
-                    disabled={busy || !!reviewIntent || item.reviews.length >= 20}
-                    onClick={() => run((signal) => review(signal, item, "accepted"))}
-                  >
-                    Accepter le résultat
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-11"
-                    disabled={
-                      busy ||
-                      !!reviewIntent ||
-                      item.reviews.length >= 20 ||
-                      (comments[item.id] || "").trim().length < 10
-                    }
-                    onClick={() => run((signal) => review(signal, item, "changes_requested"))}
-                  >
-                    Demander une correction
-                  </Button>
-                  {reviewIntent?.missionId === item.id && (
+            </div>
+          )}
+          <div role="status" aria-live="polite" className="py-3 text-sm text-slate-300">
+            {error ||
+              message ||
+              (ready
+                ? "Pilote vérifié. Les états s’actualisent à votre demande."
+                : "Aucune lecture automatique. Commencez par vérifier le pilote.")}
+          </div>
+          {items?.length === 0 && (
+            <p className="text-sm text-slate-400">Aucune mission enregistrée pour cet espace.</p>
+          )}
+          <div className="space-y-3">
+            {items
+              ?.filter((item) => item.id === selectedMission)
+              .map((item) => (
+                <article key={item.id} className="space-y-4 py-4">
+                  <div className="pilot-user-message">
+                    <p className="mb-2 text-xs font-semibold text-indigo-200">Votre demande</p>
+                    <p className="text-sm break-words whitespace-pre-wrap text-slate-200">
+                      {item.prompt}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <AgentAvatar variant={1} size={32} />
+                    <span className="text-sm font-semibold">Hermes</span>
+                  </div>
+                  <p className="text-sm font-semibold">{missionLabel(item)}</p>
+                  {item.output && (
+                    <div className="pilot-answer text-sm leading-7 break-words whitespace-pre-wrap">
+                      {item.output}
+                    </div>
+                  )}
+                  {item.proof && (
+                    <p className="text-xs leading-5 text-emerald-200">
+                      Réponse réelle Hermes · coût API vérifié : 0 $ · {item.proof.model} · aucun
+                      outil, aucun repli
+                    </p>
+                  )}
+                  {item.error && <p className="text-sm text-amber-200">{item.error}</p>}
+                  {item.reviews.length > 0 && (
+                    <details className="text-sm">
+                      <summary className="min-h-11 cursor-pointer py-3">
+                        Historique des relectures ({item.reviews.length})
+                      </summary>
+                      <ol className="space-y-2">
+                        {item.reviews.map((entry) => (
+                          <li key={entry.id} className="break-words whitespace-pre-wrap">
+                            {entry.decision === "accepted" ? "Accepté" : "Correction demandée"} ·{" "}
+                            {new Date(entry.created_at * 1000).toLocaleString("fr-FR")}
+                            {entry.comment ? ` : ${entry.comment}` : ""}
+                          </li>
+                        ))}
+                      </ol>
+                    </details>
+                  )}
+                  {canWrite && item.status === "completed" && item.proof && item.output && (
+                    <details className="space-y-3 rounded-xl border border-white/10 p-3">
+                      <summary className="min-h-11 cursor-pointer py-3 text-sm text-indigo-200">
+                        Relire ou corriger ce résultat
+                      </summary>
+                      <label htmlFor={`review-${item.id}`} className="block text-sm">
+                        Votre retour sur ce résultat
+                      </label>
+                      <textarea
+                        id={`review-${item.id}`}
+                        maxLength={500}
+                        rows={3}
+                        value={comments[item.id] || ""}
+                        disabled={busy || !!reviewIntent}
+                        onChange={(event) =>
+                          setComments((current) => ({ ...current, [item.id]: event.target.value }))
+                        }
+                        className="w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm"
+                        placeholder="Indiquez précisément les changements souhaités."
+                      />
+                      <div className="flex flex-wrap gap-3">
+                        <Button
+                          type="button"
+                          className="min-h-11"
+                          disabled={busy || !!reviewIntent || item.reviews.length >= 20}
+                          onClick={() => run((signal) => review(signal, item, "accepted"))}
+                        >
+                          Accepter le résultat
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="min-h-11"
+                          disabled={
+                            busy ||
+                            !!reviewIntent ||
+                            item.reviews.length >= 20 ||
+                            (comments[item.id] || "").trim().length < 10
+                          }
+                          onClick={() => run((signal) => review(signal, item, "changes_requested"))}
+                        >
+                          Demander une correction
+                        </Button>
+                        {reviewIntent?.missionId === item.id && (
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="min-h-11"
+                            disabled={busy}
+                            onClick={() =>
+                              run((signal) => review(signal, item, reviewIntent.body.decision))
+                            }
+                          >
+                            Reprendre la même relecture
+                          </Button>
+                        )}
+                      </div>
+                      {item.reviews.at(-1)?.decision === "changes_requested" && (
+                        <p className="text-sm text-slate-300">
+                          La demande est enregistrée. Pour obtenir une nouvelle version, confiez
+                          explicitement une nouvelle mission en reprenant votre retour et les
+                          éléments utiles du texte.
+                        </p>
+                      )}
+                      {reviewIntent?.missionId === item.id && (
+                        <p className="text-sm text-amber-200">
+                          Enregistrement incertain : reprenez la même relecture ou actualisez les
+                          missions.
+                        </p>
+                      )}
+                    </details>
+                  )}
+                  {canWrite && ["queued", "running"].includes(item.status) && (
                     <Button
+                      className="min-h-11"
                       type="button"
                       variant="outline"
-                      className="min-h-11"
                       disabled={busy}
                       onClick={() =>
-                        run((signal) => review(signal, item, reviewIntent.body.decision))
+                        run(async (signal) => {
+                          await call(`/missions/${encodeURIComponent(item.id)}/stop`, signal, {});
+                          await load(signal);
+                          setMessage(
+                            "Arrêt demandé au prochain point sûr. Une requête fournisseur déjà acceptée peut finir.",
+                          );
+                        })
                       }
                     >
-                      Reprendre la même relecture
+                      Demander l’arrêt
                     </Button>
                   )}
-                </div>
-                {item.reviews.at(-1)?.decision === "changes_requested" && (
-                  <p className="text-sm text-slate-300">
-                    La demande est enregistrée. Pour obtenir une nouvelle version, confiez
-                    explicitement une nouvelle mission en reprenant votre retour et les éléments
-                    utiles du texte.
-                  </p>
-                )}
-                {reviewIntent?.missionId === item.id && (
-                  <p className="text-sm text-amber-200">
-                    Enregistrement incertain : reprenez la même relecture ou actualisez les
-                    missions.
-                  </p>
-                )}
-              </div>
-            )}
-            {canWrite && ["queued", "running"].includes(item.status) && (
+                </article>
+              ))}
+          </div>
+
+          {canWrite && (
+            <form
+              className="pilot-composer space-y-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void run(submit);
+              }}
+            >
+              <label
+                htmlFor={`pilot-prompt-${workspaceId}`}
+                className="block text-sm font-semibold"
+              >
+                Quelle mission textuelle confier à Hermes ?
+              </label>
+              <textarea
+                id={`pilot-prompt-${workspaceId}`}
+                value={prompt}
+                onChange={(event) => setPrompt(event.target.value)}
+                required
+                minLength={10}
+                maxLength={2000}
+                disabled={busy || uncertain}
+                rows={3}
+                className="w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm"
+                placeholder="Exemple : prépare une procédure d’accueil client en cinq étapes."
+              />
               <Button
                 className="min-h-11"
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() =>
-                  run(async (signal) => {
-                    await call(`/missions/${encodeURIComponent(item.id)}/stop`, signal, {});
-                    await load(signal);
-                    setMessage(
-                      "Arrêt demandé au prochain point sûr. Une requête fournisseur déjà acceptée peut finir.",
-                    );
-                  })
-                }
+                type="submit"
+                disabled={busy || !ready || (!uncertain && prompt.trim().length < 10)}
               >
-                Demander l’arrêt
+                <ArrowUpRight size={16} aria-hidden="true" />
+                {uncertain ? "Reprendre la même demande" : "Lancer la mission textuelle"}
               </Button>
-            )}
-          </article>
-        ))}
+              {uncertain && (
+                <p className="text-sm text-amber-200">
+                  La même demande et son identifiant sont conservés pour éviter un double lancement.
+                  Actualisez les missions ou reprenez cette demande.
+                </p>
+              )}
+            </form>
+          )}
+        </div>
       </div>
       {hasMore && (
         <p className="text-sm text-slate-400">

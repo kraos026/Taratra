@@ -384,7 +384,7 @@ try {
   const desktopNav = page.getByRole("navigation", { name: "Navigation principale", exact: true });
   const auditToggle = desktopNav.getByRole("button", { name: "Audit", exact: true });
   const agentToggle = desktopNav.getByRole("button", {
-    name: "Orchestrateur & agents",
+    name: "Équipes & agents",
     exact: true,
   });
   assert.equal(await auditToggle.getAttribute("aria-expanded"), "false");
@@ -480,7 +480,7 @@ try {
     });
     assert.equal(
       await mobileNav
-        .getByRole("button", { name: "Orchestrateur & agents", exact: true })
+        .getByRole("button", { name: "Équipes & agents", exact: true })
         .getAttribute("aria-expanded"),
       "true",
     );
@@ -562,7 +562,7 @@ try {
     await rootNav.getByRole("link", { name: "Mon entreprise", exact: true }).getAttribute("href"),
     "/companies",
   );
-  await rootNav.getByRole("button", { name: "Orchestrateur & agents", exact: true }).click();
+  await rootNav.getByRole("button", { name: "Équipes & agents", exact: true }).click();
   assert.equal(
     await rootNav.getByRole("link", { name: "Atelier IA", exact: true }).getAttribute("href"),
     "/atelier-ia",
@@ -604,6 +604,8 @@ try {
   await page.getByRole("button", { name: "Enregistrer l’entreprise IA", exact: true }).click();
   await page.getByRole("heading", { name: "Équipe recherche pilote", exact: true }).waitFor();
   await page.getByText("Équipe en préparation · budget API 0 €", { exact: true }).waitFor();
+  assert.equal(await page.getByLabel("Nom de l’entreprise IA", { exact: true }).isVisible(), false);
+  await page.getByRole("button", { name: "Réglages", exact: true }).click();
   await page
     .getByLabel("Dossier lié à Équipe recherche pilote", { exact: true })
     .selectOption(companyId);
@@ -631,7 +633,7 @@ try {
     .getByRole("article")
     .filter({ has: page.getByRole("heading", { name: "Équipe recherche pilote", exact: true }) });
   const countBefore = connectionCount;
-  await enterprise.getByText("Connexion et compétences Hermes", { exact: true }).click();
+  await enterprise.getByRole("button", { name: "Connexion", exact: true }).click();
   assert.equal(connectionCount, countBefore);
   const connectionRequest = page.waitForRequest((request) =>
     request.url().endsWith(`/api/atelier-ia/entreprises/${teamRows[0].id}/connection`),
@@ -648,7 +650,8 @@ try {
   checks.push(
     "standalone workspace health and inventory use workspace routes on manual action only; responses mocked",
   );
-  await enterprise.getByText("Missions textuelles pilotes", { exact: true }).click();
+  await enterprise.getByRole("button", { name: "Missions", exact: true }).click();
+  await enterprise.getByText("Quel travail voulez-vous avancer ?", { exact: true }).waitFor();
   assert.equal(pilotReads, 0);
   await enterprise.getByRole("button", { name: "Vérifier le pilote gratuit", exact: true }).click();
   await enterprise.getByText("Pilote temporairement indisponible.", { exact: true }).waitFor();
@@ -703,8 +706,11 @@ try {
   });
   await enterprise.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
   await enterprise.getByText("Arrêtée", { exact: true }).waitFor();
+  await enterprise.getByText("Missions récentes (2)", { exact: true }).click();
+  await enterprise.getByRole("button", { name: /Ancienne mission de recette terminée/ }).click();
   await enterprise.getByText(/Réponse réelle Hermes · coût API vérifié : 0 \$/).waitFor();
   assert.equal(pilotWrites, 3);
+  await enterprise.getByText("Relire ou corriger ce résultat", { exact: true }).click();
   assert.equal(
     await enterprise
       .getByRole("button", { name: "Demander une correction", exact: true })
@@ -733,6 +739,9 @@ try {
   checks.push(
     "human review: bounded feedback, lost acknowledgement retries the same UUID, correction then acceptance persists without generation; backend mocked",
   );
+  checks.push(
+    "workspace redesign: creation hidden after save, team/settings/connection/mission views, original decorative characters and selected conversation; no extra automatic API reads",
+  );
   assert.equal(mutationCount, 8);
   checks.push(
     "text pilot manual readiness, blocked unavailable launch, lost-ack idempotent retry, real-state stop and verified-cost result presentation; backend mocked",
@@ -752,6 +761,29 @@ try {
     path: join(evidence, "optivos-entreprises-ia-mobile.png"),
     fullPage: true,
   });
+  await enterprise.getByRole("button", { name: "Équipe", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await enterprise.getByText("Sous votre direction", { exact: true }).waitFor();
+  assert.equal(
+    await enterprise
+      .getByRole("button", { name: "Lancer la mission textuelle", exact: true })
+      .isVisible(),
+    false,
+  );
+  await page.setViewportSize({ width: 1440, height: 1000 });
+  await page.screenshot({
+    path: join(evidence, "optivos-agent-characters-desktop.png"),
+    fullPage: true,
+  });
+  await page.getByRole("button", { name: "Nouvelle équipe", exact: true }).first().click();
+  await page.getByLabel("Nom de l’entreprise IA", { exact: true }).waitFor();
+  await page.getByRole("button", { name: "Revenir à mon équipe", exact: true }).click();
+  await enterprise.getByText("Sous votre direction", { exact: true }).waitFor();
+  assert.equal(pilotWrites, 6);
+  assert.equal(teamWrites, 2);
+  checks.push(
+    "keyboard team view, decorative characters, reversible creation panel and no hidden mission controls",
+  );
   checks.push(
     "three company creation modes, small-team cap, configuration-only save, independent then linked, refreshed registry, responsive layouts; backend mocked",
   );

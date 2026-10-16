@@ -87,13 +87,19 @@ export function CompanyShell({
 
   return (
     <div className="workspace-shell min-h-screen text-slate-50">
+      <a
+        href="#workspace-main"
+        className="sr-only focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50 focus:rounded-lg focus:bg-indigo-100 focus:p-3 focus:text-slate-950"
+      >
+        Aller au contenu
+      </a>
       <aside className="workspace-sidebar fixed inset-y-0 left-0 z-10 hidden w-64 overflow-y-auto px-4 py-6 lg:flex lg:flex-col">
         <Link
           className="relative rounded-2xl p-1 focus-visible:ring-2 focus-visible:ring-blue-400"
           href="/"
           aria-label="Accueil Optivos"
         >
-          <OptivosLogo subtitle="Intelligence de décision" />
+          <OptivosLogo subtitle="Votre espace de travail" />
         </Link>
         <div className="relative mt-9 mb-6">
           <GroupedNavigation
@@ -106,12 +112,12 @@ export function CompanyShell({
             }))}
           />
         </div>
-        <div className="relative mt-auto rounded-xl border border-white/10 bg-white/[0.02] p-4 text-sm text-slate-300">
+        <div className="relative mt-auto border-t border-white/10 px-3 pt-5 text-sm text-slate-300">
           <p className="relative flex items-center gap-2 font-semibold text-blue-100">
-            <Sparkles size={15} /> Décisions fondées sur les preuves
+            <Sparkles size={15} aria-hidden="true" /> Vous gardez la main
           </p>
           <p className="mt-2 text-xs leading-5">
-            Optivos distingue les faits, les estimations et les informations encore nécessaires.
+            Vos audits, vos équipes et les résultats à valider.
           </p>
         </div>
       </aside>
@@ -150,7 +156,12 @@ export function CompanyShell({
           </p>
           <span className="text-xs text-slate-400">Optivos · Intelligence de décision</span>
         </header>
-        <main className="workspace-content min-h-screen px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+        <main
+          id="workspace-main"
+          className="workspace-content min-h-screen px-4 py-6 sm:px-6 lg:px-8"
+        >
+          {children}
+        </main>
       </div>
     </div>
   );

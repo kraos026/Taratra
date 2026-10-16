@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { CompanyShell } from "@/components/dashboard/company-shell";
 import { loadAgentCompanies } from "@/modules/agent-workspace/application/agent-workspace-access";
 import { agentWorkspaceHref } from "@/modules/agent-workspace/application/agent-workspace-policy";
+import { AgentAvatar } from "@/modules/agent-workspace/presentation/agent-avatar";
 
 export const dynamic = "force-dynamic";
 export default async function AgentWorkspaceIndex({
@@ -23,26 +24,29 @@ export default async function AgentWorkspaceIndex({
       <section className="mx-auto max-w-4xl space-y-6">
         <header>
           <p className="text-sm font-medium text-indigo-300">Atelier IA · Hermes</p>
-          <h1 className="mt-2 text-3xl font-bold">Un espace pour vos missions</h1>
+          <div className="mt-4 flex items-center gap-4">
+            <AgentAvatar size={72} />
+            <h1 className="text-3xl font-bold">Votre travail, bien entouré.</h1>
+          </div>
           <p className="mt-3 text-slate-300">
-            Choisissez l’entreprise dont vous souhaitez ouvrir le poste de commande : missions,
-            discussion, capacités et installation.
+            Retrouvez vos équipes, confiez une mission à Hermes et gardez le dernier mot sur les
+            résultats.
           </p>
         </header>
         <Link
           href="/atelier-ia/entreprises"
           className="block rounded-2xl border border-indigo-400/30 bg-indigo-400/10 p-5 focus-visible:ring-2 focus-visible:ring-indigo-400"
         >
-          <h2 className="font-semibold">Créer une entreprise IA</h2>
+          <h2 className="font-semibold">Ouvrir mes équipes IA →</h2>
           <p className="mt-2 text-sm leading-6 text-slate-300">
-            Définissez un objectif et une petite équipe : guidé, modèle ou manuel. Commencez dans un
-            espace indépendant ou reliez-le à un dossier Optivos.
+            Retrouvez vos équipes enregistrées ou créez-en une : objectif, personnages, missions et
+            validations.
           </p>
         </Link>
         <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm text-amber-100">
-          Le suivi des missions liées est disponible après configuration de la connexion. Le
-          lancement et la discussion restent à raccorder avec votre plafond de 0 € de nouveaux frais
-          API.
+          Le pilote textuel s’utilise dans une équipe reliée au VPS. Les ateliers de dossiers
+          ci-dessous servent au suivi des missions liées ; leur lancement reste à raccorder. Plafond
+          de nouveaux frais API : 0 €.
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           {data.companies.map((company) => (

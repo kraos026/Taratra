@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { HermesConnectionPanel } from "./hermes-connection-panel";
 import { HermesInventoryPanel } from "./hermes-inventory-panel";
 import { FreePilotPanel } from "./free-pilot-panel";
+import { AgentAvatar } from "./agent-avatar";
+import { Plus, MessagesSquare, Users, Plug, SlidersHorizontal } from "lucide-react";
 import {
   agentCompanySchema,
   agentCompanyListSchema,
@@ -30,6 +32,9 @@ export function AgentCompanyPanel({
   initialHasMore?: boolean;
 }) {
   const [items, setItems] = useState(initial);
+  const [selectedId, setSelectedId] = useState(initial[0]?.id || "");
+  const [creating, setCreating] = useState(initial.length === 0);
+  const [view, setView] = useState("Missions");
   const [mode, setMode] = useState<AgentCompanyInput["mode"]>("guided");
   const [template, setTemplate] = useState<keyof typeof teamTemplates>("general");
   const [agents, setAgents] = useState<AgentCompanyInput["agents"]>(
@@ -67,6 +72,8 @@ export function AgentCompanyPanel({
     try {
       const list = agentCompanyListSchema.parse(await call("/api/atelier-ia/entreprises"));
       setItems(list.items);
+      if (!list.items.some((item) => item.id === selectedId))
+        setSelectedId(list.items[0]?.id || "");
       setHasMore(list.hasMore);
       if (creationId && list.items.some((item) => item.id === creationId)) {
         setCreationId(null);
@@ -101,6 +108,9 @@ export function AgentCompanyPanel({
         }),
       );
       setItems((current) => [data, ...current.filter((x) => x.id !== data.id)].slice(0, 20));
+      setSelectedId(data.id);
+      setCreating(false);
+      setView("Équipe");
       setNotice(`${data.name} : objectif et équipe enregistrés. Aucun agent n’a été démarré.`);
       setCreationId(null);
       setName("");
@@ -135,29 +145,53 @@ export function AgentCompanyPanel({
     }
   }
   return (
-    <section className="mx-auto max-w-5xl space-y-6">
-      <header>
-        <p className="text-sm font-semibold text-indigo-300">Atelier IA · Entreprises d’agents</p>
-        <h1 className="mt-2 text-3xl font-bold">Créer votre entreprise IA</h1>
-        <p className="mt-3 leading-7 text-slate-300">
-          Un objectif, une petite équipe et des responsabilités claires. Vous restez à la direction
-          et validez le travail important.
-        </p>
-        <Link
-          href="/atelier-ia"
-          className="mt-3 inline-flex min-h-11 items-center text-sm text-indigo-300 underline"
-        >
-          Retour à l’Atelier IA
-        </Link>
+    <section className="agent-studio mx-auto max-w-[1500px] space-y-5">
+      <header className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <p className="text-sm font-semibold text-indigo-300">Atelier IA · Entreprises d’agents</p>
+          <h1 className="mt-2 text-2xl font-semibold tracking-tight">
+            {creating ? "Créer votre entreprise IA" : "Votre espace de travail IA"}
+          </h1>
+          <p className="mt-2 text-sm leading-6 text-slate-400">
+            Vos équipes, vos missions et vos décisions, au même endroit.
+          </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {items.length > 0 && (
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              disabled={saving}
+              onClick={() => setCreating(!creating)}
+            >
+              {creating ? (
+                "Revenir à mon équipe"
+              ) : (
+                <>
+                  <Plus size={16} aria-hidden="true" /> Nouvelle équipe
+                </>
+              )}
+            </Button>
+          )}
+          <Link
+            href="/atelier-ia"
+            className="mt-3 inline-flex min-h-11 items-center text-sm text-indigo-300 underline"
+          >
+            Retour à l’Atelier IA
+          </Link>
+        </div>
       </header>
-      <div className="rounded-2xl border border-amber-300/20 bg-amber-300/5 p-5 text-sm leading-6 text-amber-100">
-        <strong>Équipe enregistrée · activation progressive</strong>
+      <details className="rounded-xl border border-white/10 px-4 py-2 text-sm leading-6 text-slate-300">
+        <summary className="min-h-11 cursor-pointer py-2 text-indigo-200">
+          Équipe enregistrée · activation progressive
+        </summary>
         <p className="mt-2">
           La création conserve votre objectif et les profils de l’équipe. Les missions textuelles
           pilotes se lancent séparément, dans un espace relié au VPS et soumis au contrôle de
           gratuité. Les actions externes et la délégation restent à raccorder.
         </p>
-      </div>
+      </details>
       {unavailable && (
         <p role="alert" className="rounded-xl border border-rose-300/30 p-4 text-rose-200">
           Le registre n’est pas disponible. La création est désactivée ; réessayez plus tard.
@@ -172,8 +206,9 @@ export function AgentCompanyPanel({
         {notice}
       </p>
       <form
+        hidden={!creating}
         onSubmit={create}
-        className="space-y-5 rounded-2xl border border-white/10 bg-slate-900/70 p-5 sm:p-6"
+        className="mx-auto max-w-4xl space-y-5 rounded-2xl border border-white/10 bg-slate-900/70 p-5 sm:p-6"
       >
         <h2 className="text-xl font-semibold">1. Choisir votre façon de commencer</h2>
         <fieldset
@@ -296,6 +331,12 @@ export function AgentCompanyPanel({
               key={index}
               className="grid gap-3 rounded-xl border border-white/10 p-4 sm:grid-cols-2"
             >
+              <div className="flex items-center gap-3 sm:col-span-2">
+                <AgentAvatar variant={index} />
+                <span className="text-sm text-slate-300">
+                  {index === 0 ? "Votre coordinateur" : "Votre spécialiste"} · profil à configurer
+                </span>
+              </div>
               <label className="grid gap-2 text-sm font-semibold">
                 Nom de l’agent {index + 1}
                 <input
@@ -373,96 +414,163 @@ export function AgentCompanyPanel({
           <p className="text-sm text-slate-300">Votre rôle permet uniquement la consultation.</p>
         )}
       </form>
-      <section className="space-y-4" aria-label="Entreprises IA enregistrées">
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          <h2 className="text-xl font-semibold">Vos entreprises IA</h2>
-          <Button className="min-h-11" variant="outline" onClick={refresh} disabled={saving}>
-            Actualiser
-          </Button>
-        </div>
-        {items.length === 0 && !unavailable && (
-          <p className="rounded-xl border border-white/10 p-5 text-slate-300">
-            Aucune entreprise IA enregistrée dans votre organisation.
+      <div className="studio-layout" hidden={creating}>
+        <aside className="studio-team-list" aria-label="Choisir une équipe">
+          <p className="px-3 py-2 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+            Vos équipes
           </p>
-        )}
-        {items.map((item) => (
-          <article
-            key={item.id}
-            className="space-y-4 rounded-2xl border border-white/10 bg-slate-900/70 p-5"
+          {items.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-pressed={selectedId === item.id}
+              disabled={saving}
+              onClick={() => {
+                setSelectedId(item.id);
+                setView("Missions");
+              }}
+              className={`flex min-h-11 w-full items-center gap-3 rounded-xl p-3 text-left text-sm ${selectedId === item.id ? "bg-indigo-400/10 text-indigo-100" : "text-slate-300 hover:bg-white/5"}`}
+            >
+              <AgentAvatar size={36} />
+              <span className="min-w-0 break-words">{item.name}</span>
+            </button>
+          ))}
+          <Button
+            type="button"
+            variant="ghost"
+            className="mt-3 min-h-11 w-full justify-start text-slate-300 hover:bg-white/5 hover:text-white"
+            onClick={() => setCreating(true)}
+            disabled={!canWrite || saving || unavailable}
           >
-            <div>
-              <h3 className="text-lg font-semibold">{item.name}</h3>
-              <p className="mt-1 text-sm text-amber-200">Équipe en préparation · budget API 0 €</p>
-            </div>
-            <p className="text-sm leading-6 whitespace-pre-wrap text-slate-300">{item.objective}</p>
-            <ol className="grid gap-3 sm:grid-cols-3">
-              {item.agents.map((a, i) => (
-                <li key={i} className="rounded-xl border border-white/10 p-3 text-sm">
-                  <strong>{a.name}</strong>
-                  <p className="mt-1 text-slate-400">
-                    {i === 0
-                      ? "Sous votre direction"
-                      : "Sous la coordination de " + item.agents[0].name}
+            <Plus size={16} aria-hidden="true" /> Nouvelle équipe
+          </Button>
+        </aside>
+        <section className="min-w-0 space-y-4" aria-label="Entreprises IA enregistrées">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-sm text-slate-400">Espace de l’équipe</h2>
+            <Button className="min-h-11" variant="outline" onClick={refresh} disabled={saving}>
+              Actualiser
+            </Button>
+          </div>
+          {items.length === 0 && !unavailable && (
+            <p className="rounded-xl border border-white/10 p-5 text-slate-300">
+              Aucune entreprise IA enregistrée dans votre organisation.
+            </p>
+          )}
+          {items
+            .filter((item) => item.id === selectedId)
+            .map((item) => (
+              <article key={item.id} className="studio-main space-y-5">
+                <div className="flex items-center gap-3">
+                  <AgentAvatar size={52} />
+                  <div>
+                    <h3 className="text-lg font-semibold">{item.name}</h3>
+                    <p className="mt-1 text-sm text-amber-200">
+                      Équipe en préparation · budget API 0 €
+                    </p>
+                  </div>
+                </div>
+                <nav className="studio-tabs" aria-label="Vues de l’équipe">
+                  {[
+                    ["Missions", MessagesSquare],
+                    ["Équipe", Users],
+                    ["Connexion", Plug],
+                    ["Réglages", SlidersHorizontal],
+                  ].map(([label, Icon]) => {
+                    const TabIcon = Icon as typeof Users;
+                    return (
+                      <button
+                        key={String(label)}
+                        type="button"
+                        aria-current={view === label ? "page" : undefined}
+                        onClick={() => setView(String(label))}
+                        className={`flex min-h-11 items-center gap-2 rounded-lg px-3 py-2 text-sm ${view === label ? "bg-indigo-400/15 text-indigo-100" : "text-slate-400 hover:text-white"}`}
+                      >
+                        <TabIcon size={16} aria-hidden="true" />
+                        {String(label)}
+                      </button>
+                    );
+                  })}
+                </nav>
+                <div hidden={view !== "Équipe"} className="space-y-5">
+                  <p className="text-sm leading-6 whitespace-pre-wrap text-slate-300">
+                    {item.objective}
                   </p>
-                  <p className="mt-2 text-slate-300">{a.role}</p>
-                </li>
-              ))}
-            </ol>
-            <details className="rounded-xl border border-white/10 p-4">
-              <summary className="min-h-11 cursor-pointer text-sm font-semibold text-indigo-200">
-                Connexion et compétences Hermes
-              </summary>
-              <div className="mt-3 grid gap-4 xl:grid-cols-2">
-                <HermesConnectionPanel workspaceId={item.id} />
-                <HermesInventoryPanel workspaceId={item.id} />
-              </div>
-            </details>
-            <details className="rounded-xl border border-white/10 p-4">
-              <summary className="min-h-11 cursor-pointer text-sm font-semibold text-indigo-200">
-                Missions textuelles pilotes
-              </summary>
-              <div className="mt-3">
-                <FreePilotPanel workspaceId={item.id} canWrite={canWrite} />
-              </div>
-            </details>
-            <div className="grid gap-2 text-sm font-semibold">
-              <label htmlFor={`agent-company-link-${item.id}`}>Dossier lié à {item.name}</label>
-              <select
-                id={`agent-company-link-${item.id}`}
-                disabled={saving || !canWrite}
-                value={item.company_id || ""}
-                onChange={(e) => link(item.id, e.target.value)}
-                className={inputClass}
-              >
-                <option value="">Espace indépendant</option>
-                {item.company_id && !companies.some((c) => c.id === item.company_id) && (
-                  <option value={item.company_id}>
-                    Dossier lié (non présent dans cette liste)
-                  </option>
+                  <ol className="grid gap-3 sm:grid-cols-3">
+                    {item.agents.map((a, i) => (
+                      <li key={i} className="rounded-xl border border-white/10 p-3 text-sm">
+                        <AgentAvatar variant={i} size={64} />
+                        <strong>{a.name}</strong>
+                        <p className="mt-1 text-slate-400">
+                          {i === 0
+                            ? "Sous votre direction"
+                            : "Sous la coordination de " + item.agents[0].name}
+                        </p>
+                        <p className="mt-2 text-slate-300">{a.role}</p>
+                      </li>
+                    ))}
+                  </ol>
+                  <p className="text-sm leading-6 text-slate-400">
+                    Ces personnages représentent vos profils configurés. Le pilote textuel est
+                    exécuté par Hermes ; la délégation entre profils reste à raccorder.
+                  </p>
+                  <Button type="button" className="min-h-11" onClick={() => setView("Missions")}>
+                    Ouvrir les missions
+                  </Button>
+                </div>
+                <section
+                  hidden={view !== "Connexion"}
+                  aria-label="Connexion et compétences Hermes"
+                  className="rounded-xl border border-white/10 p-4"
+                >
+                  <h4 className="text-sm font-semibold">Connexion et compétences Hermes</h4>
+                  <div className="mt-3 grid gap-4 xl:grid-cols-2">
+                    <HermesConnectionPanel workspaceId={item.id} />
+                    <HermesInventoryPanel workspaceId={item.id} />
+                  </div>
+                </section>
+                <div hidden={view !== "Missions"}>
+                  <FreePilotPanel workspaceId={item.id} canWrite={canWrite} />
+                </div>
+                <div hidden={view !== "Réglages"} className="grid gap-2 text-sm font-semibold">
+                  <label htmlFor={`agent-company-link-${item.id}`}>Dossier lié à {item.name}</label>
+                  <select
+                    id={`agent-company-link-${item.id}`}
+                    disabled={saving || !canWrite}
+                    value={item.company_id || ""}
+                    onChange={(e) => link(item.id, e.target.value)}
+                    className={inputClass}
+                  >
+                    <option value="">Espace indépendant</option>
+                    {item.company_id && !companies.some((c) => c.id === item.company_id) && (
+                      <option value={item.company_id}>
+                        Dossier lié (non présent dans cette liste)
+                      </option>
+                    )}
+                    {companies.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                {item.company_id && (
+                  <Link
+                    className="inline-flex min-h-11 items-center text-sm text-indigo-300 underline"
+                    href={`/companies/${encodeURIComponent(item.company_id)}/atelier-ia`}
+                  >
+                    Ouvrir l’atelier du dossier
+                  </Link>
                 )}
-                {companies.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            {item.company_id && (
-              <Link
-                className="inline-flex min-h-11 items-center text-sm text-indigo-300 underline"
-                href={`/companies/${encodeURIComponent(item.company_id)}/atelier-ia`}
-              >
-                Ouvrir l’atelier du dossier
-              </Link>
-            )}
-          </article>
-        ))}
-        {hasMore && (
-          <p className="text-sm text-slate-400">
-            Les vingt configurations les plus récentes sont affichées.
-          </p>
-        )}
-      </section>
+              </article>
+            ))}
+          {hasMore && (
+            <p className="text-sm text-slate-400">
+              Les vingt configurations les plus récentes sont affichées.
+            </p>
+          )}
+        </section>
+      </div>
     </section>
   );
 }

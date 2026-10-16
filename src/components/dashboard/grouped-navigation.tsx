@@ -30,7 +30,7 @@ export function GroupedNavigation({ entries, mobile = false }: NavigationProps) 
   const agents = entries.filter((entry) => entry.label === "Atelier IA");
   const groups = [
     { key: "audit" as const, label: "Audit", icon: CircleGauge, items: audit },
-    { key: "agents" as const, label: "Orchestrateur & agents", icon: Bot, items: agents },
+    { key: "agents" as const, label: "Équipes & agents", icon: Bot, items: agents },
   ].filter((group) => group.items.length > 0);
   const controlClass =
     "flex min-h-11 w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-sm font-medium text-slate-300 hover:bg-white/5 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-400";
@@ -107,7 +107,7 @@ export function GroupedNavigation({ entries, mobile = false }: NavigationProps) 
               {links(items)}
               {key === "agents" && (
                 <p className="px-3 py-2 text-xs leading-5 text-slate-400">
-                  Missions, discussion, capacités et installation dans l’Atelier IA.
+                  Équipes, missions et résultats à valider.
                 </p>
               )}
             </div>
