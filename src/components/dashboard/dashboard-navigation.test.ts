@@ -15,13 +15,17 @@ function sourceFiles(directory: string): string[] {
 }
 
 describe("dashboard interactions", () => {
-  it("keeps icon-only mobile navigation and logout accessible", () => {
+  it("keeps grouped mobile navigation and logout accessible", () => {
     const dashboard = readFileSync(
       join(process.cwd(), "src/components/dashboard/interactive-dashboard.tsx"),
       "utf8",
     );
     const css = readFileSync(join(process.cwd(), "src/app/globals.css"), "utf8");
-    expect(dashboard).toContain("aria-label={label}");
+    expect(
+      readFileSync(join(process.cwd(), "src/components/dashboard/grouped-navigation.tsx"), "utf8"),
+    ).toContain("aria-current={active ?");
+    expect(dashboard).toContain("<GroupedNavigation");
+    expect(dashboard).toMatch(/<GroupedNavigation\s+mobile/);
     expect(dashboard).toContain('aria-label="Se déconnecter"');
     expect(dashboard).toContain('action="/auth/logout" method="post"');
     expect(css).not.toMatch(/\.profile form\s*,/);

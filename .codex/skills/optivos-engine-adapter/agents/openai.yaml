@@ -1,0 +1,4 @@
+interface:
+  display_name: "Optivos — adaptateurs moteurs"
+  short_description: "Raccorder une capacité avec droits, coûts et preuves"
+  default_prompt: "Utilise $optivos-engine-adapter pour cadrer et vérifier le raccordement d’une capacité moteur."

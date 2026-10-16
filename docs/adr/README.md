@@ -12,6 +12,8 @@ Enterprise Knowledge and the V1/V2 bounded-context contracts through Solution De
 
 ## Cross-cutting decisions
 
+Current product direction: [ADR-0030 — Optivos platform, audit plugin and nodal boundary](0030-optivos-platform-and-nodal-boundary.md), requested 2026-10-16; target architecture, not a Production promotion.
+
 | ADR                                                | Decision                  |
 | -------------------------------------------------- | ------------------------- |
 | [ADR-0013](0013-clean-architecture.md)             | Clean Architecture        |
