@@ -654,6 +654,16 @@ try {
   await enterprise.getByRole("button", { name: "Missions", exact: true }).click();
   await enterprise.getByText("Quel travail voulez-vous avancer ?", { exact: true }).waitFor();
   assert.equal(pilotReads, 0);
+  const starterPrompt = enterprise.getByLabel("Quelle mission textuelle confier à Hermes ?", {
+    exact: true,
+  });
+  await enterprise.getByRole("button", { name: "Préparer un plan", exact: true }).click();
+  assert.match(await starterPrompt.inputValue(), /procédure d’accueil client/);
+  assert.equal(await starterPrompt.evaluate((node) => node === document.activeElement), true);
+  assert.equal(pilotWrites, 0);
+  assert.equal(pilotReads, 0);
+  await starterPrompt.press("Enter");
+  assert.equal(pilotWrites, 0);
   await enterprise.getByRole("button", { name: "Vérifier le pilote gratuit", exact: true }).click();
   await enterprise.getByText("Pilote temporairement indisponible.", { exact: true }).waitFor();
   assert.equal(
@@ -670,9 +680,16 @@ try {
   await enterprise
     .getByLabel("Quelle mission textuelle confier à Hermes ?", { exact: true })
     .fill("Prépare une procédure de recette pour notre accueil client.");
-  await enterprise
-    .getByRole("button", { name: "Lancer la mission textuelle", exact: true })
-    .click();
+  await starterPrompt.evaluate((node) =>
+    node.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Enter", bubbles: true, isComposing: true }),
+    ),
+  );
+  assert.equal(pilotWrites, 0);
+  await starterPrompt.press("Shift+Enter");
+  assert.match(await starterPrompt.inputValue(), /\n/);
+  assert.equal(pilotWrites, 0);
+  await starterPrompt.press("Enter");
   await enterprise
     .getByText("Accusé de réception perdu : reprenez la même demande.", { exact: true })
     .waitFor();
@@ -754,6 +771,7 @@ try {
       `Étape ${index + 1} : exemple de résultat long pour vérifier le défilement indépendant du fil.`,
   ).join("\n\n");
   await page.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
+  await enterprise.getByText(pilotRows.at(-1).output, { exact: true }).waitFor();
   assert.ok(
     await page
       .getByLabel("Fil de la mission", { exact: true })
@@ -897,7 +915,61 @@ try {
   await page.getByRole("button", { name: "Nouvelle mission", exact: true }).click();
   await enterprise.getByText("Quel travail voulez-vous avancer ?", { exact: true }).waitFor();
   assert.equal(pilotWrites, 6);
+  await page.getByRole("button", { name: "Replier la barre latérale", exact: true }).click();
+  await page.getByRole("button", { name: "Afficher la barre latérale", exact: true }).waitFor();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("aria-label") === "Afficher la barre latérale",
+  );
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Afficher la barre latérale", exact: true })
+      .evaluate((node) => node === document.activeElement),
+    true,
+  );
+  await page.getByRole("button", { name: "Afficher la barre latérale", exact: true }).click();
+  await page.waitForFunction(
+    () => document.activeElement?.getAttribute("aria-label") === "Replier la barre latérale",
+  );
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Replier la barre latérale", exact: true })
+      .evaluate((node) => node === document.activeElement),
+    true,
+  );
+  await page.getByRole("button", { name: "Plus de menus", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Serveurs MCP", exact: true }).waitFor();
+  await page.getByRole("menuitem", { name: "Revue de code", exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  const emptyTitle = await enterprise
+    .getByText("Quel travail voulez-vous avancer ?", { exact: true })
+    .boundingBox();
+  const emptyComposer = await enterprise.locator(".pilot-composer").boundingBox();
+  assert.ok(emptyTitle && emptyComposer && emptyComposer.y - emptyTitle.y < 350);
+  checks.push(
+    "Codex composition: starter prompts only prefill; Enter requires readiness; Shift+Enter and IME do not submit; collapse/reopen restores focus; MCP and review remain in More",
+  );
   await page.screenshot({ path: join(evidence, "optivos-workspace-empty.png"), fullPage: true });
+  await page.setViewportSize({ width: 375, height: 812 });
+  const emptyMobileComposer = await enterprise.locator(".pilot-composer").boundingBox();
+  const emptyMobileSend = await enterprise
+    .getByRole("button", { name: "Lancer la mission textuelle", exact: true })
+    .boundingBox();
+  assert.ok(
+    emptyMobileComposer &&
+      emptyMobileSend &&
+      emptyMobileComposer.y >= 0 &&
+      emptyMobileComposer.y + emptyMobileComposer.height <= 812,
+  );
+  assert.ok(
+    emptyMobileSend.width >= 44 &&
+      emptyMobileSend.height >= 44 &&
+      emptyMobileSend.x + emptyMobileSend.width <= 375,
+  );
+  await page.screenshot({
+    path: join(evidence, "optivos-workspace-empty-mobile.png"),
+    fullPage: true,
+  });
+  await page.setViewportSize({ width: 1440, height: 1000 });
   await page.getByRole("button", { name: "Rechercher", exact: true }).click();
   const searchDialog = page.getByRole("dialog", { name: "Rechercher", exact: true });
   const missionSearch = searchDialog.getByLabel("Rechercher dans les conversations chargées", {
@@ -1038,6 +1110,13 @@ try {
     ),
   );
   console.log(JSON.stringify({ passed: true, checks, evidence }, null, 2));
+} catch (error) {
+  await browser
+    ?.contexts()[0]
+    ?.pages()[0]
+    ?.screenshot({ path: join(evidence, "component-failure.png"), fullPage: true })
+    .catch(() => {});
+  throw error;
 } finally {
   await browser?.close();
   await new Promise((resolve) => http.httpServer.close(resolve));

@@ -18,7 +18,15 @@ import { useWorkspaceAppearance } from "./workspace-appearance";
 import { CodexMenu } from "./codex-menu";
 import type { CodexFeatureId, CodexSettingId } from "../domain/codex-navigation";
 import { AgentAvatar } from "./agent-avatar";
-import { Plus, MessagesSquare, Users, Plug, SlidersHorizontal } from "lucide-react";
+import {
+  Plus,
+  MessagesSquare,
+  Users,
+  Plug,
+  SlidersHorizontal,
+  PanelLeftClose,
+  PanelLeftOpen,
+} from "lucide-react";
 import {
   agentCompanySchema,
   agentCompanyListSchema,
@@ -271,10 +279,30 @@ export function AgentCompanyPanel({
         data-open={railOpen}
         aria-label="Équipes et missions"
       >
-        <Link href="/" aria-label="Accueil Optivos" className="studio-brand">
-          <OptivosLogo compact />
-          <span>Optivos</span>
-        </Link>
+        <div className="codex-rail-header">
+          <Link href="/" aria-label="Accueil Optivos" className="studio-brand">
+            <OptivosLogo compact />
+            <span>Optivos</span>
+          </Link>
+          <button
+            type="button"
+            className="codex-rail-collapse"
+            aria-label="Replier la barre latérale"
+            onClick={() => {
+              if (window.matchMedia("(max-width: 767px)").matches) {
+                setRailOpen(false);
+                railTrigger.current?.focus();
+              } else {
+                command("sidebar");
+                requestAnimationFrame(() =>
+                  document.getElementById("studio-sidebar-reopen")?.focus(),
+                );
+              }
+            }}
+          >
+            <PanelLeftClose size={18} aria-hidden="true" />
+          </button>
+        </div>
         <CodexSidebarTools {...menuProps} />
         <details className="codex-audit-menu">
           <summary>Audit Optivos</summary>
@@ -415,6 +443,22 @@ export function AgentCompanyPanel({
       </aside>
       <section className="studio-desk" aria-label="Espace de travail de l’équipe">
         <header className="studio-titlebar">
+          {!sidebarVisible && (
+            <button
+              type="button"
+              id="studio-sidebar-reopen"
+              className="codex-rail-reopen"
+              aria-label="Afficher la barre latérale"
+              onClick={() => {
+                command("sidebar");
+                requestAnimationFrame(() =>
+                  document.querySelector<HTMLButtonElement>(".codex-rail-collapse")?.focus(),
+                );
+              }}
+            >
+              <PanelLeftOpen size={18} aria-hidden="true" />
+            </button>
+          )}
           <button
             ref={railTrigger}
             type="button"

@@ -1,17 +1,6 @@
 "use client";
 import { useEffect, useRef } from "react";
-import {
-  Search,
-  SquarePen,
-  Clock3,
-  Bot,
-  Blocks,
-  Sparkles,
-  Plug,
-  GitPullRequest,
-  Settings,
-  Ellipsis,
-} from "lucide-react";
+import { Search, SquarePen, Clock3, Bot, Blocks, Sparkles, Settings, Ellipsis } from "lucide-react";
 import { CodexMenu, type MenuEntry } from "./codex-menu";
 import type { CodexFeatureId, CodexSettingId } from "../domain/codex-navigation";
 
@@ -264,17 +253,11 @@ export function CodexSidebarTools(props: Props) {
         <Blocks size={17} aria-hidden="true" />
         <span>Plugins</span>
       </button>
-      <button type="button" onClick={() => props.onFeature("mcp")}>
-        <Plug size={17} aria-hidden="true" />
-        <span>Serveurs MCP</span>
-      </button>
-      <button type="button" onClick={() => props.onFeature("review")}>
-        <GitPullRequest size={17} aria-hidden="true" />
-        <span>Revue de code</span>
-      </button>
       <CodexMenu
         label="Plus de menus"
         items={[
+          { label: "Serveurs MCP", action: () => props.onFeature("mcp") },
+          { label: "Revue de code", action: () => props.onFeature("review") },
           { label: "Votre point", action: () => props.onFeature("orbit") },
           { label: "Espaces", action: () => props.onFeature("spaces") },
           { label: "Pull requests", action: () => props.onFeature("pullRequests") },

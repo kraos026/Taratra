@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { AgentAvatar } from "./agent-avatar";
 import { CodexMenu } from "./codex-menu";
 import { CodexDialog } from "./codex-settings";
-import { ArrowUpRight, MessageSquare } from "lucide-react";
+import { ArrowUp, MessageSquare, FileText, ListChecks, Lightbulb } from "lucide-react";
 import {
   freeMissionListSchema,
   freeMissionSchema,
@@ -374,6 +374,26 @@ export function FreePilotPanel({
         <span>
           Hermes <span className="text-slate-500">/ mission textuelle</span>
         </span>
+        {canWrite && (
+          <Button
+            className="codex-verify-pilot"
+            type="button"
+            variant="outline"
+            disabled={busy}
+            onClick={() =>
+              run(async (signal) => {
+                setReady(false);
+                setVerifiedModel(null);
+                const readiness = freePilotReadinessSchema.parse(await call("/readiness", signal));
+                setVerifiedModel(readiness.policy.model);
+                setReady(true);
+                setMessage("Pilote gratuit vérifié. Aucun outil externe ni repli autorisé.");
+              })
+            }
+          >
+            Vérifier le pilote gratuit
+          </Button>
+        )}
         <details className="pilot-options">
           <summary>Options du pilote</summary>
           <div>
@@ -383,7 +403,7 @@ export function FreePilotPanel({
           </div>
         </details>
       </div>
-      <div className="pilot-thread">
+      <div className="pilot-thread" data-empty={!selectedMission}>
         <div
           ref={transcript}
           className="pilot-transcript"
@@ -392,12 +412,49 @@ export function FreePilotPanel({
         >
           {!selectedMission && (
             <div className="pilot-empty">
-              <AgentAvatar variant={1} size={80} />
+              <AgentAvatar variant={1} size={36} />
               <h5 className="mt-4 text-xl font-semibold">Quel travail voulez-vous avancer ?</h5>
               <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
                 Décrivez un résultat concret. Hermes prépare un texte que vous pourrez relire et
                 valider.
               </p>
+              {canWrite && (
+                <div className="codex-starter-prompts" aria-label="Idées de missions textuelles">
+                  {[
+                    {
+                      label: "Rédiger un document",
+                      icon: FileText,
+                      prompt:
+                        "Prépare un modèle de compte rendu de réunion avec décisions, responsables et prochaines étapes.",
+                    },
+                    {
+                      label: "Préparer un plan",
+                      icon: ListChecks,
+                      prompt:
+                        "Prépare une procédure d’accueil client en cinq étapes, avec une checklist à valider.",
+                    },
+                    {
+                      label: "Explorer une idée",
+                      icon: Lightbulb,
+                      prompt:
+                        "Propose trois pistes pour améliorer l’accueil des clients d’une petite entreprise, avec leurs limites.",
+                    },
+                  ].map(({ label, icon: Icon, prompt: suggestion }) => (
+                    <button
+                      key={label}
+                      type="button"
+                      disabled={busy || uncertain || !!reviewIntent || !!prompt.trim()}
+                      onClick={() => {
+                        setPrompt(suggestion);
+                        composer.current?.focus();
+                      }}
+                    >
+                      <Icon size={16} aria-hidden="true" />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           )}
           <div role="status" aria-live="polite" className="py-3 text-sm text-slate-300">
@@ -565,6 +622,21 @@ export function FreePilotPanel({
               id={`pilot-prompt-${workspaceId}`}
               value={prompt}
               onChange={(event) => setPrompt(event.target.value)}
+              onKeyDown={(event) => {
+                if (
+                  event.key !== "Enter" ||
+                  event.shiftKey ||
+                  event.ctrlKey ||
+                  event.metaKey ||
+                  event.altKey ||
+                  event.nativeEvent.isComposing ||
+                  event.repeat
+                )
+                  return;
+                event.preventDefault();
+                if (!busy && ready && (uncertain || prompt.trim().length >= 10))
+                  event.currentTarget.form?.requestSubmit();
+              }}
               required
               minLength={10}
               maxLength={2000}
@@ -675,32 +747,14 @@ export function FreePilotPanel({
             <div className="pilot-composer-footer">
               <Button
                 className="min-h-11"
-                type="button"
-                variant="outline"
-                disabled={busy}
-                onClick={() =>
-                  run(async (signal) => {
-                    setReady(false);
-                    setVerifiedModel(null);
-                    const readiness = freePilotReadinessSchema.parse(
-                      await call("/readiness", signal),
-                    );
-                    setVerifiedModel(readiness.policy.model);
-                    setReady(true);
-                    setMessage("Pilote gratuit vérifié. Aucun outil externe ni repli autorisé.");
-                  })
-                }
-              >
-                Vérifier le pilote gratuit
-              </Button>
-              <Button
-                className="min-h-11"
                 aria-label={uncertain ? "Reprendre la même demande" : "Lancer la mission textuelle"}
                 type="submit"
                 disabled={busy || !ready || (!uncertain && prompt.trim().length < 10)}
               >
-                <ArrowUpRight size={16} aria-hidden="true" />
-                {uncertain ? "Reprendre la même demande" : "Envoyer"}
+                <ArrowUp size={18} aria-hidden="true" />
+                <span className={uncertain ? undefined : "sr-only"}>
+                  {uncertain ? "Reprendre la même demande" : "Envoyer"}
+                </span>
               </Button>
             </div>
             {uncertain && (
@@ -710,6 +764,11 @@ export function FreePilotPanel({
               </p>
             )}
           </form>
+        )}
+        {canWrite && (
+          <p className="codex-composer-hint">
+            Entrée pour envoyer · Maj + Entrée pour une nouvelle ligne
+          </p>
         )}
       </div>
       {hasMore && (

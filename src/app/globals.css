@@ -2261,6 +2261,164 @@ footer {
   overflow-y: auto;
   gap: 1px;
 }
+.codex-rail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.codex-rail-header .studio-brand {
+  flex: 1;
+  margin: 0;
+  font-size: 14px;
+}
+.codex-rail-header .studio-brand svg {
+  width: 24px;
+  height: 24px;
+}
+.codex-rail-collapse,
+.codex-rail-reopen {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  color: #aaa;
+  border-radius: 8px;
+}
+.codex-rail-collapse:hover,
+.codex-rail-reopen:hover {
+  background: #303030;
+  color: #eee;
+}
+.codex-studio .pilot-thread[data-empty="true"] {
+  justify-content: center;
+  padding-bottom: clamp(24px, 10dvh, 100px);
+}
+.codex-studio .pilot-thread[data-empty="true"] .pilot-transcript {
+  flex: 0 1 auto;
+}
+.codex-studio .pilot-thread[data-empty="true"] .pilot-empty {
+  flex: none;
+  min-height: 0;
+  padding-block: 24px 12px;
+}
+.codex-studio .pilot-empty > svg {
+  width: 36px;
+  height: 36px;
+}
+.codex-studio .pilot-empty h5 {
+  font-size: clamp(22px, 2.5vw, 30px);
+  font-weight: 500;
+  letter-spacing: -0.7px;
+}
+.codex-starter-prompts {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+.codex-starter-prompts button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid #414141;
+  border-radius: 12px;
+  color: #ccc;
+  font-size: 12px;
+  text-align: left;
+}
+.codex-starter-prompts button:hover:not(:disabled) {
+  background: #303030;
+  color: white;
+}
+.codex-starter-prompts button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.codex-composer-hint {
+  flex: none;
+  color: #aaa;
+  text-align: center;
+  font-size: 11px;
+  margin-top: 10px;
+}
+.codex-studio .pilot-sessionbar {
+  flex-wrap: wrap;
+  gap: 4px 16px;
+}
+.codex-studio .codex-verify-pilot {
+  min-height: 44px;
+  margin-left: auto;
+  padding: 4px 8px;
+  border: 0;
+  background: transparent;
+  font-size: 12px;
+  color: #ccc;
+}
+.codex-studio .pilot-composer-footer {
+  margin-top: 0;
+  min-height: 0;
+}
+.codex-studio .pilot-composer {
+  position: relative;
+  padding-bottom: 12px;
+}
+.codex-studio .codex-composer-menu-row {
+  padding-right: 48px;
+}
+.codex-studio .pilot-composer-footer > button[type="submit"] {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  width: 36px;
+  height: 36px;
+  min-width: 36px;
+  min-height: 36px;
+  padding: 8px;
+}
+.codex-studio .pilot-composer-footer > button[type="submit"]:has(span:not(.sr-only)) {
+  position: static;
+  width: auto;
+  height: auto;
+  min-height: 44px;
+}
+@media (pointer: coarse) {
+  .codex-studio .pilot-composer-footer > button[type="submit"] {
+    width: 44px;
+    height: 44px;
+  }
+}
+@media (max-width: 767px) {
+  .codex-rail-reopen {
+    display: none;
+  }
+  .codex-studio .pilot-thread[data-empty="true"] {
+    padding-bottom: 20px;
+  }
+  .codex-studio .pilot-thread[data-empty="true"] .pilot-empty {
+    padding-block: 12px;
+  }
+  .codex-starter-prompts {
+    gap: 6px;
+    margin-top: 12px;
+  }
+  .codex-starter-prompts button {
+    font-size: 11px;
+    padding: 6px 8px;
+  }
+  .codex-composer-hint {
+    font-size: 10px;
+  }
+  .codex-studio .pilot-composer-footer > button[type="submit"] {
+    width: 44px;
+    height: 44px;
+  }
+}
 .codex-sidebar-tools > button {
   display: flex;
   align-items: center;

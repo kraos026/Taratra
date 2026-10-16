@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { X, Search, ArrowLeft, ChevronRight } from "lucide-react";
 import {
@@ -93,6 +93,15 @@ export function CodexSettings({
   const [availableOnly, setAvailableOnly] = useState(false);
   const heading = useRef<HTMLHeadingElement>(null);
   const categoryList = useRef<HTMLElement>(null);
+  const focusIntent = useRef<"heading" | "category" | null>(null);
+  useLayoutEffect(() => {
+    if (focusIntent.current === "heading") heading.current?.focus();
+    if (focusIntent.current === "category")
+      categoryList.current
+        ?.querySelector<HTMLButtonElement>("button[aria-current='page']")
+        ?.focus();
+    focusIntent.current = null;
+  }, [category, browsing]);
   const normalize = (value: string) =>
     value
       .normalize("NFD")
@@ -267,9 +276,9 @@ export function CodexSettings({
                       aria-label={item[1]}
                       aria-current={category === item[0] ? "page" : undefined}
                       onClick={() => {
+                        focusIntent.current = "heading";
                         setCategory(item[0]);
                         setBrowsing(false);
-                        requestAnimationFrame(() => heading.current?.focus());
                       }}
                     >
                       <span>
@@ -292,12 +301,8 @@ export function CodexSettings({
             className="codex-settings-back"
             type="button"
             onClick={() => {
+              focusIntent.current = "category";
               setBrowsing(true);
-              requestAnimationFrame(() =>
-                categoryList.current
-                  ?.querySelector<HTMLButtonElement>("button[aria-current='page']")
-                  ?.focus(),
-              );
             }}
           >
             <ArrowLeft size={16} aria-hidden="true" />
