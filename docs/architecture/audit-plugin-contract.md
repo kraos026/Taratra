@@ -4,7 +4,7 @@
 
 ## Paquet métier, moteur existant
 
-Le plugin regroupe le parcours d’audit de l’entreprise jusqu’au résultat exécutif. Il expose progressivement des capacités versionnées vers les services existants et embarque une skill de méthode pour guider collecte, explication et préparation des suites. Le moteur de règles, le calcul du ROI, les versions publiées et les validations restent propriétaires de leurs décisions.
+Le plugin, facultatif pour la plateforme, regroupe le parcours d’audit de l’entreprise jusqu’au résultat exécutif. Il expose progressivement des capacités versionnées vers les services existants et embarque une skill de méthode pour guider collecte, explication et préparation des suites. Le moteur de règles, le calcul du ROI, les versions publiées et les validations restent propriétaires de leurs décisions. Les missions génériques, équipes Paperclip et workflows n8n ne nécessitent pas d’audit ; seuls les appels aux capacités métier de ce plugin exigent les références de dossier/audit correspondantes.
 
 Identité cible : `optivos.audit`, version de paquet explicite, fournisseur propriétaire de la plateforme. Son descripteur devra déclarer compatibilité des contrats, capacités, schémas d’entrée/sortie, permissions demandées, niveaux d’effet, versions des skills associées et provenance. Ce nouveau contrat de plugin est distinct de `engineManifestSchema` v1 et ne doit pas lui être envoyé comme s’il était déjà pris en charge.
 

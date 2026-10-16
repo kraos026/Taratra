@@ -36,6 +36,8 @@ Retenir Rete si son apport dépasse la complexité de l’adaptateur. Sinon cons
 
 Navigation « Missions / Canvas / Résultats » sur la même mission, galerie de modèles guidés, palette de nœuds métier et inspecteur contextuel. Nœud Audit : « Lire les résultats d’un dossier » plutôt qu’un ensemble de commandes SQL. Connexions permises selon types de ports ; erreurs expliquées avant lancement. Boutons distincts « Enregistrer le brouillon », « Vérifier », « Exécuter ». État d’exécution provenant des événements réels et arrêt au prochain point sûr, sans animation d’agents qui prétende prouver une exécution.
 
+Choix utilisateur confirmé : trois entrées (chat, modèle guidé, canevas manuel) et deux vues (simple/avancée) d’un même workflow. La recette devra vérifier les passages entre entrées/vues sans perte de configuration, de ports ou de dépendances. Les détails avancés restent dans le document neutre même s’ils sont masqués en vue simple ; une vue simple ne doit ni supprimer ni exécuter des nœuds cachés.
+
 ## Références vérifiées
 
 - [xyflow/xyflow](https://github.com/xyflow/xyflow), commit `654ba5a5e04f3404bc4db2eee88bfa15866d203d` ; [paquet React inspecté](https://github.com/xyflow/xyflow/blob/654ba5a5e04f3404bc4db2eee88bfa15866d203d/packages/react/package.json).

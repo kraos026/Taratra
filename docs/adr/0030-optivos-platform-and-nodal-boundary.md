@@ -8,7 +8,7 @@ L’utilisateur demande une plateforme d’orchestration multi-moteurs, un audit
 
 ## Décision
 
-1. Positionner l’audit complet comme plugin métier de premier niveau, avec façade et skills de méthode, en conservant ses services, règles, ROI, données et validations canoniques.
+1. Positionner l’audit complet comme plugin métier de premier niveau et facultatif, avec façade et skills de méthode, en conservant ses services, règles, ROI, données et validations canoniques. Le runtime générique n’exige pas d’audit préalable.
 2. Garder Auth/Organization/Company et les politiques de la plateforme dans le noyau partagé.
 3. Définir un graphe neutre versionné et un seul canevas produit xyflow. Évaluer Rete pour des calculs purs par un POC d’adaptation ; il ne possède pas l’exécution durable des effets externes.
 4. Conserver un propriétaire de mission globale Optivos ; les moteurs délégués gardent leurs sessions/identifiants sans reprise automatique susceptible de doubler une action.
