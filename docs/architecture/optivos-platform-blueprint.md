@@ -102,7 +102,7 @@ Ces responsabilités ne justifient pas un déplacement massif des dossiers ni un
 
 Décision et comparaison : [xyflow et Rete](nodal-system-decision.md). Un seul canevas produit avec `@xyflow/react`. Rete est évalué derrière une interface de traitement pur ; aucun deuxième éditeur Rete installé en parallèle. Son apport doit être démontré avant intégration au runtime.
 
-Le document de graphe appartient à Optivos, avec `schemaVersion`, identité/version du workflow, nœuds stables, ports typés, arêtes, références de capacités et de versions. Les positions et options visuelles sont séparées du plan exécutable. Les secrets sont des références serveur, jamais des données de nœud. L’organisation effective est dérivée de la session et vérifiée côté serveur, pas acceptée comme une permission fournie par le JSON.
+Le document de graphe appartient à Optivos, avec `contractVersion`, identité/révision du workflow, nœuds stables, ports typés, arêtes, références de capacités et de versions. Les positions et options visuelles sont séparées du plan exécutable. Les secrets sont des références serveur, jamais des données de nœud. L’organisation effective est dérivée de la session et vérifiée côté serveur, pas acceptée comme une permission fournie par le JSON.
 
 Première version : DAG borné, cycles refusés, nœuds et ports enregistrés, tailles/profondeurs limitées. Pas de `eval`, script arbitraire ou URL saisie devenue action réseau. Déplacer ou relier un nœud ne lance aucun moteur. « Tester » une transformation pure et « Exécuter une mission » sont deux actions distinctes. Une simulation éventuelle doit rester explicitement un aperçu sans faux état « terminé ».
 
@@ -138,6 +138,6 @@ Pas de calendrier artificiel : chaque lot est ouvert par ses preuves d’entrée
 
 Les quatre skills locales sont `optivos-platform-planning`, `optivos-audit-plugin`, `optivos-nodal-workflows` et `optivos-engine-adapter`. Elles complètent la gouvernance actuelle et ne donnent aucun droit supplémentaire aux agents ou aux clients. L’inventaire local fourni avec la première skill évite de relire inutilement le dépôt et n’appelle aucun modèle.
 
-**Prochaine tâche d’implémentation : A1**, définir et tester les contrats plugin, graphe neutre, entrées/vues et politique de mission conformément aux choix ci-dessus, puis A2/A3. Dans cette étape de cadrage, aucune bibliothèque nodale n’est installée et aucun nouveau moteur n’est activé.
+**A1 dispose maintenant de contrats et validations déterministes**, documentés dans [les contrats communs v1](orchestration-contracts-v1.md), avec quatre recettes de référence. Cela ne livre ni runtime de graphes ni installation de plugin. Les prochaines étapes sont A2 (façade audit en lecture) et A3 (canevas xyflow). Aucune bibliothèque nodale n’est encore installée et aucun nouveau moteur n’est activé.
 
 Références : [socle actuel](universal-orchestration.md), [contrat du plugin audit](audit-plugin-contract.md), [architecture des skills existante](AUTOMATEX_SKILL_ARCHITECTURE.md), [contrat runtime existant](AUTOMATEX_AGENT_RUNTIME_CONTRACT.md), [décision ADR-0030](../adr/0030-optivos-platform-and-nodal-boundary.md).

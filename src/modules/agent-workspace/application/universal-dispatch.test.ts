@@ -4,6 +4,7 @@ vi.mock("./agent-company-runtime", () => ({ agentCompanyRuntimeAccess: mocks.acc
 vi.mock("../infrastructure/free-pilot-client", () => ({ callFreePilot: mocks.call }));
 import { dispatchWorkspaceMission, readWorkspaceEngines } from "./universal-dispatch";
 import { createEngineRegistry, engineRegistry } from "../domain/engine-registry";
+import { referenceWorkflows } from "../domain/reference-workflows";
 const id = "11111111-1111-4111-8111-111111111111";
 const mission = {
   id: "22222222-2222-4222-8222-222222222222",
@@ -40,6 +41,12 @@ beforeEach(() => {
   });
 });
 describe("universal orchestration boundary", () => {
+  it("rejects planning documents through the existing text-only execution boundary", async () => {
+    const example = referenceWorkflows.generalHermes;
+    for (const value of [example.mission, { ...input, workflow: example.workflow }])
+      expect((await dispatchWorkspaceMission(id, request(value))).status).toBe(400);
+    expect(mocks.call).not.toHaveBeenCalled();
+  });
   it("reads a tenant-gated catalog without contacting any engine", async () => {
     mocks.access.mockResolvedValueOnce(new Response(null, { status: 404 }));
     expect((await readWorkspaceEngines(id)).status).toBe(404);
