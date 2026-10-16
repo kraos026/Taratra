@@ -707,7 +707,7 @@ try {
   });
   await page.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
   await enterprise.getByText("Arrêtée", { exact: true }).waitFor();
-  await page.getByRole("button", { name: /Ancienne mission de recette terminée/ }).click();
+  await page.getByRole("button", { name: /^Ancienne mission de recette terminée/ }).click();
   await enterprise.getByText(/Réponse réelle Hermes · coût API vérifié : 0 \$/).waitFor();
   assert.equal(pilotWrites, 3);
   await enterprise.getByText("Relire ou corriger ce résultat", { exact: true }).click();
@@ -803,12 +803,93 @@ try {
     path: join(evidence, "optivos-agent-characters-desktop.png"),
     fullPage: true,
   });
-  await page.getByRole("button", { name: "Nouvelle équipe", exact: true }).first().click();
+  await page.getByRole("button", { name: "Options des projets", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Nouveau projet", exact: true }).click();
   await page.getByLabel("Nom de l’entreprise IA", { exact: true }).waitFor();
   await page.getByRole("button", { name: "Revenir à mon équipe", exact: true }).click();
   await enterprise.getByText("Sous votre direction", { exact: true }).waitFor();
   assert.equal(pilotWrites, 6);
   assert.equal(teamWrites, 2);
+  await page.getByRole("button", { name: "Affichage", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Panneau latéral", exact: true }).focus();
+  await page.keyboard.press("ArrowRight");
+  await page.getByRole("menuitem", { name: "Connexion", exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Affichage", exact: true })
+      .evaluate((node) => node === document.activeElement),
+    true,
+  );
+  await page.getByRole("button", { name: "Fichier", exact: true }).click();
+  const downloadReady = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: "Exporter le résultat…", exact: true }).click();
+  const resultDownload = await downloadReady;
+  assert.match(resultDownload.suggestedFilename(), /^optivos-mission-[0-9a-f-]+\.txt$/);
+  const downloadedPath = await resultDownload.path();
+  assert.ok(downloadedPath);
+  assert.equal(readFileSync(downloadedPath, "utf8"), pilotRows.at(-1).output);
+  await page.getByRole("button", { name: "Options de la conversation", exact: true }).click();
+  const archiveAction = page.getByRole("menuitem", { name: "Archiver", exact: true });
+  assert.equal(await archiveAction.getAttribute("aria-disabled"), "true");
+  await archiveAction.focus();
+  await page.keyboard.press("Enter");
+  await page
+    .getByText(
+      "Cette commande Codex n’est pas raccordée à Optivos. Aucune action n’a été exécutée.",
+      { exact: true },
+    )
+    .waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Planifiées", exact: true }).click();
+  await page
+    .getByRole("dialog", { name: "Planifiées", exact: true })
+    .getByText("Sa fonction n’est pas raccordée à Optivos.", { exact: false })
+    .waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Ouvrir le menu du profil", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Paramètres", exact: true }).click();
+  const settingsDialog = page.getByRole("dialog", { name: "Paramètres", exact: true });
+  await settingsDialog.getByRole("button", { name: "Apparence", exact: true }).click();
+  await settingsDialog
+    .getByLabel("Taille du texte des messages", { exact: true })
+    .selectOption("16");
+  await settingsDialog.getByLabel("Réduire les mouvements", { exact: true }).check();
+  const savedPreferences = await page.evaluate(() =>
+    JSON.parse(localStorage.getItem("optivos.workspace.appearance.v1")),
+  );
+  assert.equal(savedPreferences.messageSize, 16);
+  assert.equal(savedPreferences.reduceMotion, true);
+  await settingsDialog.getByLabel("Rechercher dans les paramètres", { exact: true }).fill("MCP");
+  await settingsDialog.getByRole("button", { name: "Serveurs MCP", exact: true }).click();
+  await settingsDialog
+    .getByRole("button", { name: "Vérifier les capacités", exact: true })
+    .waitFor();
+  await settingsDialog.getByLabel("Rechercher dans les paramètres", { exact: true }).fill("");
+  await settingsDialog.getByRole("button", { name: "Git", exact: true }).click();
+  await settingsDialog
+    .getByText(
+      "Ce menu est présent dans le catalogue de Codex. Sa fonction n’est pas raccordée à Optivos.",
+      { exact: true },
+    )
+    .waitFor();
+  await settingsDialog.getByRole("button", { name: "Apparence", exact: true }).click();
+  await page.screenshot({ path: join(evidence, "optivos-codex-settings.png"), fullPage: true });
+  await page.keyboard.press("Escape");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Ouvrir le menu du profil", exact: true })
+      .evaluate((node) => node === document.activeElement),
+    true,
+  );
+  assert.equal(pilotWrites, 6);
+  assert.equal(teamWrites, 2);
+  checks.push(
+    "Codex application menus: nested keyboard navigation and focus return, exact-result text export, unavailable archive has no mutation",
+  );
+  checks.push(
+    "profile/settings: searched MCP category, persisted message-size and motion preferences, unavailable Git and scheduling explicitly labelled",
+  );
   checks.push(
     "keyboard inspector, characters, reversible creation; fixed-height conversation, anchored composer, long-response scroll and mobile rail Escape",
   );
@@ -817,6 +898,77 @@ try {
   await enterprise.getByText("Quel travail voulez-vous avancer ?", { exact: true }).waitFor();
   assert.equal(pilotWrites, 6);
   await page.screenshot({ path: join(evidence, "optivos-workspace-empty.png"), fullPage: true });
+  await page.getByRole("button", { name: "Rechercher", exact: true }).click();
+  const searchDialog = page.getByRole("dialog", { name: "Rechercher", exact: true });
+  const missionSearch = searchDialog.getByLabel("Rechercher dans les conversations chargées", {
+    exact: true,
+  });
+  await missionSearch.fill("aucune mission ne correspond");
+  assert.equal(
+    await searchDialog
+      .getByRole("button", { name: /^Ancienne mission de recette terminée/ })
+      .count(),
+    0,
+  );
+  await missionSearch.fill("");
+  assert.equal(
+    await searchDialog
+      .getByRole("button", { name: /^Ancienne mission de recette terminée/ })
+      .count(),
+    1,
+  );
+  await page.keyboard.press("Escape");
+  await enterprise.getByRole("button", { name: "Choisir un modèle", exact: true }).click();
+  await page.getByRole("menuitem", { name: "9Router", exact: true }).focus();
+  await page.keyboard.press("Enter");
+  await page.getByText("9Router n’est pas raccordé.", { exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Fichier", exact: true }).click();
+  await page.screenshot({ path: join(evidence, "optivos-codex-file-menu.png"), fullPage: true });
+  await page.keyboard.press("Escape");
+  await page.setViewportSize({ width: 375, height: 812 });
+  await page.getByRole("button", { name: "Fichier", exact: true }).click();
+  const mobileMenuBox = await page
+    .getByRole("menu", { name: "Fichier", exact: true })
+    .boundingBox();
+  assert.ok(
+    mobileMenuBox &&
+      mobileMenuBox.x >= 0 &&
+      mobileMenuBox.x + mobileMenuBox.width <= 375 &&
+      mobileMenuBox.y + mobileMenuBox.height <= 812,
+  );
+  await page.keyboard.press("Escape");
+  await page.getByRole("button", { name: "Équipes & missions", exact: true }).click();
+  await page.getByRole("button", { name: "Ouvrir le menu du profil", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Paramètres", exact: true }).click();
+  const mobileSettings = page.getByRole("dialog", { name: "Paramètres", exact: true });
+  await mobileSettings.getByRole("button", { name: "Apparence", exact: true }).click();
+  assert.equal(
+    await mobileSettings.getByLabel("Taille du texte des messages", { exact: true }).inputValue(),
+    "16",
+  );
+  const mobileSettingsBox = await mobileSettings.boundingBox();
+  assert.ok(mobileSettingsBox && mobileSettingsBox.width <= 375 && mobileSettingsBox.height <= 812);
+  await page.screenshot({
+    path: join(evidence, "optivos-codex-settings-mobile.png"),
+    fullPage: true,
+  });
+  await page.keyboard.press("Escape");
+  await page.keyboard.press("Escape");
+  assert.ok(
+    await page.evaluate(
+      () =>
+        document.documentElement.scrollWidth <= innerWidth &&
+        document.documentElement.scrollHeight <= innerHeight + 1,
+    ),
+  );
+  assert.equal(pilotWrites, 6);
+  checks.push(
+    "mobile application popup stays in viewport; full settings dialog and saved appearance work at375px without page overflow",
+  );
+  checks.push(
+    "local search filters loaded history; model/location/permission menus preserve fixed free-only server policy",
+  );
   checks.push(
     "three company creation modes, small-team cap, configuration-only save, independent then linked, refreshed registry, responsive layouts; backend mocked",
   );

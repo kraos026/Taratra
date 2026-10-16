@@ -1,8 +1,11 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { useImperativeHandle, type Ref } from "react";
 import { Button } from "@/components/ui/button";
 import { AgentAvatar } from "./agent-avatar";
+import { CodexMenu } from "./codex-menu";
+import { CodexDialog } from "./codex-settings";
 import { ArrowUpRight, MessageSquare } from "lucide-react";
 import {
   freeMissionListSchema,
@@ -28,21 +31,36 @@ function missionLabel(item: FreeMission) {
       : "Correction demandée"
     : labels[item.status];
 }
+export type FreePilotHandle = {
+  newMission: () => void;
+  search: () => void;
+  refresh: () => void;
+  exportResult: () => void;
+  copyResult: () => void;
+};
 export function FreePilotPanel({
   workspaceId,
   canWrite,
   historyTarget,
   onMissionSelected,
+  ref,
 }: {
   workspaceId: string;
   canWrite: boolean;
   historyTarget?: HTMLElement | null;
   onMissionSelected?: () => void;
+  ref?: Ref<FreePilotHandle>;
 }) {
   const [ready, setReady] = useState(false);
+  const [verifiedModel, setVerifiedModel] = useState<string | null>(null);
   const [prompt, setPrompt] = useState("");
   const [items, setItems] = useState<FreeMission[] | null>(null);
   const [selectedMission, setSelectedMission] = useState<string | null>(null);
+  const [historyQuery, setHistoryQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const searchField = useRef<HTMLInputElement>(null);
+  const historySearch = useRef<HTMLInputElement>(null);
   const transcript = useRef<HTMLDivElement>(null);
   const composer = useRef<HTMLTextAreaElement>(null);
   const [hasMore, setHasMore] = useState(false);
@@ -52,6 +70,9 @@ export function FreePilotPanel({
   const request = useRef<AbortController | null>(null);
   const intent = useRef<{ id: string; prompt: string } | null>(null);
   const [uncertain, setUncertain] = useState(false);
+  useEffect(() => {
+    if (searchOpen) searchField.current?.focus();
+  }, [searchOpen]);
   const [comments, setComments] = useState<Record<string, string>>({});
   const [reviewIntent, setReviewIntent] = useState<{
     missionId: string;
@@ -185,45 +206,151 @@ export function FreePilotPanel({
       throw caught;
     }
   }
+  function newMission() {
+    if (busy || uncertain || reviewIntent || !canWrite) {
+      setError(
+        "La nouvelle mission attend la fin de l’opération ou la résolution de la demande incertaine.",
+      );
+      return;
+    }
+    setSelectedMission(null);
+    setPrompt("");
+    setError("");
+    setMessage("");
+    onMissionSelected?.();
+    composer.current?.focus();
+  }
+  function selectedResult(id = selectedMission) {
+    const selected = items?.find((item) => item.id === id);
+    if (!selected?.output || selected.status !== "completed" || !selected.proof) {
+      setError("Sélectionnez un résultat terminé et vérifié avant cette action.");
+      return null;
+    }
+    return selected;
+  }
+  function exportResult(id = selectedMission) {
+    const selected = selectedResult(id);
+    if (!selected) return;
+    const url = URL.createObjectURL(
+      new Blob([selected.output!], { type: "text/plain;charset=utf-8" }),
+    );
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `optivos-mission-${selected.id}.txt`;
+    link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  function copyResult(id = selectedMission) {
+    const selected = selectedResult(id);
+    if (!selected) return;
+    if (!navigator.clipboard) {
+      setError("Le navigateur ne permet pas la copie dans ce contexte.");
+      return;
+    }
+    void navigator.clipboard.writeText(selected.output!).then(
+      () => setMessage("Résultat copié."),
+      () => setError("Copie refusée par le navigateur."),
+    );
+  }
+  useImperativeHandle(ref, () => ({
+    newMission,
+    search: () => {
+      setSearchQuery("");
+      setSearchOpen(true);
+    },
+    refresh: () => {
+      void run(load);
+    },
+    exportResult: () => exportResult(),
+    copyResult: () => copyResult(),
+  }));
   const history = (
     <details open className="pilot-history" aria-label="Historique des missions">
       <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">
         <MessageSquare className="mr-2 inline" size={14} aria-hidden="true" />
-        Missions récentes ({items?.length || 0})
+        Récents ({items?.length || 0})
       </summary>
+      <label className="sr-only" htmlFor={`mission-search-${workspaceId}`}>
+        Rechercher dans les missions chargées
+      </label>
+      <input
+        ref={historySearch}
+        id={`mission-search-${workspaceId}`}
+        type="search"
+        value={historyQuery}
+        onChange={(event) => setHistoryQuery(event.target.value)}
+        placeholder="Rechercher"
+        className="codex-history-search"
+      />
       <Button
         type="button"
         variant="ghost"
         className="min-h-11 w-full justify-start"
         disabled={busy || uncertain || !!reviewIntent || !canWrite}
-        onClick={() => {
-          setSelectedMission(null);
-          setPrompt("");
-          setError("");
-          setMessage("");
-          onMissionSelected?.();
-          composer.current?.focus();
-        }}
+        onClick={newMission}
       >
         Nouvelle mission
       </Button>
-      {items?.map((item) => (
-        <button
-          type="button"
-          key={item.id}
-          disabled={busy}
-          aria-pressed={selectedMission === item.id}
-          onClick={() => {
-            setSelectedMission(item.id);
-            onMissionSelected?.();
-            transcript.current?.focus();
-          }}
-          className={`mb-2 block min-h-11 w-full rounded-xl p-3 text-left text-sm ${selectedMission === item.id ? "bg-indigo-400/10 text-indigo-100" : "text-slate-300 hover:bg-white/5"}`}
-        >
-          <span className="line-clamp-2 break-words">{item.prompt}</span>
-          <span className="mt-1 block text-xs text-slate-400">État : {missionLabel(item)}</span>
-        </button>
-      ))}
+      {items
+        ?.filter((item) =>
+          item.prompt.toLocaleLowerCase("fr").includes(historyQuery.toLocaleLowerCase("fr")),
+        )
+        .map((item) => (
+          <div
+            key={item.id}
+            className="codex-project-row"
+            onContextMenu={(event) => {
+              event.preventDefault();
+              event.currentTarget.querySelector<HTMLButtonElement>("[aria-haspopup=menu]")?.click();
+            }}
+          >
+            <button
+              type="button"
+              key={item.id}
+              disabled={busy}
+              aria-pressed={selectedMission === item.id}
+              onClick={() => {
+                setSelectedMission(item.id);
+                onMissionSelected?.();
+                transcript.current?.focus();
+              }}
+              className={`mb-2 block min-h-11 w-full rounded-xl p-3 text-left text-sm ${selectedMission === item.id ? "bg-indigo-400/10 text-indigo-100" : "text-slate-300 hover:bg-white/5"}`}
+            >
+              <span className="line-clamp-2 break-words">{item.prompt}</span>
+              <span className="mt-1 block text-xs text-slate-400">État : {missionLabel(item)}</span>
+            </button>
+            <CodexMenu
+              label={`Options de la mission ${item.prompt.slice(0, 60)}`}
+              items={[
+                {
+                  label: "Ouvrir",
+                  action: () => {
+                    setSelectedMission(item.id);
+                    onMissionSelected?.();
+                  },
+                },
+                { label: "Copier le résultat", action: () => copyResult(item.id) },
+                { label: "Exporter le résultat…", action: () => exportResult(item.id) },
+                ...[
+                  "Épingler",
+                  "Renommer",
+                  "Marquer comme non lu",
+                  "Déplacer vers un projet",
+                  "Partager",
+                  "Dupliquer / bifurquer",
+                  "Archiver",
+                  "Supprimer",
+                ].map((label) => ({
+                  label,
+                  unavailable:
+                    "Cette opération n’est pas raccordée au service de missions. Aucun changement effectué.",
+                })),
+              ]}
+            >
+              <span aria-hidden="true">···</span>
+            </CodexMenu>
+          </div>
+        ))}
       {!items?.length && (
         <p className="text-sm leading-6 text-slate-400">
           Actualisez pour retrouver vos missions enregistrées.
@@ -446,6 +573,105 @@ export function FreePilotPanel({
               className="w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm"
               placeholder="Exemple : prépare une procédure d’accueil client en cinq étapes."
             />
+            <div className="codex-composer-menu-row">
+              <CodexMenu
+                label="Ajouter des fichiers et plus"
+                items={[
+                  {
+                    label: "Ajouter des fichiers",
+                    unavailable: "L’envoi de pièces jointes à Hermes n’est pas raccordé.",
+                  },
+                  {
+                    label: "Ajouter des images",
+                    unavailable: "Le pilote actuel accepte uniquement une demande textuelle.",
+                  },
+                  {
+                    label: "Compétences",
+                    unavailable:
+                      "Choisissez Compétences dans la barre latérale pour consulter l’inventaire réel.",
+                  },
+                  {
+                    label: "Applications et MCP",
+                    unavailable:
+                      "L’utilisation de connecteurs externes n’est pas activée dans le pilote.",
+                  },
+                ]}
+              >
+                <span aria-hidden="true">＋</span>
+              </CodexMenu>
+              <CodexMenu
+                label="Lieu d’exécution"
+                items={[
+                  {
+                    label: "VPS Hostinger — cible du pilote",
+                    unavailable:
+                      "La connexion est vérifiée par le service lors du lancement ; ce menu ne la modifie pas.",
+                  },
+                  { label: "Local", unavailable: "Le runtime local n’est pas raccordé." },
+                  {
+                    label: "Worktree",
+                    unavailable: "Les worktrees ne sont pas raccordés à Hermes.",
+                  },
+                  {
+                    label: "Cloud",
+                    unavailable: "Aucun environnement cloud supplémentaire n’est raccordé.",
+                  },
+                ]}
+              >
+                VPS⌄
+              </CodexMenu>
+              <CodexMenu
+                label="Choisir un modèle"
+                items={[
+                  {
+                    label: verifiedModel || "Modèle gratuit — à vérifier",
+                    unavailable:
+                      "Le modèle est imposé par la barrière de gratuité du service. Utilisez Vérifier le pilote gratuit.",
+                  },
+                  {
+                    label: "OpenRouter",
+                    unavailable:
+                      "Le service utilise uniquement son modèle gratuit vérifié ; aucun changement de modèle depuis ce menu.",
+                  },
+                  { label: "9Router", unavailable: "9Router n’est pas raccordé." },
+                  {
+                    label: "Modèle local / Ollama",
+                    unavailable: "L’inférence locale n’est pas raccordée à ce pilote.",
+                  },
+                ]}
+              >
+                Modèle⌄
+              </CodexMenu>
+              <CodexMenu
+                label="Autorisations de la mission"
+                items={[
+                  {
+                    label: "Texte uniquement — actif",
+                    unavailable: "Cette limite est imposée côté serveur.",
+                  },
+                  {
+                    label: "Lecture seule",
+                    unavailable: "Les outils de lecture externes ne sont pas activés.",
+                  },
+                  {
+                    label: "Accès complet",
+                    unavailable: "L’accès complet n’est pas autorisé dans ce pilote.",
+                  },
+                ]}
+              >
+                Autorisations⌄
+              </CodexMenu>
+              <CodexMenu
+                label="Effort de raisonnement"
+                items={["Désactivé — actif", "Faible", "Moyen", "Élevé"].map((label) => ({
+                  label,
+                  unavailable:
+                    "Le raisonnement supplémentaire est désactivé par le profil du pilote ; cette commande ne modifie pas le modèle.",
+                }))}
+              >
+                Effort⌄
+              </CodexMenu>
+            </div>
             <div className="pilot-composer-footer">
               <Button
                 className="min-h-11"
@@ -455,7 +681,11 @@ export function FreePilotPanel({
                 onClick={() =>
                   run(async (signal) => {
                     setReady(false);
-                    freePilotReadinessSchema.parse(await call("/readiness", signal));
+                    setVerifiedModel(null);
+                    const readiness = freePilotReadinessSchema.parse(
+                      await call("/readiness", signal),
+                    );
+                    setVerifiedModel(readiness.policy.model);
                     setReady(true);
                     setMessage("Pilote gratuit vérifié. Aucun outil externe ni repli autorisé.");
                   })
@@ -486,6 +716,69 @@ export function FreePilotPanel({
         <p className="text-sm text-slate-400">
           Les vingt missions les plus récentes sont affichées.
         </p>
+      )}
+      {searchOpen && (
+        <CodexDialog
+          title="Rechercher"
+          onClose={() => setSearchOpen(false)}
+          className="codex-search-dialog"
+        >
+          <div className="codex-feature-body">
+            <label className="sr-only" htmlFor={`global-search-${workspaceId}`}>
+              Rechercher dans les conversations chargées
+            </label>
+            <input
+              ref={searchField}
+              id={`global-search-${workspaceId}`}
+              className="codex-history-search"
+              type="search"
+              maxLength={200}
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="Rechercher une conversation"
+            />
+            <p className="codex-setting-note">
+              Recherche locale dans les vingt missions chargées au maximum. Aucun appel à un modèle.
+            </p>
+            <div className="codex-search-results">
+              {items
+                ?.filter((item) =>
+                  (item.prompt + " " + (item.output || ""))
+                    .toLocaleLowerCase("fr")
+                    .includes(searchQuery.toLocaleLowerCase("fr")),
+                )
+                .map((item) => (
+                  <button
+                    type="button"
+                    key={item.id}
+                    onClick={() => {
+                      setSelectedMission(item.id);
+                      setSearchOpen(false);
+                      onMissionSelected?.();
+                    }}
+                  >
+                    <span>{item.prompt}</span>
+                    <small>{missionLabel(item)}</small>
+                  </button>
+                ))}
+            </div>
+            {!!searchQuery &&
+              !items?.some((item) =>
+                (item.prompt + " " + (item.output || ""))
+                  .toLocaleLowerCase("fr")
+                  .includes(searchQuery.toLocaleLowerCase("fr")),
+              ) && <p>Aucune conversation chargée ne correspond.</p>}
+            <Button
+              type="button"
+              variant="outline"
+              className="min-h-11"
+              disabled={busy}
+              onClick={() => run(load)}
+            >
+              Actualiser les missions chargées
+            </Button>
+          </div>
+        </CodexDialog>
       )}
     </section>
   );

@@ -1,11 +1,22 @@
 "use client";
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { OptivosLogo } from "@/components/brand/optivos-logo";
 import { Button } from "@/components/ui/button";
 import { HermesConnectionPanel } from "./hermes-connection-panel";
 import { HermesInventoryPanel } from "./hermes-inventory-panel";
-import { FreePilotPanel } from "./free-pilot-panel";
+import { FreePilotPanel, type FreePilotHandle } from "./free-pilot-panel";
+import {
+  CodexApplicationMenus,
+  CodexSidebarTools,
+  CodexProfileMenu,
+  CodexConversationMenu,
+  type WorkspaceCommand,
+} from "./codex-shell-menus";
+import { CodexSettings, CodexFeature } from "./codex-settings";
+import { useWorkspaceAppearance } from "./workspace-appearance";
+import { CodexMenu } from "./codex-menu";
+import type { CodexFeatureId, CodexSettingId } from "../domain/codex-navigation";
 import { AgentAvatar } from "./agent-avatar";
 import { Plus, MessagesSquare, Users, Plug, SlidersHorizontal } from "lucide-react";
 import {
@@ -38,6 +49,16 @@ export function AgentCompanyPanel({
   const [view, setView] = useState("Missions");
   const [historyTarget, setHistoryTarget] = useState<HTMLDivElement | null>(null);
   const [railOpen, setRailOpen] = useState(false);
+  const [sidebarVisible, setSidebarVisible] = useState(true);
+  const [settings, setSettings] = useState<CodexSettingId | null>(null);
+  const [feature, setFeature] = useState<CodexFeatureId | null>(null);
+  const pilot = useRef<FreePilotHandle>(null);
+  const commandSequence = useRef(0);
+  const appliedCommand = useRef(0);
+  const [pendingCommand, setPendingCommand] = useState<{
+    id: number;
+    type: Exclude<WorkspaceCommand, "create" | "sidebar">;
+  } | null>(null);
   const railTrigger = useRef<HTMLButtonElement>(null);
   const inspectorTrigger = useRef<HTMLButtonElement | null>(null);
   function closeInspector() {
@@ -58,6 +79,79 @@ export function AgentCompanyPanel({
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [hasMore, setHasMore] = useState(initialHasMore);
+  const [appearance, setAppearance] = useWorkspaceAppearance(setNotice);
+  function command(type: WorkspaceCommand) {
+    if (type === "sidebar") {
+      setSidebarVisible((value) => !value);
+      return;
+    }
+    if (type === "create") {
+      if (canWrite) {
+        setCreating(true);
+        setRailOpen(false);
+      }
+      return;
+    }
+    if (!selectedId) {
+      setNotice("Choisissez ou créez d’abord une entreprise IA.");
+      return;
+    }
+    setCreating(false);
+    if (type === "new") setView("Missions");
+    setPendingCommand({ id: ++commandSequence.current, type });
+  }
+  useEffect(() => {
+    if (
+      creating ||
+      !pendingCommand ||
+      !pilot.current ||
+      appliedCommand.current === pendingCommand.id
+    )
+      return;
+    appliedCommand.current = pendingCommand.id;
+    const actions = {
+      new: pilot.current.newMission,
+      search: pilot.current.search,
+      refresh: pilot.current.refresh,
+      copy: pilot.current.copyResult,
+      export: pilot.current.exportResult,
+    };
+    actions[pendingCommand.type]();
+  }, [creating, pendingCommand, selectedId]);
+  useEffect(() => {
+    function keys(event: KeyboardEvent) {
+      if (!(event.ctrlKey || event.metaKey) || (event.target as HTMLElement)?.closest("dialog"))
+        return;
+      if (event.key.toLowerCase() === "k") {
+        event.preventDefault();
+        command("search");
+      } else if (event.key.toLowerCase() === "n" && event.altKey) {
+        event.preventDefault();
+        command("new");
+      } else if (event.key === ",") {
+        event.preventDefault();
+        setSettings("general");
+      }
+    }
+    document.addEventListener("keydown", keys);
+    return () => document.removeEventListener("keydown", keys);
+  });
+  const menuProps = {
+    onCommand: command,
+    onFeature: setFeature,
+    onSettings: setSettings,
+    onView: (value: string) => {
+      if (document.activeElement instanceof HTMLButtonElement)
+        inspectorTrigger.current = document.activeElement;
+      setView(value);
+    },
+    onMessageSize: (delta: number) =>
+      setAppearance((current) => ({
+        ...current,
+        messageSize: delta === 0 ? 14 : Math.max(12, Math.min(18, current.messageSize + delta)),
+      })),
+    canWrite,
+  };
   const inputClass =
     "min-h-11 w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-slate-100 focus-visible:ring-2 focus-visible:ring-indigo-400";
   async function call(path: string, method = "GET", body?: unknown) {
@@ -157,6 +251,10 @@ export function AgentCompanyPanel({
     <div
       className="agent-studio codex-studio"
       data-creating={creating}
+      data-compact={appearance.compact}
+      data-sidebar-hidden={!sidebarVisible}
+      data-reduce-motion={appearance.reduceMotion}
+      style={{ "--message-size": `${appearance.messageSize}px` } as CSSProperties}
       onKeyDown={(event) => {
         if (event.key === "Escape" && railOpen) {
           setRailOpen(false);
@@ -166,6 +264,7 @@ export function AgentCompanyPanel({
         }
       }}
     >
+      <CodexApplicationMenus {...menuProps} />
       <aside
         id="studio-rail-content"
         className="studio-rail"
@@ -176,24 +275,53 @@ export function AgentCompanyPanel({
           <OptivosLogo compact />
           <span>Optivos</span>
         </Link>
-        <nav aria-label="Navigation de l’espace" className="studio-rail-nav">
-          <Link href="/?view=audit">Vue d’ensemble des audits</Link>
-          <Link href="/companies">Dossiers d’audit</Link>
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={!canWrite || saving || unavailable}
-            onClick={() => {
-              setCreating(true);
-              setRailOpen(false);
-            }}
-          >
-            <Plus size={16} aria-hidden="true" /> Nouvelle équipe
-          </Button>
-        </nav>
+        <CodexSidebarTools {...menuProps} />
+        <details className="codex-audit-menu">
+          <summary>Audit Optivos</summary>
+          <nav aria-label="Navigation de l’espace" className="studio-rail-nav">
+            <Link href="/?view=audit">Vue d’ensemble des audits</Link>
+            <Link href="/companies">Dossiers d’audit</Link>
+          </nav>
+        </details>
+        <details className="codex-audit-menu">
+          <summary>Épinglés</summary>
+          <p className="codex-setting-note">
+            L’épinglage des missions Hermes n’est pas encore raccordé.
+          </p>
+        </details>
         <div className="studio-rail-section">
           <div className="studio-rail-label">
-            <span>Équipes</span>
+            <span>Projets</span>
+            <CodexMenu
+              label="Options des projets"
+              items={[
+                {
+                  label: "Nouveau projet",
+                  action: () => command("create"),
+                  unavailable: canWrite ? undefined : "Votre rôle est limité à la consultation.",
+                },
+                { label: "Actualiser les projets", action: refresh },
+                {
+                  label: "Organiser la barre latérale",
+                  children: [
+                    {
+                      label: "Par projet",
+                      unavailable: "Le regroupement par entreprise IA est imposé pour ce pilote.",
+                    },
+                    {
+                      label: "Par connexion",
+                      unavailable: "Une seule connexion VPS est raccordée.",
+                    },
+                    {
+                      label: "Nouvelle section",
+                      unavailable: "Les sections personnalisées ne sont pas raccordées.",
+                    },
+                  ],
+                },
+              ]}
+            >
+              <Plus size={16} aria-hidden="true" />
+            </CodexMenu>
             <button
               type="button"
               disabled={saving}
@@ -205,22 +333,71 @@ export function AgentCompanyPanel({
             </button>
           </div>
           {items.map((item) => (
-            <button
+            <div
               key={item.id}
-              type="button"
-              disabled={saving}
-              aria-pressed={selectedId === item.id && !creating}
-              className="studio-team-choice"
-              onClick={() => {
-                setSelectedId(item.id);
-                setCreating(false);
-                setView("Missions");
-                setRailOpen(false);
+              className="codex-project-row"
+              onContextMenu={(event) => {
+                event.preventDefault();
+                event.currentTarget
+                  .querySelector<HTMLButtonElement>("[aria-haspopup=menu]")
+                  ?.click();
               }}
             >
-              <AgentAvatar size={28} />
-              <span>{item.name}</span>
-            </button>
+              <button
+                type="button"
+                disabled={saving}
+                aria-pressed={selectedId === item.id && !creating}
+                className="studio-team-choice"
+                onClick={() => {
+                  setSelectedId(item.id);
+                  setCreating(false);
+                  setView("Missions");
+                  setRailOpen(false);
+                }}
+              >
+                <AgentAvatar size={28} />
+                <span>{item.name}</span>
+              </button>
+              <CodexMenu
+                label={`Options de ${item.name}`}
+                items={[
+                  {
+                    label: "Ouvrir",
+                    action: () => {
+                      setSelectedId(item.id);
+                      setCreating(false);
+                    },
+                  },
+                  {
+                    label: "Paramètres du projet",
+                    action: () => {
+                      setSelectedId(item.id);
+                      setCreating(false);
+                      setView("Réglages");
+                    },
+                  },
+                  {
+                    label: "Épingler",
+                    unavailable: "L’épinglage n’est pas raccordé au registre Optivos.",
+                  },
+                  {
+                    label: "Renommer",
+                    unavailable: "La modification du nom n’est pas exposée par le registre actuel.",
+                  },
+                  {
+                    label: "Archiver",
+                    unavailable: "L’archivage des entreprises IA n’est pas raccordé.",
+                  },
+                  {
+                    label: "Supprimer",
+                    unavailable:
+                      "Aucune suppression d’entreprise IA n’est autorisée depuis ce menu.",
+                  },
+                ]}
+              >
+                <span aria-hidden="true">···</span>
+              </CodexMenu>
+            </div>
           ))}
           {items.length === 0 && (
             <p className="text-sm text-slate-400">Aucune équipe enregistrée.</p>
@@ -233,6 +410,7 @@ export function AgentCompanyPanel({
         <div className="studio-rail-footer">
           <span className="studio-budget-dot" aria-hidden="true" />
           Budget API : 0 €<span>Vous validez les résultats.</span>
+          <CodexProfileMenu {...menuProps} />
         </div>
       </aside>
       <section className="studio-desk" aria-label="Espace de travail de l’équipe">
@@ -290,6 +468,7 @@ export function AgentCompanyPanel({
                     </button>
                   );
                 })}
+                <CodexConversationMenu {...menuProps} />
               </nav>
             )
           )}
@@ -528,6 +707,7 @@ export function AgentCompanyPanel({
               <div className="studio-desk-body" data-inspector={view !== "Missions"} key={item.id}>
                 <article className="studio-conversation" aria-label={item.name}>
                   <FreePilotPanel
+                    ref={pilot}
                     workspaceId={item.id}
                     canWrite={canWrite}
                     historyTarget={historyTarget}
@@ -626,6 +806,26 @@ export function AgentCompanyPanel({
             ))}
         </div>
       </section>
+      {settings && (
+        <CodexSettings
+          key={settings}
+          initialCategory={settings}
+          workspace={items.find((item) => item.id === selectedId)}
+          canWrite={canWrite}
+          appearance={appearance}
+          onAppearance={setAppearance}
+          onClose={() => setSettings(null)}
+        />
+      )}
+      {feature && (
+        <CodexFeature
+          feature={feature}
+          canWrite={canWrite}
+          workspace={items.find((item) => item.id === selectedId)}
+          onClose={() => setFeature(null)}
+          onNewProject={() => command("create")}
+        />
+      )}
     </div>
   );
 }
