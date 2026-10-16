@@ -29,7 +29,7 @@ writeFileSync(
 );
 writeFileSync(
   join(fixture, "next-navigation.ts"),
-  `export const usePathname = () => '/companies/${companyId}/atelier-ia'; export const useRouter = () => ({push: (url: string) => {location.href=url}});`,
+  `export const usePathname = () => location.search.includes('enterprise') ? '/atelier-ia/entreprises' : '/companies/${companyId}/atelier-ia'; export const useRouter = () => ({push: (url: string) => {location.href=url}});`,
 );
 writeFileSync(
   join(fixture, "entry.tsx"),
@@ -629,9 +629,10 @@ try {
     state: "available",
     items: [{ name: "research", description: "Sources vérifiables" }],
   };
-  const enterprise = page
-    .getByRole("article")
-    .filter({ has: page.getByRole("heading", { name: "Équipe recherche pilote", exact: true }) });
+  const enterprise = page.getByRole("region", {
+    name: "Espace de travail de l’équipe",
+    exact: true,
+  });
   const countBefore = connectionCount;
   await enterprise.getByRole("button", { name: "Connexion", exact: true }).click();
   assert.equal(connectionCount, countBefore);
@@ -704,10 +705,9 @@ try {
       runtime: "Hermes AIAgent",
     },
   });
-  await enterprise.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
+  await page.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
   await enterprise.getByText("Arrêtée", { exact: true }).waitFor();
-  await enterprise.getByText("Missions récentes (2)", { exact: true }).click();
-  await enterprise.getByRole("button", { name: /Ancienne mission de recette terminée/ }).click();
+  await page.getByRole("button", { name: /Ancienne mission de recette terminée/ }).click();
   await enterprise.getByText(/Réponse réelle Hermes · coût API vérifié : 0 \$/).waitFor();
   assert.equal(pilotWrites, 3);
   await enterprise.getByText("Relire ou corriger ce résultat", { exact: true }).click();
@@ -731,7 +731,7 @@ try {
   assert.equal(reviewRequestIds[0], reviewRequestIds[1]);
   await enterprise.getByRole("button", { name: "Accepter le résultat", exact: true }).click();
   await enterprise.getByText("Résultat accepté", { exact: true }).waitFor();
-  await enterprise.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
+  await page.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
   await enterprise.getByText("Résultat accepté", { exact: true }).waitFor();
   assert.equal(pilotRows.at(-1).reviews.length, 2);
   assert.equal(pilotRows.length, 2);
@@ -748,9 +748,25 @@ try {
   );
   assert.equal(blocked.length, 0);
   assert.equal(errors.length, 0);
+  pilotRows.at(-1).output = Array.from(
+    { length: 70 },
+    (_, index) =>
+      `Étape ${index + 1} : exemple de résultat long pour vérifier le défilement indépendant du fil.`,
+  ).join("\n\n");
+  await page.getByRole("button", { name: "Actualiser les missions", exact: true }).click();
+  assert.ok(
+    await page
+      .getByLabel("Fil de la mission", { exact: true })
+      .evaluate((node) => node.scrollHeight > node.clientHeight),
+  );
   for (const width of [375, 820, 1440]) {
     await page.setViewportSize({ width, height: 1000 });
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    assert.ok(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight + 1));
+    const box = await enterprise
+      .getByLabel("Quelle mission textuelle confier à Hermes ?", { exact: true })
+      .boundingBox();
+    assert.ok(box && box.y >= 0 && box.y + box.height <= 1000, `Composer visible at ${width}px`);
   }
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.screenshot({
@@ -763,6 +779,15 @@ try {
     path: join(evidence, "optivos-entreprises-ia-mobile.png"),
     fullPage: true,
   });
+  await page.getByRole("button", { name: "Équipes & missions", exact: true }).click();
+  await page.getByRole("button", { name: "Nouvelle mission", exact: true }).waitFor();
+  await page.keyboard.press("Escape");
+  assert.equal(
+    await page
+      .getByRole("button", { name: "Équipes & missions", exact: true })
+      .evaluate((node) => node === document.activeElement),
+    true,
+  );
   await enterprise.getByRole("button", { name: "Équipe", exact: true }).focus();
   await page.keyboard.press("Enter");
   await enterprise.getByText("Sous votre direction", { exact: true }).waitFor();
@@ -770,7 +795,7 @@ try {
     await enterprise
       .getByRole("button", { name: "Lancer la mission textuelle", exact: true })
       .isVisible(),
-    false,
+    true,
   );
   await page.setViewportSize({ width: 1440, height: 1000 });
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -785,8 +810,13 @@ try {
   assert.equal(pilotWrites, 6);
   assert.equal(teamWrites, 2);
   checks.push(
-    "keyboard team view, decorative characters, reversible creation panel and no hidden mission controls",
+    "keyboard inspector, characters, reversible creation; fixed-height conversation, anchored composer, long-response scroll and mobile rail Escape",
   );
+  await enterprise.getByRole("button", { name: "Missions", exact: true }).click();
+  await page.getByRole("button", { name: "Nouvelle mission", exact: true }).click();
+  await enterprise.getByText("Quel travail voulez-vous avancer ?", { exact: true }).waitFor();
+  assert.equal(pilotWrites, 6);
+  await page.screenshot({ path: join(evidence, "optivos-workspace-empty.png"), fullPage: true });
   checks.push(
     "three company creation modes, small-team cap, configuration-only save, independent then linked, refreshed registry, responsive layouts; backend mocked",
   );

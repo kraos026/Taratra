@@ -3,6 +3,7 @@ import { notFound, redirect } from "next/navigation";
 import { CompanyShell } from "@/components/dashboard/company-shell";
 import { loadAgentCompanies } from "@/modules/agent-workspace/application/agent-workspace-access";
 import { agentWorkspaceHref } from "@/modules/agent-workspace/application/agent-workspace-policy";
+import { agentLabEnabled } from "@/modules/agent-workspace/application/agent-workspace-policy";
 import { AgentAvatar } from "@/modules/agent-workspace/presentation/agent-avatar";
 
 export const dynamic = "force-dynamic";
@@ -11,6 +12,7 @@ export default async function AgentWorkspaceIndex({
 }: {
   searchParams: Promise<{ page?: string }>;
 }) {
+  if (agentLabEnabled()) redirect("/atelier-ia/entreprises");
   const raw = Number((await searchParams).page ?? 1);
   const page = Number.isSafeInteger(raw) && raw > 0 && raw <= 100000 ? raw : 1;
   const data = await loadAgentCompanies(page);

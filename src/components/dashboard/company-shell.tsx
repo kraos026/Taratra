@@ -85,6 +85,13 @@ export function CompanyShell({
     return label === "Mon entreprise";
   }
 
+  if (pathname.startsWith("/atelier-ia/entreprises")) {
+    return (
+      <div className="workspace-shell workspace-focus text-slate-50">
+        <main id="workspace-main">{children}</main>
+      </div>
+    );
+  }
   return (
     <div className="workspace-shell min-h-screen text-slate-50">
       <a

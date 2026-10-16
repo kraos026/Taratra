@@ -1,5 +1,18 @@
 # Espace de travail Optivos — refonte UI/UX
 
+## Correction de structure après retour utilisateur
+
+MISSION: remplacer le tableau de cartes par une vraie disposition de poste conversationnel.
+AFFECTED DOMAIN: présentation Atelier IA ; CANONICAL OWNER: mêmes composants, aucune logique métier ajoutée.
+CURRENT STATUS: SHADOW / Preview ; FILES EXPECTED: shell en mode concentré, rail unique, fil avec saisie ancrée et inspecteur latéral, recette visuelle.
+DB IMPACT: aucun ; SECURITY IMPACT: permissions et contrôles réseau existants conservés.
+TEST PLAN: saisie visible sans défilement de page, fil qui défile indépendamment, rail missions/équipes unique, panneau contextuel, clavier et mobile.
+OUT-OF-SCOPE: moteur, nouvelles API, coût, migration, production.
+
+Cause constatée : l’ancienne disposition conservait la navigation générale, un deuxième panneau d’équipes, un historique dans le contenu et plusieurs en-têtes/cartes. Elle ne reproduisait pas l’organisation spatiale demandée. La correction utilise une seule barre latérale, une barre d’outils compacte, une conversation centrale occupant la hauteur disponible, une saisie toujours accessible en bas et un inspecteur ouvrable à droite. Les personnages restent dans l’inspecteur et les messages, sans décorer chaque conteneur.
+
+L’accueil `/` et l’entrée `/atelier-ia` ouvrent cet espace uniquement lorsque la barrière serveur du laboratoire autorise la Preview. Le tableau d’audit reste disponible via `/?view=audit` et ses dossiers via `/companies`. En Production, les redirections ne s’appliquent pas. L’accès au workspace garde son contrôle Auth/organisation existant.
+
 MISSION: organiser le travail dans une interface conversationnelle accessible, avec personnages d’agents.
 AFFECTED DOMAIN: présentation du workspace et navigation partagée.
 CANONICAL OWNER: composants dashboard et présentation agent-workspace ; aucun nouveau moteur.

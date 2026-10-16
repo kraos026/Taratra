@@ -1,5 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { AgentAvatar } from "./agent-avatar";
 import { ArrowUpRight, MessageSquare } from "lucide-react";
@@ -30,14 +31,20 @@ function missionLabel(item: FreeMission) {
 export function FreePilotPanel({
   workspaceId,
   canWrite,
+  historyTarget,
+  onMissionSelected,
 }: {
   workspaceId: string;
   canWrite: boolean;
+  historyTarget?: HTMLElement | null;
+  onMissionSelected?: () => void;
 }) {
   const [ready, setReady] = useState(false);
   const [prompt, setPrompt] = useState("");
   const [items, setItems] = useState<FreeMission[] | null>(null);
   const [selectedMission, setSelectedMission] = useState<string | null>(null);
+  const transcript = useRef<HTMLDivElement>(null);
+  const composer = useRef<HTMLTextAreaElement>(null);
   const [hasMore, setHasMore] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -178,78 +185,84 @@ export function FreePilotPanel({
       throw caught;
     }
   }
-  return (
-    <section aria-label="Missions textuelles pilotes" className="pilot-workspace space-y-4">
-      <div className="flex items-center gap-3">
-        <AgentAvatar variant={1} size={44} />
-        <div>
-          <h4 className="font-semibold">Travailler avec Hermes</h4>
-          <p className="text-xs text-slate-400">
-            Pilote textuel · une mission à la fois · plafond API 0 €
-          </p>
-        </div>
-      </div>
-      <details className="text-sm text-slate-400">
-        <summary className="min-h-11 cursor-pointer py-3">Ce que Hermes peut faire ici</summary>
-        <p className="text-sm leading-6 text-slate-300">
-          Ce premier pilote produit un texte : plan, synthèse ou procédure. Les outils externes,
-          skills, plugins et actions sur vos comptes restent désactivés. Chaque lancement contrôle
-          le modèle gratuit et refuse tout repli payant.
+  const history = (
+    <details open className="pilot-history" aria-label="Historique des missions">
+      <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">
+        <MessageSquare className="mr-2 inline" size={14} aria-hidden="true" />
+        Missions récentes ({items?.length || 0})
+      </summary>
+      <Button
+        type="button"
+        variant="ghost"
+        className="min-h-11 w-full justify-start"
+        disabled={busy || uncertain || !!reviewIntent || !canWrite}
+        onClick={() => {
+          setSelectedMission(null);
+          setPrompt("");
+          setError("");
+          setMessage("");
+          onMissionSelected?.();
+          composer.current?.focus();
+        }}
+      >
+        Nouvelle mission
+      </Button>
+      {items?.map((item) => (
+        <button
+          type="button"
+          key={item.id}
+          disabled={busy}
+          aria-pressed={selectedMission === item.id}
+          onClick={() => {
+            setSelectedMission(item.id);
+            onMissionSelected?.();
+            transcript.current?.focus();
+          }}
+          className={`mb-2 block min-h-11 w-full rounded-xl p-3 text-left text-sm ${selectedMission === item.id ? "bg-indigo-400/10 text-indigo-100" : "text-slate-300 hover:bg-white/5"}`}
+        >
+          <span className="line-clamp-2 break-words">{item.prompt}</span>
+          <span className="mt-1 block text-xs text-slate-400">État : {missionLabel(item)}</span>
+        </button>
+      ))}
+      {!items?.length && (
+        <p className="text-sm leading-6 text-slate-400">
+          Actualisez pour retrouver vos missions enregistrées.
         </p>
-      </details>
-      <div className="flex flex-wrap gap-3">
-        <Button
-          className="min-h-11"
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={() =>
-            run(async (signal) => {
-              setReady(false);
-              freePilotReadinessSchema.parse(await call("/readiness", signal));
-              setReady(true);
-              setMessage("Pilote gratuit vérifié. Aucun outil externe ni repli autorisé.");
-            })
-          }
-        >
-          Vérifier le pilote gratuit
-        </Button>
-        <Button
-          className="min-h-11"
-          type="button"
-          variant="outline"
-          disabled={busy}
-          onClick={() => run(load)}
-        >
-          Actualiser les missions
-        </Button>
-      </div>
-      <div className="pilot-conversation-layout">
-        <details className="pilot-history" aria-label="Historique des missions">
-          <summary className="min-h-11 cursor-pointer py-3 text-xs font-semibold tracking-wider text-slate-400 uppercase">
-            <MessageSquare className="mr-2 inline" size={14} aria-hidden="true" />
-            Missions récentes ({items?.length || 0})
-          </summary>
-          {items?.map((item) => (
-            <button
-              type="button"
-              key={item.id}
-              disabled={busy}
-              aria-pressed={selectedMission === item.id}
-              onClick={() => setSelectedMission(item.id)}
-              className={`mb-2 block min-h-11 w-full rounded-xl p-3 text-left text-sm ${selectedMission === item.id ? "bg-indigo-400/10 text-indigo-100" : "text-slate-300 hover:bg-white/5"}`}
-            >
-              <span className="line-clamp-2 break-words">{item.prompt}</span>
-              <span className="mt-1 block text-xs text-slate-400">État : {missionLabel(item)}</span>
-            </button>
-          ))}
-          {!items?.length && (
-            <p className="text-sm leading-6 text-slate-400">
-              Actualisez pour retrouver vos missions enregistrées.
-            </p>
-          )}
+      )}
+      <Button
+        className="min-h-11"
+        type="button"
+        variant="outline"
+        disabled={busy}
+        onClick={() => run(load)}
+      >
+        Actualiser les missions
+      </Button>
+    </details>
+  );
+  return (
+    <section aria-label="Missions textuelles pilotes" className="pilot-workspace">
+      {historyTarget ? createPortal(history, historyTarget) : history}
+      <div className="pilot-sessionbar">
+        <span>
+          Hermes <span className="text-slate-500">/ mission textuelle</span>
+        </span>
+        <details className="pilot-options">
+          <summary>Options du pilote</summary>
+          <div>
+            Le pilote produit du texte, avec un contrôle du modèle gratuit avant chaque lancement.
+            Outils externes, skills, plugins et actions sur les comptes désactivés. Aucun repli
+            payant.
+          </div>
         </details>
-        <div className="pilot-thread min-w-0">
+      </div>
+      <div className="pilot-thread">
+        <div
+          ref={transcript}
+          className="pilot-transcript"
+          tabIndex={0}
+          aria-label="Fil de la mission"
+        >
           {!selectedMission && (
             <div className="pilot-empty">
               <AgentAvatar variant={1} size={80} />
@@ -408,50 +421,66 @@ export function FreePilotPanel({
                 </article>
               ))}
           </div>
-
-          {canWrite && (
-            <form
-              className="pilot-composer space-y-3"
-              onSubmit={(event) => {
-                event.preventDefault();
-                void run(submit);
-              }}
-            >
-              <label
-                htmlFor={`pilot-prompt-${workspaceId}`}
-                className="block text-sm font-semibold"
-              >
-                Quelle mission textuelle confier à Hermes ?
-              </label>
-              <textarea
-                id={`pilot-prompt-${workspaceId}`}
-                value={prompt}
-                onChange={(event) => setPrompt(event.target.value)}
-                required
-                minLength={10}
-                maxLength={2000}
-                disabled={busy || uncertain}
-                rows={3}
-                className="w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm"
-                placeholder="Exemple : prépare une procédure d’accueil client en cinq étapes."
-              />
+        </div>
+        {canWrite && (
+          <form
+            className="pilot-composer space-y-3"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void run(submit);
+            }}
+          >
+            <label htmlFor={`pilot-prompt-${workspaceId}`} className="sr-only">
+              Quelle mission textuelle confier à Hermes ?
+            </label>
+            <textarea
+              ref={composer}
+              id={`pilot-prompt-${workspaceId}`}
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              required
+              minLength={10}
+              maxLength={2000}
+              disabled={busy || uncertain}
+              rows={2}
+              className="w-full rounded-xl border border-white/15 bg-slate-950 p-3 text-sm"
+              placeholder="Exemple : prépare une procédure d’accueil client en cinq étapes."
+            />
+            <div className="pilot-composer-footer">
               <Button
                 className="min-h-11"
+                type="button"
+                variant="outline"
+                disabled={busy}
+                onClick={() =>
+                  run(async (signal) => {
+                    setReady(false);
+                    freePilotReadinessSchema.parse(await call("/readiness", signal));
+                    setReady(true);
+                    setMessage("Pilote gratuit vérifié. Aucun outil externe ni repli autorisé.");
+                  })
+                }
+              >
+                Vérifier le pilote gratuit
+              </Button>
+              <Button
+                className="min-h-11"
+                aria-label={uncertain ? "Reprendre la même demande" : "Lancer la mission textuelle"}
                 type="submit"
                 disabled={busy || !ready || (!uncertain && prompt.trim().length < 10)}
               >
                 <ArrowUpRight size={16} aria-hidden="true" />
-                {uncertain ? "Reprendre la même demande" : "Lancer la mission textuelle"}
+                {uncertain ? "Reprendre la même demande" : "Envoyer"}
               </Button>
-              {uncertain && (
-                <p className="text-sm text-amber-200">
-                  La même demande et son identifiant sont conservés pour éviter un double lancement.
-                  Actualisez les missions ou reprenez cette demande.
-                </p>
-              )}
-            </form>
-          )}
-        </div>
+            </div>
+            {uncertain && (
+              <p className="text-sm text-amber-200">
+                La même demande et son identifiant sont conservés pour éviter un double lancement.
+                Actualisez les missions ou reprenez cette demande.
+              </p>
+            )}
+          </form>
+        )}
       </div>
       {hasMore && (
         <p className="text-sm text-slate-400">
