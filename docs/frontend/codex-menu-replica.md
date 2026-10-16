@@ -1,5 +1,19 @@
 # Menus du poste Optivos : référence Codex Desktop
 
+## Amélioration de la navigation des paramètres
+
+MISSION: corriger le cadrage mobile des paramètres et faciliter le repérage des fonctions raccordées.
+AFFECTED DOMAIN: présentation agent-workspace ; CANONICAL OWNER: composants du poste existants ; CURRENT STATUS: SHADOW / Preview.
+FILES EXPECTED: codex-settings.tsx, styles ciblés, recette de composants et cette note.
+DB IMPACT: aucun ; SECURITY IMPACT: aucun changement de droits ni nouvel appel externe.
+ROOT CAUSE: PRODUCT BUG : la grille mobile imposait une colonne de 145 px et affichait les cases à cocher à la suite des libellés sans espace réservé.
+TEST PLAN: détail pleine largeur à 375 px, absence de collision, focus aller/retour, filtre réversible, recherche sans accents, recette existante et CI.
+OUT-OF-SCOPE: moteurs, API, production, activation de nouvelles capacités.
+
+Sur mobile, les rubriques et le détail occupent successivement la largeur disponible. Le retour conserve la sélection et rend le focus à la rubrique ; le choix d’une rubrique place le focus sur son titre. Sur ordinateur, les deux colonnes restent visibles. La recherche ignore les accents et masque les groupes sans résultat. Le filtre facultatif « Utilisables ici uniquement » conserve le catalogue complet lorsqu’il est désactivé ; les rubriques sans contenu raccordé sont signalées dès la liste. Les lecteurs Hermes restent manuels et l’inventaire ne permet toujours pas d’installation.
+
+Validation locale de cette amélioration : 73 tests et 22 contrôles de composants PASS ; TypeScript, ESLint et formatage PASS. Captures à 375 px inspectées : détail pleine largeur et aucun chevauchement des cases à cocher. API de recette simulée, aucune mission réelle ni dépense API ; recette propriétaire authentifiée sur staging toujours NOT RUN.
+
 MISSION: reconstruire la navigation et les menus livrés de Codex, au-delà de la disposition conversationnelle.
 AFFECTED DOMAIN: présentation agent-workspace.
 CANONICAL OWNER: même workspace, lecteurs Hermes et routes audit existants.

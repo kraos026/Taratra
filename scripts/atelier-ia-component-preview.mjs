@@ -942,7 +942,36 @@ try {
   await page.getByRole("button", { name: "Ouvrir le menu du profil", exact: true }).click();
   await page.getByRole("menuitem", { name: "Paramètres", exact: true }).click();
   const mobileSettings = page.getByRole("dialog", { name: "Paramètres", exact: true });
+  await mobileSettings
+    .getByLabel("Rechercher dans les paramètres", { exact: true })
+    .fill("competences");
+  await mobileSettings.getByRole("button", { name: "Compétences", exact: true }).waitFor();
+  assert.equal(
+    await mobileSettings.getByRole("heading", { name: "Personnel", exact: true }).count(),
+    0,
+  );
+  await mobileSettings.getByLabel("Rechercher dans les paramètres", { exact: true }).fill("");
+  await mobileSettings.getByLabel("Utilisables ici uniquement", { exact: true }).check();
+  assert.equal(await mobileSettings.getByRole("button", { name: "Git", exact: true }).count(), 0);
+  await mobileSettings.getByLabel("Utilisables ici uniquement", { exact: true }).uncheck();
+  await mobileSettings.getByRole("button", { name: "Git", exact: true }).waitFor();
   await mobileSettings.getByRole("button", { name: "Apparence", exact: true }).click();
+  assert.equal(
+    await mobileSettings
+      .getByRole("heading", { name: "Apparence", exact: true })
+      .evaluate((el) => el === document.activeElement),
+    true,
+  );
+  assert.equal(await mobileSettings.getByRole("complementary").isVisible(), false);
+  const mobileSettingsContent = await mobileSettings.locator("main").boundingBox();
+  assert.ok(mobileSettingsContent && mobileSettingsContent.width >= 370);
+  for (const label of ["Barre latérale compacte", "Réduire les mouvements"]) {
+    const row = mobileSettings.locator("label.codex-setting-row").filter({ hasText: label });
+    const textBox = await row.locator("span").boundingBox();
+    const controlBox = await row.locator("input").boundingBox();
+    assert.ok(textBox && controlBox && textBox.x + textBox.width <= controlBox.x);
+    assert.ok((await row.boundingBox()).height >= 44);
+  }
   assert.equal(
     await mobileSettings.getByLabel("Taille du texte des messages", { exact: true }).inputValue(),
     "16",
@@ -953,6 +982,22 @@ try {
     path: join(evidence, "optivos-codex-settings-mobile.png"),
     fullPage: true,
   });
+  await mobileSettings.getByRole("button", { name: "Toutes les rubriques", exact: true }).click();
+  assert.equal(
+    await mobileSettings
+      .getByRole("button", { name: "Apparence", exact: true })
+      .evaluate((el) => el === document.activeElement),
+    true,
+  );
+  await page.screenshot({
+    path: join(evidence, "optivos-codex-settings-navigation-mobile.png"),
+    fullPage: true,
+  });
+  await mobileSettings.getByRole("button", { name: "Général", exact: true }).click();
+  await mobileSettings.getByText("0 € — contrôle côté serveur", { exact: true }).waitFor();
+  checks.push(
+    "mobile settings: full-width detail, focus and return to selected category, non-overlapping touch controls, accent-insensitive search and reversible availability filter",
+  );
   await page.keyboard.press("Escape");
   await page.keyboard.press("Escape");
   assert.ok(

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { X, Search } from "lucide-react";
+import { X, Search, ArrowLeft, ChevronRight } from "lucide-react";
 import {
   codexSettings,
   featureLabels,
@@ -89,9 +89,33 @@ export function CodexSettings({
 }) {
   const [category, setCategory] = useState<CodexSettingId>(initialCategory);
   const [query, setQuery] = useState("");
+  const [browsing, setBrowsing] = useState(initialCategory === "general");
+  const [availableOnly, setAvailableOnly] = useState(false);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const categoryList = useRef<HTMLElement>(null);
+  const normalize = (value: string) =>
+    value
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLocaleLowerCase("fr")
+      .trim();
+  const available = (id: CodexSettingId) =>
+    [
+      "general",
+      "appearance",
+      "shortcuts",
+      "configuration",
+      "preferences",
+      "usage",
+      "profile",
+      "account",
+    ].includes(id) ||
+    (!!workspace &&
+      ["connections", "environments", "remotes", "skills", "plugins", "mcp"].includes(id));
   const selected = codexSettings.find((item) => item[0] === category)!;
-  const filtered = codexSettings.filter((item) =>
-    item[1].toLocaleLowerCase("fr").includes(query.toLocaleLowerCase("fr")),
+  const filtered = codexSettings.filter(
+    (item) =>
+      normalize(item[1]).includes(normalize(query)) && (!availableOnly || available(item[0])),
   );
   let content: ReactNode;
   if (category === "general")
@@ -206,8 +230,8 @@ export function CodexSettings({
   else content = <Unavailable title={selected[1]} />;
   return (
     <CodexDialog title="Paramètres" onClose={onClose} className="codex-settings-dialog">
-      <div className="codex-settings-body">
-        <aside aria-label="Rubriques des paramètres">
+      <div className="codex-settings-body" data-browsing={browsing}>
+        <aside ref={categoryList} aria-label="Rubriques des paramètres">
           <label className="codex-settings-search">
             <Search size={15} aria-hidden="true" />
             <span className="sr-only">Rechercher dans les paramètres</span>
@@ -218,28 +242,71 @@ export function CodexSettings({
               placeholder="Rechercher"
             />
           </label>
-          {["Personnel", "Code", "Intégrations", "Autres menus"].map((group) => (
-            <section key={group}>
-              <h3>{group}</h3>
-              {filtered
-                .filter((item) => item[2] === group)
-                .map((item) => (
-                  <button
-                    type="button"
-                    key={item[0]}
-                    aria-current={category === item[0] ? "page" : undefined}
-                    onClick={() => setCategory(item[0])}
-                  >
-                    {item[1]}
-                  </button>
-                ))}
-            </section>
-          ))}
-          {!filtered.length && <p>Aucun paramètre ne correspond.</p>}
+          <label className="codex-settings-filter">
+            <input
+              type="checkbox"
+              checked={availableOnly}
+              onChange={(event) => setAvailableOnly(event.target.checked)}
+            />
+            <span>Utilisables ici uniquement</span>
+          </label>
+          <p className="codex-settings-count" role="status">
+            {filtered.length} rubrique{filtered.length > 1 ? "s" : ""}
+          </p>
+          {["Personnel", "Code", "Intégrations", "Autres menus"]
+            .filter((group) => filtered.some((item) => item[2] === group))
+            .map((group) => (
+              <section key={group}>
+                <h3>{group}</h3>
+                {filtered
+                  .filter((item) => item[2] === group)
+                  .map((item) => (
+                    <button
+                      type="button"
+                      key={item[0]}
+                      aria-label={item[1]}
+                      aria-current={category === item[0] ? "page" : undefined}
+                      onClick={() => {
+                        setCategory(item[0]);
+                        setBrowsing(false);
+                        requestAnimationFrame(() => heading.current?.focus());
+                      }}
+                    >
+                      <span>
+                        {item[1]}
+                        {!available(item[0]) && <small>Non raccordé</small>}
+                      </span>
+                      <ChevronRight size={14} aria-hidden="true" />
+                    </button>
+                  ))}
+              </section>
+            ))}
+          {!filtered.length && (
+            <p className="codex-setting-note">
+              Aucun résultat. Essayez un autre mot ou désactivez le filtre.
+            </p>
+          )}
         </aside>
         <main>
+          <button
+            className="codex-settings-back"
+            type="button"
+            onClick={() => {
+              setBrowsing(true);
+              requestAnimationFrame(() =>
+                categoryList.current
+                  ?.querySelector<HTMLButtonElement>("button[aria-current='page']")
+                  ?.focus(),
+              );
+            }}
+          >
+            <ArrowLeft size={16} aria-hidden="true" />
+            Toutes les rubriques
+          </button>
           <p className="codex-setting-breadcrumb">Paramètres / {selected[2]}</p>
-          <h3>{selected[1]}</h3>
+          <h3 ref={heading} tabIndex={-1}>
+            {selected[1]}
+          </h3>
           {content}
         </main>
       </div>

@@ -2528,6 +2528,10 @@ footer {
   font-size: 11px;
 }
 .codex-settings-body > aside button {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
   min-height: 44px;
   width: 100%;
   padding: 10px;
@@ -2535,6 +2539,41 @@ footer {
   text-align: left;
   color: #ccc;
   font-size: 13px;
+}
+.codex-settings-body > aside button small {
+  display: block;
+  margin-top: 3px;
+  color: #a8a8a8;
+  font-size: 11px;
+}
+.codex-settings-body > aside button svg {
+  flex-shrink: 0;
+}
+.codex-settings-body > aside button:hover {
+  background: #2b2b2b;
+}
+.codex-settings-filter {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 48px;
+  font-size: 12px;
+  color: #ccc;
+  cursor: pointer;
+}
+.codex-settings-filter input {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  accent-color: #bac8e2;
+}
+.codex-settings-count {
+  color: #aaa;
+  font-size: 12px;
+  padding: 4px 0;
+}
+.codex-settings-back {
+  display: none;
 }
 .codex-settings-body > aside button[aria-current="page"] {
   background: #343434;
@@ -2579,6 +2618,18 @@ footer {
   min-height: 64px;
   padding-block: 12px;
   border-bottom: 1px solid #343434;
+}
+.codex-setting-row > span:first-child {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.codex-setting-row > input,
+.codex-setting-row > select {
+  flex-shrink: 0;
+}
+label.codex-setting-row {
+  cursor: pointer;
 }
 .codex-setting-row > span:last-child {
   max-width: 55%;
@@ -2693,18 +2744,35 @@ footer {
     border-radius: 0;
   }
   .codex-settings-body {
-    grid-template-columns: 145px minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1fr);
   }
   .codex-settings-body > aside {
-    padding: 8px;
+    padding: 16px;
+    border-right: 0;
+  }
+  .codex-settings-body[data-browsing="false"] > aside,
+  .codex-settings-body[data-browsing="true"] > main {
+    display: none;
+  }
+  .codex-settings-search input {
+    font-size: 16px;
+  }
+  .codex-settings-back {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-bottom: 18px;
+    color: #ccc;
   }
   .codex-settings-body > main {
-    padding: 18px 12px;
+    padding: 12px 20px max(24px, env(safe-area-inset-bottom));
   }
   .codex-setting-row {
-    display: block;
+    gap: 12px;
   }
-  .codex-setting-row > span:last-child {
+  .codex-setting-row > span + span {
+    flex-basis: 100%;
     display: block;
     max-width: 100%;
     margin-top: 8px;
