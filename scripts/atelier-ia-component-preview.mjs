@@ -3,6 +3,7 @@ import { pathToFileURL } from "node:url";
 import { mkdirSync, readFileSync, writeFileSync, existsSync } from "node:fs";
 import { resolve, join, dirname } from "node:path";
 import assert from "node:assert/strict";
+import { checkNodalCanvas } from "./atelier-ia-nodal-checks.mjs";
 
 const root = resolve(import.meta.dirname, "..");
 const require = createRequire(join(root, "package.json"));
@@ -1191,6 +1192,7 @@ try {
   checks.push(
     "universal engine library: nine declared integrations, search, canonical audit link, explicit scoped catalog verification, denied access clears launch, mobile layout, prepare Hermes without execution; mission POSTs use the versioned dispatch envelope",
   );
+  await checkNodalCanvas(page, evidence, checks);
   assert.equal(blocked.length, 0);
   assert.equal(errors.length, 0);
   writeFileSync(

@@ -24,7 +24,10 @@ export function capabilityFor(node: WorkflowNode, plugins: readonly PluginContra
         ?.capabilities.find((capability) => capability.id === node.capabilityId)
     : undefined;
 }
-function nodePorts(node: WorkflowNode, plugins: readonly PluginContract[]): NodePorts | null {
+export function nodePorts(
+  node: WorkflowNode,
+  plugins: readonly PluginContract[],
+): NodePorts | null {
   if (node.kind === "input")
     return { inputs: [], outputs: [{ id: "value", type: node.value.type }] };
   if (node.kind === "capability") {

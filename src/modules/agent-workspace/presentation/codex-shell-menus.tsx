@@ -10,6 +10,7 @@ import {
   Settings,
   Ellipsis,
   Layers3,
+  Workflow,
 } from "lucide-react";
 import { CodexMenu, type MenuEntry } from "./codex-menu";
 import type { CodexFeatureId, CodexSettingId } from "../domain/codex-navigation";
@@ -250,6 +251,10 @@ export function CodexSidebarTools(props: Props) {
       <button type="button" onClick={() => props.onFeature("engines")}>
         <Layers3 size={17} aria-hidden="true" />
         <span>Moteurs et intégrations</span>
+      </button>
+      <button type="button" onClick={() => props.onFeature("workflows")}>
+        <Workflow size={17} aria-hidden="true" />
+        <span>Workflows</span>
       </button>
       <button type="button" onClick={() => props.onFeature("scheduled")}>
         <Clock3 size={17} aria-hidden="true" />

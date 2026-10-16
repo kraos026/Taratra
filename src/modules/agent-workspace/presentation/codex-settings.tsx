@@ -1,5 +1,13 @@
 "use client";
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import {
+  lazy,
+  Suspense,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 import Link from "next/link";
 import { X, Search, ArrowLeft, ChevronRight } from "lucide-react";
 import {
@@ -13,6 +21,7 @@ import { HermesConnectionPanel } from "./hermes-connection-panel";
 import { HermesInventoryPanel } from "./hermes-inventory-panel";
 import { AgentAvatar } from "./agent-avatar";
 import { EngineLibrary } from "./engine-library";
+const WorkflowCanvas = lazy(() => import("./workflow-canvas"));
 
 export function CodexDialog({
   title,
@@ -343,8 +352,34 @@ export function CodexFeature({
   onNewMission: () => void;
 }) {
   const title = featureLabels[feature];
+  const [dirty, setDirty] = useState(false);
+  useEffect(() => {
+    if (!dirty) return;
+    function warn(event: BeforeUnloadEvent) {
+      event.preventDefault();
+      event.returnValue = "";
+    }
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty]);
+  function close() {
+    if (
+      dirty &&
+      !window.confirm(
+        "Le brouillon n’a pas été exporté depuis sa dernière modification. Fermer et le perdre ?",
+      )
+    )
+      return;
+    onClose();
+  }
   let content: ReactNode;
-  if (feature === "engines")
+  if (feature === "workflows")
+    content = (
+      <Suspense fallback={<p role="status">Chargement du canevas…</p>}>
+        <WorkflowCanvas canWrite={canWrite} onDirty={setDirty} />
+      </Suspense>
+    );
+  else if (feature === "engines")
     content = (
       <EngineLibrary
         key={workspace?.id || "none"}
@@ -423,7 +458,11 @@ export function CodexFeature({
     );
   else content = <Unavailable title={title} />;
   return (
-    <CodexDialog title={title} onClose={onClose}>
+    <CodexDialog
+      title={title}
+      onClose={close}
+      className={feature === "workflows" ? "workflow-dialog" : ""}
+    >
       <div className="codex-feature-body">{content}</div>
     </CodexDialog>
   );

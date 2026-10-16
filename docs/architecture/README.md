@@ -10,6 +10,7 @@ The new product direction is planned separately from the canonical audit and cur
 
 - [Platform blueprint and action plan](optivos-platform-blueprint.md)
 - [A1: tested mission, plugin and workflow contracts](orchestration-contracts-v1.md)
+- [A3: nodal draft editor, scope and verification](nodal-canvas-a3.md)
 - [Audit as a first-party business plugin](audit-plugin-contract.md)
 - [Nodal decision: xyflow and Rete](nodal-system-decision.md)
 - [ADR-0030: platform and nodal boundaries](../adr/0030-optivos-platform-and-nodal-boundary.md)
