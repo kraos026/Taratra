@@ -255,6 +255,8 @@
   font-weight: 500;
 }
 .platform-studio .studio-rail-section {
+  flex: none;
+  max-height: min(25dvh, 240px);
   padding: 0;
   margin: 4px 0;
   border: 0;

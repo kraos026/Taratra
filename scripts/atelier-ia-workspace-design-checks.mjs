@@ -72,6 +72,8 @@ export async function checkWorkspaceDesign(page, context, base, evidence, checks
       .getByRole("button", { name: "Continuer", exact: true })
       .boundingBox();
     assert.ok(nextAction && nextAction.y + nextAction.height <= 720);
+    const projects = await page.locator(".studio-rail-section").boundingBox();
+    assert.ok(projects && projects.height >= 44);
     await page.screenshot({ path: join(evidence, "workspace-setup-720.png"), fullPage: true });
     await page.setViewportSize({ width: 375, height: 812 });
     for (const [theme, label] of [
