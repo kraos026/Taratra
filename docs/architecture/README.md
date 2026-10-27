@@ -4,6 +4,10 @@ Status: **Current index with future architecture separated**
 
 Last verified: 2026-08-23
 
+## Current product priority — 2026-10-27
+
+[Return to Optivos core](optivos-return-to-core.md): the existing audit product is primary again, with progressive improvements. The Atelier stays secondary. The platform plans below document earlier work and are not the current expansion priority.
+
 ## Optivos platform planning — 2026-10-16
 
 The new product direction is planned separately from the canonical audit and current Preview runtime:

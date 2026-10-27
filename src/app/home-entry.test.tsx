@@ -5,6 +5,7 @@ vi.mock("@/components/dashboard/interactive-dashboard", () => ({
   InteractiveDashboard: () => null,
 }));
 import Home from "./page";
+import { InteractiveDashboard } from "@/components/dashboard/interactive-dashboard";
 
 beforeEach(() => {
   redirect.mockReset().mockImplementation((path: string) => {
@@ -15,28 +16,22 @@ beforeEach(() => {
   vi.stubEnv("AUTOMATEX_CERTIFICATION_TARGET", "staging");
 });
 afterEach(() => vi.unstubAllEnvs());
-describe("staging workspace entry preserves audit and production", () => {
-  it("opens the conversation workspace on the enabled Preview", async () => {
-    await expect(Home({ searchParams: Promise.resolve({}) })).rejects.toThrow(
-      "/atelier-ia/entreprises",
-    );
-    expect(redirect).toHaveBeenCalledExactlyOnceWith("/atelier-ia/entreprises");
-  });
-  it("keeps the audit overview directly accessible", async () => {
-    expect(await Home({ searchParams: Promise.resolve({ view: "audit" }) })).toBeDefined();
+describe("Optivos audit is the primary home entry", () => {
+  it("opens the canonical dashboard even on a Preview with the lab enabled", () => {
+    expect(Home().type).toBe(InteractiveDashboard);
     expect(redirect).not.toHaveBeenCalled();
   });
-  it("never redirects Production even when the visible lab flag is set", async () => {
+  it("never redirects Production even when the visible lab flag is set", () => {
     vi.stubEnv("VERCEL_ENV", "production");
-    expect(await Home({ searchParams: Promise.resolve({}) })).toBeDefined();
+    expect(Home().type).toBe(InteractiveDashboard);
     expect(redirect).not.toHaveBeenCalled();
   });
-  it("keeps the existing landing when the lab is disabled or the target is production", async () => {
+  it("keeps the same entry when the lab is disabled or the target is production", () => {
     vi.stubEnv("NEXT_PUBLIC_OPTIVOS_ATELIER_IA_LAB", "0");
-    expect(await Home({ searchParams: Promise.resolve({}) })).toBeDefined();
+    expect(Home().type).toBe(InteractiveDashboard);
     vi.stubEnv("NEXT_PUBLIC_OPTIVOS_ATELIER_IA_LAB", "1");
     vi.stubEnv("AUTOMATEX_CERTIFICATION_TARGET", "production");
-    expect(await Home({ searchParams: Promise.resolve({}) })).toBeDefined();
+    expect(Home().type).toBe(InteractiveDashboard);
     expect(redirect).not.toHaveBeenCalled();
   });
 });

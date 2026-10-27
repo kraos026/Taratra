@@ -1,5 +1,9 @@
 # AutomateX Project Governance
 
+## Return to Optivos core — 2026-10-27
+
+The user now requests returning to the existing Optivos product and improving it progressively. This supersedes the universal-orchestrator/new-product priority below. The audit journey is primary again; the existing Atelier remains an optional secondary area, with no further expansion assumed. Read [the current return-to-core decision](docs/architecture/optivos-return-to-core.md). Preserve existing canonical engines, data, Auth/Organization and access protections. Do not reset branches, erase previous work or replace business engines to implement this return. The visual system from 16 October remains scoped to the optional workspace; it does not replace the canonical audit interface.
+
 ## New workspace UI direction — 2026-10-16
 
 The user explicitly replaces the former Optivos visual rules. Treat the agent platform as a new product interface with light/dark themes and a short, task-focused navigation. The previous Optivos palette, visual identity, dashboard conventions and global `optivos-ui-ux` color-preservation guidance do not constrain this workspace. Use `design-system/optivos-workspace/MASTER.md` for the new interface. Retain canonical business engines, API contracts, Auth, Organization and tenant protections; a UI reset does not authorize rebuilding or replacing those engines.

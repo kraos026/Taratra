@@ -7,6 +7,8 @@ metadata:
 
 # Structurer la plateforme Optivos
 
+La priorité actuelle est le [retour au produit Optivos existant](../../../docs/architecture/optivos-return-to-core.md), décidé le 27 octobre 2026. L’audit est principal et l’Atelier secondaire. Ne pas poursuivre l’extension universelle sans nouvelle demande ; conserver les plans précédents comme références.
+
 Consulter le [plan directeur](../../../docs/architecture/optivos-platform-blueprint.md) et les instructions du checkout actif. Il actualise la direction produit ; les moteurs métier, droits et statuts restent ceux des propriétaires existants.
 
 Pour la présentation du poste agentique, appliquer le [nouveau système visuel](../../../design-system/optivos-workspace/MASTER.md). L’utilisateur a remplacé les anciennes règles visuelles Optivos et choisi deux thèmes avec sélecteur. Ne pas réintroduire l’ancienne palette ou ses contraintes de conservation ; les moteurs et protections métier restent canoniques.

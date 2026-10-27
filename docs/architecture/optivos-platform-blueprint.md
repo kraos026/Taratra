@@ -1,5 +1,7 @@
 # Optivos — plan directeur de la plateforme
 
+**Priorité remplacée le 27 octobre 2026** : voir [le retour à Optivos](optivos-return-to-core.md). Ce document conserve les travaux de plateforme précédents ; il n’autorise pas leur poursuite comme objectif principal.
+
 Date : 16 octobre 2026. Direction demandée par l’utilisateur ; architecture cible, pas déclaration de disponibilité.
 
 MISSION: analyser l’existant, structurer la plateforme, cadrer l’audit en plugin et préparer le système nodal avant toute nouvelle construction.
