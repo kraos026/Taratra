@@ -232,7 +232,7 @@ function Companies({ organizationName }: { organizationName: string }) {
     });
   }
   return (
-    <main className="min-h-screen bg-[#030817] px-5 py-8 text-slate-100">
+    <main className="min-h-screen bg-[#030817] px-5 py-8 text-slate-100 [&_input]:border-white/15 [&_input]:bg-slate-900 [&_input]:text-slate-100 [&_label]:text-slate-200">
       <div className="mx-auto max-w-4xl space-y-8">
         <header className="flex flex-wrap items-center justify-between gap-5">
           <OptivosLogo subtitle={organizationName} />
