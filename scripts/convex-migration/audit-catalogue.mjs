@@ -3,7 +3,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { format, resolveConfig } from "prettier";
 import { fileURLToPath } from "node:url";
 
-function rows(text) {
+export function rows(text) {
   const result = [];
   let row = [],
     token = "",

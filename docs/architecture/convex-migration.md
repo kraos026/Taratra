@@ -5,7 +5,7 @@ Décision utilisateur du 27 octobre 2026 : remplacer Supabase par Convex et cons
 MISSION: préparer et réaliser la migration des comptes, données et frontières serveur vers Convex, sans réécrire les moteurs métier.
 AFFECTED DOMAIN: infrastructure, authentification, repositories et vérifications de migration.
 CANONICAL OWNER: services métier existants pour calculs/contrats ; Convex devient la cible de persistance et d’autorisation après validation des parcours.
-CURRENT STATUS: fondation Convex déployée en développement ; pilote Auth → Organization → Company, questionnaire historique et Discovery raccordés séparément. Interview, opportunités, ROI et résultats exécutifs restent à raccorder.
+CURRENT STATUS: fondation Convex déployée en développement ; pilote Auth → Organization → Company, questionnaire historique, Discovery et entretien adaptatif raccordés séparément. Knowledge, opportunités, ROI et résultats exécutifs restent à raccorder.
 FILES EXPECTED: inventaire déterministe, schéma Convex, accès par identité/organisation, premier adaptateur métier, tests et documentation.
 DB IMPACT: nouvelles tables sur le seul déploiement Convex de développement ; aucune suppression ou réinitialisation Supabase.
 SECURITY IMPACT: remplacer les garanties RLS par des contrôles serveur dans chaque fonction Convex ; ne pas faire confiance à un identifiant de tenant/client.

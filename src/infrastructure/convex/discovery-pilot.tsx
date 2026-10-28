@@ -61,7 +61,11 @@ export function DiscoveryWorkspace({ companyId }: { companyId: string }) {
       <Link href="/convex-pilot" className="text-sm text-blue-300 underline">
         ← Vos entreprises
       </Link>
-      <DiscoveryWizard companyId={companyId} transport={transport} nextStepHref={null} />
+      <DiscoveryWizard
+        companyId={companyId}
+        transport={transport}
+        nextStepHref={`/convex-pilot/companies/${companyId}/interview`}
+      />
     </div>
   );
 }

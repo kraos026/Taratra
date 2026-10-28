@@ -4,6 +4,12 @@ import { businessTables } from "./modelSchema";
 
 export default defineSchema({
   ...businessTables,
+  interviewCatalogInstallations: defineTable({
+    key: v.string(),
+    sourceSha256: v.string(),
+    questions: v.number(),
+    installedAt: v.string(),
+  }).index("by_key", ["key"]),
   catalogInstallations: defineTable({
     key: v.string(),
     sourceSha256: v.string(),

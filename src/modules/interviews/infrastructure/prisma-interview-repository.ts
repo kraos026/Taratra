@@ -7,8 +7,9 @@ import type {
 } from "../domain/interview-engine";
 import { InterviewConflictError } from "../domain/interview-errors";
 import { documentSourceSchema } from "../domain/document-source";
+import type { InterviewRepository } from "../application/interview-repository";
 
-export class PrismaInterviewRepository {
+export class PrismaInterviewRepository implements InterviewRepository {
   constructor(private readonly db: TransactionClient) {}
 
   context(userId: string) {

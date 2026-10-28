@@ -683,7 +683,8 @@ export const businessTables = {
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
     .index("by_interviewSessionId_questionId", ["interviewSessionId", "questionId"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_interviewSessionId", ["organizationId", "interviewSessionId"]),
   interview_decisions: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -697,7 +698,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_interviewSessionId", ["organizationId", "interviewSessionId"]),
   interview_evidence: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -724,7 +726,8 @@ export const businessTables = {
       "factKey",
       "sourceType",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_interviewSessionId", ["organizationId", "interviewSessionId"]),
   interview_progress: defineTable({
     legacyKey: v.string(),
     interviewSessionId: v.string(),
@@ -740,7 +743,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_interviewSessionId_domain", ["interviewSessionId", "domain"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_interviewSessionId", ["organizationId", "interviewSessionId"]),
   interview_timeline: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -753,7 +757,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_interviewSessionId", ["organizationId", "interviewSessionId"]),
   knowledge_snapshots: defineTable({
     legacyKey: v.string(),
     id: v.string(),

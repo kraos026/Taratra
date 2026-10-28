@@ -12,6 +12,7 @@ import { AuthShell } from "@/modules/auth/presentation/auth-shell";
 import { OptivosLogo } from "@/components/brand/optivos-logo";
 import { CompanyAudits, AuditWorkspace } from "./audit-pilot";
 import { DiscoveryWorkspace } from "./discovery-pilot";
+import { InterviewWorkspace } from "./interview-pilot";
 import Link from "next/link";
 
 async function signOut() {
@@ -42,16 +43,22 @@ export function ConvexPilot({
   url,
   auditId,
   discoveryCompanyId,
+  interviewCompanyId,
 }: {
   url: string;
   auditId?: string;
   discoveryCompanyId?: string;
+  interviewCompanyId?: string;
 }) {
   const [client] = useState(() => new ConvexReactClient(url));
   return (
     <ConvexBetterAuthProvider client={client} authClient={convexAuthClient}>
       <AccessBoundary>
-        <PilotContent auditId={auditId} discoveryCompanyId={discoveryCompanyId} />
+        <PilotContent
+          auditId={auditId}
+          discoveryCompanyId={discoveryCompanyId}
+          interviewCompanyId={interviewCompanyId}
+        />
       </AccessBoundary>
     </ConvexBetterAuthProvider>
   );
@@ -60,9 +67,11 @@ export function ConvexPilot({
 function PilotContent({
   auditId,
   discoveryCompanyId,
+  interviewCompanyId,
 }: {
   auditId?: string;
   discoveryCompanyId?: string;
+  interviewCompanyId?: string;
 }) {
   const { isLoading, isAuthenticated } = useConvexAuth();
   if (isLoading)
@@ -72,7 +81,11 @@ function PilotContent({
       </AuthShell>
     );
   return isAuthenticated ? (
-    <Workspace auditId={auditId} discoveryCompanyId={discoveryCompanyId} />
+    <Workspace
+      auditId={auditId}
+      discoveryCompanyId={discoveryCompanyId}
+      interviewCompanyId={interviewCompanyId}
+    />
   ) : (
     <Authentication />
   );
@@ -174,9 +187,11 @@ function Authentication() {
 function Workspace({
   auditId,
   discoveryCompanyId,
+  interviewCompanyId,
 }: {
   auditId?: string;
   discoveryCompanyId?: string;
+  interviewCompanyId?: string;
 }) {
   const workspace = useQuery(api.workspaces.current);
   const create = useMutation(api.workspaces.create);
@@ -227,7 +242,13 @@ function Workspace({
         </button>
       </AuthShell>
     );
-  return discoveryCompanyId ? (
+  return interviewCompanyId ? (
+    <div className="min-h-screen bg-[#030817] px-5 py-8 text-slate-100 [&_label]:text-slate-200">
+      <div className="mx-auto max-w-5xl">
+        <InterviewWorkspace companyId={interviewCompanyId} />
+      </div>
+    </div>
+  ) : discoveryCompanyId ? (
     <main className="min-h-screen bg-[#030817] px-5 py-8 text-slate-100 [&_label]:text-slate-200">
       <div className="mx-auto max-w-5xl">
         <DiscoveryWorkspace companyId={discoveryCompanyId} />

@@ -100,6 +100,11 @@ export function parsePrismaSchema(source) {
         fields.some((field) => field.name === "companyId")
       )
         indexes.push({ fields: ["organizationId", "companyId"], unique: false });
+      if (
+        fields.some((field) => field.name === "organizationId") &&
+        fields.some((field) => field.name === "interviewSessionId")
+      )
+        indexes.push({ fields: ["organizationId", "interviewSessionId"], unique: false });
       const indexMap = new Map();
       for (const index of indexes) {
         const key = JSON.stringify(index.fields),
