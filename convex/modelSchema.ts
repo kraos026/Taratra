@@ -402,7 +402,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   departments: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -416,7 +417,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   company_roles: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -431,7 +433,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   software_categories: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -474,7 +477,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   process_categories: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -506,7 +510,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   company_objectives: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -521,7 +526,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   business_challenges: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -535,7 +541,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   discovery_sessions: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -568,7 +575,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   discovery_answers: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -648,7 +656,8 @@ export const businessTables = {
   })
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   interview_answers: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -761,7 +770,8 @@ export const businessTables = {
     .index("by_legacy_key", ["legacyKey"])
     .index("by_business_id", ["id"])
     .index("by_organizationId_companyId_version", ["organizationId", "companyId", "version"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   knowledge_sources: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -953,7 +963,8 @@ export const businessTables = {
       "retentionPolicyId",
       "retentionPolicyVersion",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   work_intelligence_retention_events: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -1032,7 +1043,8 @@ export const businessTables = {
       "processPatternId",
       "versionNumber",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   process_map_nodes: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -1198,7 +1210,8 @@ export const businessTables = {
       "processMapId",
       "versionNumber",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   business_findings: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -1404,7 +1417,8 @@ export const businessTables = {
       "businessAnalysisId",
       "versionNumber",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   ai_opportunities: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -1636,7 +1650,8 @@ export const businessTables = {
       "aiOpportunitySnapshotId",
       "versionNumber",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   automation_opportunities: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -1823,7 +1838,8 @@ export const businessTables = {
       "automationOpportunitySnapshotId",
       "versionNumber",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   roi_scenarios: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -2026,7 +2042,8 @@ export const businessTables = {
       "roiSnapshotId",
       "versionNumber",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   transformation_recommendations: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -2295,7 +2312,8 @@ export const businessTables = {
       "recommendationId",
       "versionNumber",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   solution_blueprint_evidence: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -2562,7 +2580,8 @@ export const businessTables = {
     .index("by_organizationId_companyId_loopId", ["organizationId", "companyId", "loopId"])
     .index("by_id_organizationId", ["id", "organizationId"])
     .index("by_organizationId_companyId_updatedAt", ["organizationId", "companyId", "updatedAt"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   audit_discovery_action_executions: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -2602,7 +2621,8 @@ export const businessTables = {
       "loopId",
       "status",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   audit_discovery_response_processings: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -2620,7 +2640,8 @@ export const businessTables = {
       "companyId",
       "processingId",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   audit_evidence_acquisition_requests: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -2649,7 +2670,8 @@ export const businessTables = {
       "status",
       "updatedAt",
     ])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   audit_production_evidence_sources: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -2678,7 +2700,8 @@ export const businessTables = {
     ])
     .index("by_id_organizationId", ["id", "organizationId"])
     .index("by_organizationId_acquisitionRequestId", ["organizationId", "acquisitionRequestId"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   audit_production_evidence_records: defineTable({
     legacyKey: v.string(),
     id: v.string(),
@@ -2696,7 +2719,8 @@ export const businessTables = {
     .index("by_business_id", ["id"])
     .index("by_organizationId_sourceId_evidenceKey", ["organizationId", "sourceId", "evidenceKey"])
     .index("by_organizationId_sourceId", ["organizationId", "sourceId"])
-    .index("by_organizationId", ["organizationId"]),
+    .index("by_organizationId", ["organizationId"])
+    .index("by_organizationId_companyId", ["organizationId", "companyId"]),
   rule_results: defineTable({
     legacyKey: v.string(),
     id: v.string(),

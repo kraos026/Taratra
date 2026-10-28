@@ -95,6 +95,11 @@ export function parsePrismaSchema(source) {
         throw new Error(`Reserved migration field in ${name}`);
       if (fields.some((field) => field.name === "organizationId"))
         indexes.push({ fields: ["organizationId"], unique: false });
+      if (
+        fields.some((field) => field.name === "organizationId") &&
+        fields.some((field) => field.name === "companyId")
+      )
+        indexes.push({ fields: ["organizationId", "companyId"], unique: false });
       const indexMap = new Map();
       for (const index of indexes) {
         const key = JSON.stringify(index.fields),

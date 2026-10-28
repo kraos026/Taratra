@@ -5,7 +5,8 @@ type DateField =
   | "publishedAt"
   | "startedAt"
   | "completedAt"
-  | "validatedAt";
+  | "validatedAt"
+  | "archivedAt";
 type Business<T> = Omit<T, "_id" | "_creationTime" | "legacyKey">;
 type RecordDates<T> = {
   [K in keyof Business<T>]: K extends DateField
@@ -22,6 +23,7 @@ const dates = new Set<string>([
   "startedAt",
   "completedAt",
   "validatedAt",
+  "archivedAt",
 ]);
 export function modelRecord<T extends { _id: unknown; _creationTime: number; legacyKey: string }>(
   doc: T,

@@ -11,6 +11,8 @@ import { Label } from "@/components/ui/label";
 import { AuthShell } from "@/modules/auth/presentation/auth-shell";
 import { OptivosLogo } from "@/components/brand/optivos-logo";
 import { CompanyAudits, AuditWorkspace } from "./audit-pilot";
+import { DiscoveryWorkspace } from "./discovery-pilot";
+import Link from "next/link";
 
 async function signOut() {
   const result = await convexAuthClient.signOut();
@@ -36,18 +38,32 @@ class AccessBoundary extends Component<{ children: ReactNode }, { failed: boolea
   }
 }
 
-export function ConvexPilot({ url, auditId }: { url: string; auditId?: string }) {
+export function ConvexPilot({
+  url,
+  auditId,
+  discoveryCompanyId,
+}: {
+  url: string;
+  auditId?: string;
+  discoveryCompanyId?: string;
+}) {
   const [client] = useState(() => new ConvexReactClient(url));
   return (
     <ConvexBetterAuthProvider client={client} authClient={convexAuthClient}>
       <AccessBoundary>
-        <PilotContent auditId={auditId} />
+        <PilotContent auditId={auditId} discoveryCompanyId={discoveryCompanyId} />
       </AccessBoundary>
     </ConvexBetterAuthProvider>
   );
 }
 
-function PilotContent({ auditId }: { auditId?: string }) {
+function PilotContent({
+  auditId,
+  discoveryCompanyId,
+}: {
+  auditId?: string;
+  discoveryCompanyId?: string;
+}) {
   const { isLoading, isAuthenticated } = useConvexAuth();
   if (isLoading)
     return (
@@ -55,7 +71,11 @@ function PilotContent({ auditId }: { auditId?: string }) {
         <p role="status">Connexion en cours…</p>
       </AuthShell>
     );
-  return isAuthenticated ? <Workspace auditId={auditId} /> : <Authentication />;
+  return isAuthenticated ? (
+    <Workspace auditId={auditId} discoveryCompanyId={discoveryCompanyId} />
+  ) : (
+    <Authentication />
+  );
 }
 
 function Authentication() {
@@ -151,7 +171,13 @@ function Authentication() {
   );
 }
 
-function Workspace({ auditId }: { auditId?: string }) {
+function Workspace({
+  auditId,
+  discoveryCompanyId,
+}: {
+  auditId?: string;
+  discoveryCompanyId?: string;
+}) {
   const workspace = useQuery(api.workspaces.current);
   const create = useMutation(api.workspaces.create);
   const [pending, setPending] = useState(false);
@@ -201,7 +227,13 @@ function Workspace({ auditId }: { auditId?: string }) {
         </button>
       </AuthShell>
     );
-  return auditId ? (
+  return discoveryCompanyId ? (
+    <main className="min-h-screen bg-[#030817] px-5 py-8 text-slate-100 [&_label]:text-slate-200">
+      <div className="mx-auto max-w-5xl">
+        <DiscoveryWorkspace companyId={discoveryCompanyId} />
+      </div>
+    </main>
+  ) : auditId ? (
     <main className="min-h-screen bg-[#030817] px-5 py-8 text-slate-100 [&_input]:border-white/15 [&_input]:bg-slate-900 [&_input]:text-slate-100 [&_label]:text-slate-200 [&_textarea]:border-white/15 [&_textarea]:bg-slate-900 [&_textarea]:text-slate-100">
       <div className="mx-auto max-w-4xl">
         <AuditWorkspace id={auditId} />
@@ -300,13 +332,21 @@ function Companies({ organizationName }: { organizationName: string }) {
                     {company.deletedAt ? "Archivée" : "Active"}
                   </p>
                   {!company.deletedAt && (
-                    <button
-                      type="button"
-                      className="mt-2 text-sm text-blue-300 underline"
-                      onClick={() => setSelectedCompany({ id: company.id, name: company.name })}
-                    >
-                      Voir les audits
-                    </button>
+                    <div className="mt-3 flex flex-wrap items-center gap-4">
+                      <Link
+                        className="text-sm font-medium text-blue-300 underline"
+                        href={`/convex-pilot/companies/${company.id}/discovery`}
+                      >
+                        Commencer l’audit guidé
+                      </Link>
+                      <button
+                        type="button"
+                        className="mt-2 text-sm text-blue-300 underline"
+                        onClick={() => setSelectedCompany({ id: company.id, name: company.name })}
+                      >
+                        Questionnaires historiques
+                      </button>
+                    </div>
                   )}
                 </div>
                 {page.permissions.canWrite && (

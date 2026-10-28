@@ -2,8 +2,8 @@
 
 MISSION: raccorder les audits, leurs questionnaires et réponses au pilote Convex existant.
 AFFECTED DOMAIN: persistance Audit/Questionnaire et interface du pilote.
-CANONICAL OWNER: `AuditService`, `validateAnswer`, `calculateProgress` et `evaluateCompletion` ; aucun nouveau moteur de calcul.
-CURRENT STATUS: PARTIAL — le pilote Auth/Organization/Company fonctionne ; ce lot prépare le questionnaire et le cycle d’audit. Discovery, les opportunités et le ROI restent à raccorder.
+CANONICAL OWNER: services existants `AuditService`, `validateAnswer`, `calculateProgress` et `evaluateCompletion`, sans nouveau moteur de calcul. Le questionnaire/règles historique est classé LEGACY ; Discovery/Interview reste propriétaire du parcours principal.
+CURRENT STATUS: LEGACY porté dans le pilote, PARTIAL pour la migration globale. Ce lot couvre le questionnaire historique ; le [lot Discovery](convex-discovery-migration.md) raccorde l’entrée du parcours principal. Interview, les opportunités et le ROI restent à raccorder.
 FILES EXPECTED: contrat de repository, adaptateur Convex, catalogue issu de la migration SQL, fonctions protégées, interface et tests.
 DB IMPACT: ajout de documents dans les tables Convex existantes et d’une trace d’installation du catalogue ; aucune suppression.
 SECURITY IMPACT: traduire les contrôles des triggers SQL (entreprise/organisation, questionnaire publié et accessible, questions de la bonne version, audit verrouillé) en contrôles serveur.
@@ -38,3 +38,5 @@ Dans `/convex-pilot`, ouvrir « Voir les audits » sur une entreprise active, ch
 211 tests ciblés passent, avec TypeScript et lint ciblé. Les nouveaux tests couvrent le catalogue fidèle à la source, l’absence de réponses fabriquées, les valeurs invalides, la progression canonique, la clôture incomplète, le verrouillage, les rôles, les entreprises étrangères et les questions/sections provenant d’une autre version privée. La recette distante doit être attachée au commit publié ; ces tests en mémoire ne constituent pas à eux seuls une certification du staging.
 
 Le questionnaire SQL initial est un catalogue de démonstration du dépôt, maintenant utilisable avec les réponses réelles du pilote ; il n’est pas une méthodologie nouvellement certifiée. Ce lot n’évalue aucune règle, ne produit aucune opportunité, n’invente aucun gain et ne calcule pas encore le ROI sur Convex. Les moteurs correspondants restent canoniques et leur raccordement constitue le lot suivant. Le site historique et ses routes ne sont pas basculés globalement par cette entrée pilote.
+
+Recette distante du commit `4e38577f0d4209afce0968979f41b5cc6f51e2a5` : Preview Vercel prête, 16 contrôles HTTP réels réussis et neuf contrôles navigateur réussis. Le navigateur a créé l’audit, enregistré ses 24 réponses, refusé un nombre vide, affiché le résumé, terminé et validé l’audit, puis confirmé le verrouillage après rechargement et l’absence de débordement mobile ou d’erreur JavaScript. Les comptes et entreprises de recette sont isolés des espaces utilisateur. Les opportunités, le ROI et l’Executive Result ne font pas partie de cette preuve.
