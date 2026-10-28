@@ -1,5 +1,9 @@
 # AutomateX Project Governance
 
+## Convex migration direction — 2026-10-27
+
+The user explicitly requests replacing Supabase with Convex. Read [the migration decision](docs/architecture/convex-migration.md). This authorizes a new persistence/authentication implementation, not weakening tenant protections or replacing canonical business calculations. Supabase/Prisma ownership rules below describe the current source system until cutover; Convex schemas and functions own the target. Preserve the source and its access controls until data transfer, identity mapping, repository parity and the canonical journey have been verified. No source deletion or paid subscription is authorized. Use the Convex CLI on demand; no permanent local MCP or watcher is required.
+
 ## Return to Optivos core — 2026-10-27
 
 The user now requests returning to the existing Optivos product and improving it progressively. This supersedes the universal-orchestrator/new-product priority below. The audit journey is primary again; the existing Atelier remains an optional secondary area, with no further expansion assumed. Read [the current return-to-core decision](docs/architecture/optivos-return-to-core.md). Preserve existing canonical engines, data, Auth/Organization and access protections. Do not reset branches, erase previous work or replace business engines to implement this return. The visual system from 16 October remains scoped to the optional workspace; it does not replace the canonical audit interface.
