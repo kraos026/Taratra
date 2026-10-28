@@ -1,5 +1,30 @@
 # AutomateX Project Governance
 
+## Convex migration direction — 2026-10-27
+
+The user explicitly requests replacing Supabase with Convex. Read [the migration decision](docs/architecture/convex-migration.md). This authorizes a new persistence/authentication implementation, not weakening tenant protections or replacing canonical business calculations. Supabase/Prisma ownership rules below describe the current source system until cutover; Convex schemas and functions own the target. Preserve the source and its access controls until data transfer, identity mapping, repository parity and the canonical journey have been verified. No source deletion or paid subscription is authorized. Use the Convex CLI on demand; no permanent local MCP or watcher is required.
+
+## Return to Optivos core — 2026-10-27
+
+The user now requests returning to the existing Optivos product and improving it progressively. This supersedes the universal-orchestrator/new-product priority below. The audit journey is primary again; the existing Atelier remains an optional secondary area, with no further expansion assumed. Read [the current return-to-core decision](docs/architecture/optivos-return-to-core.md). Preserve existing canonical engines, data, Auth/Organization and access protections. Do not reset branches, erase previous work or replace business engines to implement this return. The visual system from 16 October remains scoped to the optional workspace; it does not replace the canonical audit interface.
+
+## New workspace UI direction — 2026-10-16
+
+The user explicitly replaces the former Optivos visual rules. Treat the agent platform as a new product interface with light/dark themes and a short, task-focused navigation. The previous Optivos palette, visual identity, dashboard conventions and global `optivos-ui-ux` color-preservation guidance do not constrain this workspace. Use `design-system/optivos-workspace/MASTER.md` for the new interface. Retain canonical business engines, API contracts, Auth, Organization and tenant protections; a UI reset does not authorize rebuilding or replacing those engines.
+
+## Optivos platform direction — 2026-10-16
+
+The user now requests a multi-engine Optivos platform with the existing audit exposed through a first-party business plugin and a nodal interface. This changes the product direction below; it does not replace the canonical business engines or promote the lab/runtime to Production. Read [the current blueprint](docs/architecture/optivos-platform-blueprint.md) and [ADR-0030](docs/adr/0030-optivos-platform-and-nodal-boundary.md) for the phased plan. Planning precedes new implementation in this mission.
+
+Repository skills added for this direction, to load only when relevant:
+
+- `optivos-platform-planning`: project inventory, architecture and ordered delivery lots.
+- `optivos-audit-plugin`: audit facade and methodological skills over canonical services.
+- `optivos-nodal-workflows`: neutral graphs, xyflow canvas and isolated Rete processing evaluation.
+- `optivos-engine-adapter`: scoped/versioned engine capabilities and real execution evidence.
+
+These are development skills, not installed client plugins or runtime permissions. Existing governance skills and tenant/data/budget safeguards remain applicable. Historical product positioning below describes the original audit product.
+
 ## Product identity
 
 AutomateX is an Automation Intelligence Platform for SMEs.

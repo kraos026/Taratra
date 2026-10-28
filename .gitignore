@@ -1,4 +1,5 @@
 node_modules
+artifacts/atelier-ia-component-preview/
 .next
 .env
 .env.local
@@ -9,6 +10,9 @@ playwright-report
 test-results
 *.tsbuildinfo
 src/generated
+artifacts/hermes-connection-live/
+artifacts/hermes-runtime-readiness/
+scripts/hermes-free-pilot/__pycache__/
 supabase/.temp
 .vercel/
 

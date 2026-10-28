@@ -11,6 +11,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "tsc --noEmit",
+    "convex:inventory": "node scripts/convex-migration/inventory.mjs",
+    "convex:codegen": "convex codegen --typecheck enable",
+    "convex:dev:once": "convex dev --once --tail-logs disable --typecheck enable",
+    "test:convex": "vitest run src/infrastructure/convex scripts/convex-migration",
     "test": "vitest run",
     "test:watch": "vitest",
     "benchmark:phase-b-live": "npx tsx scripts/phase-b-live.ts",
@@ -27,12 +31,16 @@
     "db:migrate:local": "supabase migration up --local"
   },
   "dependencies": {
+    "@convex-dev/better-auth": "0.12.6",
     "@prisma/adapter-pg": "7.9.1",
     "@prisma/client": "7.9.1",
     "@supabase/ssr": "0.12.3",
     "@supabase/supabase-js": "2.110.8",
+    "@xyflow/react": "12.12.0",
+    "better-auth": "1.6.15",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
+    "convex": "1.48.0",
     "lucide-react": "0.468.0",
     "next": "16.3.8",
     "pg": "8.22.0",
@@ -50,6 +58,7 @@
     "@types/pg": "8.15.5",
     "@types/react": "19.0.3",
     "@types/react-dom": "19.0.2",
+    "convex-test": "0.0.65",
     "eslint": "9.39.5",
     "eslint-config-next": "16.3.8",
     "prettier": "3.9.6",
@@ -61,6 +70,7 @@
     "vitest": "4.1.11"
   },
   "overrides": {
+    "better-sqlite3": "12.11.1",
     "@next/eslint-plugin-next": "$@next/eslint-plugin-next",
     "prisma@7.9.1": {
       "mysql2": "3.24.5"

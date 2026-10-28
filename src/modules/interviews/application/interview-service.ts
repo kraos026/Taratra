@@ -5,11 +5,11 @@ import {
   InterviewNotFoundError,
   InterviewValidationError,
 } from "../domain/interview-errors";
-import type { PrismaInterviewRepository } from "../infrastructure/prisma-interview-repository";
+import type { InterviewRepository } from "./interview-repository";
 
 export class InterviewService {
   constructor(
-    private readonly repo: PrismaInterviewRepository,
+    private readonly repo: InterviewRepository,
     private readonly userId: string,
     private readonly engine = new InterviewEngine(),
   ) {}
@@ -192,7 +192,7 @@ export class InterviewService {
     organizationId: string,
     id: string,
     companyId: string,
-    currentSession?: Awaited<ReturnType<PrismaInterviewRepository["session"]>>,
+    currentSession?: Awaited<ReturnType<InterviewRepository["session"]>>,
   ) {
     const session = currentSession ?? (await this.repo.session(organizationId, id));
     if (!session) throw new InterviewNotFoundError();

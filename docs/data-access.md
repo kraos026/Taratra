@@ -1,5 +1,7 @@
 # Accès aux données : Supabase et Prisma
 
+Depuis le 27 octobre 2026, Convex est la cible de remplacement autorisée. Voir [le plan de migration](architecture/convex-migration.md) pour son état et les critères de bascule. Les responsabilités ci-dessous décrivent la source encore utilisée par les parcours applicatifs ; elles ne constituent pas un choix de conserver Supabase à terme. Le backend Convex de développement ne reçoit pas implicitement les écritures de cette application.
+
 ## Responsabilités
 
 Supabase reste responsable de PostgreSQL, de l'authentification, des migrations SQL et de la sécurité RLS. Les fichiers de `supabase/migrations` sont l'unique source de vérité pour le schéma déployé, car Prisma ne sait pas représenter les politiques RLS, les fonctions de sécurité et les triggers PostgreSQL.

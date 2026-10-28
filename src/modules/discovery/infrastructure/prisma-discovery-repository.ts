@@ -2,7 +2,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import type { DiscoveryPayload } from "../application/discovery-schemas";
 import { DiscoveryConflictError } from "../domain/discovery-errors";
-export class PrismaDiscoveryRepository {
+import type { DiscoveryRepository } from "../application/discovery-repository";
+export class PrismaDiscoveryRepository implements DiscoveryRepository {
   constructor(private readonly db: TransactionClient) {}
   context(userId: string) {
     return this.db.organizationMember.findFirst({
