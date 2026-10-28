@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { AuthShell } from "@/modules/auth/presentation/auth-shell";
 import { OptivosLogo } from "@/components/brand/optivos-logo";
+import { CompanyAudits, AuditWorkspace } from "./audit-pilot";
 
 async function signOut() {
   const result = await convexAuthClient.signOut();
@@ -35,18 +36,18 @@ class AccessBoundary extends Component<{ children: ReactNode }, { failed: boolea
   }
 }
 
-export function ConvexPilot({ url }: { url: string }) {
+export function ConvexPilot({ url, auditId }: { url: string; auditId?: string }) {
   const [client] = useState(() => new ConvexReactClient(url));
   return (
     <ConvexBetterAuthProvider client={client} authClient={convexAuthClient}>
       <AccessBoundary>
-        <PilotContent />
+        <PilotContent auditId={auditId} />
       </AccessBoundary>
     </ConvexBetterAuthProvider>
   );
 }
 
-function PilotContent() {
+function PilotContent({ auditId }: { auditId?: string }) {
   const { isLoading, isAuthenticated } = useConvexAuth();
   if (isLoading)
     return (
@@ -54,7 +55,7 @@ function PilotContent() {
         <p role="status">Connexion en cours…</p>
       </AuthShell>
     );
-  return isAuthenticated ? <Workspace /> : <Authentication />;
+  return isAuthenticated ? <Workspace auditId={auditId} /> : <Authentication />;
 }
 
 function Authentication() {
@@ -95,7 +96,7 @@ function Authentication() {
   return (
     <AuthShell
       title={signup ? "Créer un compte pilote" : "Connexion au pilote Optivos"}
-      description="Testez votre nouvel espace et vos entreprises sur Convex. Les audits seront disponibles après leur migration."
+      description="Retrouvez votre espace, vos entreprises et vos questionnaires d’audit sur Convex."
     >
       <form onSubmit={(event) => void submit(event)} className="space-y-4">
         {signup && (
@@ -150,7 +151,7 @@ function Authentication() {
   );
 }
 
-function Workspace() {
+function Workspace({ auditId }: { auditId?: string }) {
   const workspace = useQuery(api.workspaces.current);
   const create = useMutation(api.workspaces.create);
   const [pending, setPending] = useState(false);
@@ -200,10 +201,19 @@ function Workspace() {
         </button>
       </AuthShell>
     );
-  return <Companies organizationName={workspace.name} />;
+  return auditId ? (
+    <main className="min-h-screen bg-[#030817] px-5 py-8 text-slate-100 [&_input]:border-white/15 [&_input]:bg-slate-900 [&_input]:text-slate-100 [&_label]:text-slate-200 [&_textarea]:border-white/15 [&_textarea]:bg-slate-900 [&_textarea]:text-slate-100">
+      <div className="mx-auto max-w-4xl">
+        <AuditWorkspace id={auditId} />
+      </div>
+    </main>
+  ) : (
+    <Companies organizationName={workspace.name} />
+  );
 }
 
 function Companies({ organizationName }: { organizationName: string }) {
+  const [selectedCompany, setSelectedCompany] = useState<{ id: string; name: string }>();
   const page = useQuery(api.companies.list, { includeArchived: true, pageSize: 100 });
   const create = useMutation(api.companies.create);
   const archive = useMutation(api.companies.archive);
@@ -243,8 +253,8 @@ function Companies({ organizationName }: { organizationName: string }) {
         <section className="rounded-xl border border-blue-400/20 bg-blue-400/5 p-5">
           <h1 className="text-xl font-semibold">Vos entreprises</h1>
           <p className="mt-2 text-sm text-slate-400">
-            Pilote de migration : vos données sont enregistrées dans Convex. Le parcours d’audit est
-            encore en cours de raccordement.
+            Entreprises et questionnaires d’audit enregistrés dans Convex. Les opportunités et le
+            ROI restent en cours de raccordement.
           </p>
         </section>
         {page?.permissions.canWrite && (
@@ -262,6 +272,14 @@ function Companies({ organizationName }: { organizationName: string }) {
           <p role="alert" className="text-amber-200">
             {message}
           </p>
+        )}
+        {selectedCompany && (
+          <CompanyAudits
+            key={selectedCompany.id}
+            companyId={selectedCompany.id}
+            name={selectedCompany.name}
+            onClose={() => setSelectedCompany(undefined)}
+          />
         )}
         {page === undefined ? (
           <p role="status">Chargement des entreprises…</p>
@@ -281,6 +299,15 @@ function Companies({ organizationName }: { organizationName: string }) {
                   <p className="mt-1 text-sm text-slate-400">
                     {company.deletedAt ? "Archivée" : "Active"}
                   </p>
+                  {!company.deletedAt && (
+                    <button
+                      type="button"
+                      className="mt-2 text-sm text-blue-300 underline"
+                      onClick={() => setSelectedCompany({ id: company.id, name: company.name })}
+                    >
+                      Voir les audits
+                    </button>
+                  )}
                 </div>
                 {page.permissions.canWrite && (
                   <Button

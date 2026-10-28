@@ -14,7 +14,7 @@ import type { Doc } from "../_generated/dataModel";
 import type { DatabaseCtx, TrustedContext } from "./access";
 import { businessId } from "./businessId";
 
-function mapCompany(doc: Doc<"companies">): Company {
+export function mapCompany(doc: Doc<"companies">): Company {
   return {
     id: doc.id,
     organizationId: doc.organizationId,

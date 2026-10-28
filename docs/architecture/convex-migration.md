@@ -5,7 +5,7 @@ Décision utilisateur du 27 octobre 2026 : remplacer Supabase par Convex et cons
 MISSION: préparer et réaliser la migration des comptes, données et frontières serveur vers Convex, sans réécrire les moteurs métier.
 AFFECTED DOMAIN: infrastructure, authentification, repositories et vérifications de migration.
 CANONICAL OWNER: services métier existants pour calculs/contrats ; Convex devient la cible de persistance et d’autorisation après validation des parcours.
-CURRENT STATUS: fondation Convex déployée en développement ; premier parcours pilote Auth → Organization → Company raccordé séparément, parcours d’audit encore sur sa couche existante.
+CURRENT STATUS: fondation Convex déployée en développement ; parcours pilote Auth → Organization → Company et cycle questionnaire d’audit raccordés séparément. Les étapes Discovery, opportunités, ROI et résultats exécutifs restent sur leur couche existante.
 FILES EXPECTED: inventaire déterministe, schéma Convex, accès par identité/organisation, premier adaptateur métier, tests et documentation.
 DB IMPACT: nouvelles tables sur le seul déploiement Convex de développement ; aucune suppression ou réinitialisation Supabase.
 SECURITY IMPACT: remplacer les garanties RLS par des contrôles serveur dans chaque fonction Convex ; ne pas faire confiance à un identifiant de tenant/client.
@@ -72,7 +72,7 @@ Validation du socle : 164 tests ciblés réussis (dont 19 pour le contrat de mig
 Recette du 28 octobre sur le commit `4f71ee942bff0fd7ca4b207499505ae573c91643`, déploiement Preview `dpl_C9Zn5q5ZisC2gtS6KHVXvEksmnyo` : 13 contrôles HTTP réels passent, dont création, persistance après reconnexion et refus lecture/écriture inter-organisations. Le navigateur passe neuf contrôles : inscription neuve, organisation, entreprise, archivage/restauration, rechargement, déconnexion/reconnexion, absence d’erreur JavaScript et affichage mobile sans débordement horizontal. Les tests utilisent trois comptes de validation isolés, dont les identifiants restent hors dépôt ; aucun envoi d’e-mail ni appel à un modèle. La build Vercel et le job CI `quality` (installation propre, lint, format, types, tous les tests et build) passent sur ce commit. Cette recette ne certifie pas le parcours d’audit encore non migré. La lecture des captures a ensuite motivé une correction locale du contraste des libellés du formulaire entreprise.
 
 1. Recetter le parcours neuf sur la Preview : inscription → connexion → organisation → entreprise → archivage/restauration → reconnexion, plus refus inter-organisations.
-2. Migrer les repositories de l’audit et de Discovery, en réutilisant les services et calculs existants ; vérifier les contraintes et droits que SQL assurait auparavant.
+2. Migrer les repositories de l’audit et de Discovery, en réutilisant les services et calculs existants ; vérifier les contraintes et droits que SQL assurait auparavant. Le [lot audit/questionnaire](convex-audit-migration.md) ajoute le cycle de réponses, progression, clôture, validation et résumé ; Discovery et les résultats aval restent à raccorder.
 3. Étendre progressivement aux étapes canoniques en aval, puis supprimer la dépendance active à Prisma/Supabase lorsque le parcours complet est prouvé sur Convex.
 4. Configurer vérification e-mail, récupération, invitations et protections d’exploitation avant ouverture aux entreprises pilotes.
 

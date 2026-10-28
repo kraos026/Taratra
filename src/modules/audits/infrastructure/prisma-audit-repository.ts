@@ -2,7 +2,8 @@ import type { Prisma } from "@/generated/prisma/client";
 import type { TransactionClient } from "@/infrastructure/database/with-authenticated-database";
 import { calculateProgress, evaluateCompletion } from "../domain/progress";
 import { logInfo } from "@/shared/infrastructure/logger";
-export class PrismaAuditRepository {
+import type { AuditRepository } from "../application/audit-repository";
+export class PrismaAuditRepository implements AuditRepository {
   constructor(private readonly db: TransactionClient) {}
   context(userId: string) {
     logInfo({ action: "audits.membership.lookup.start", userId });
