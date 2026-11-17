@@ -1,0 +1,4 @@
+interface:
+  display_name: "Optivos — plugin audit"
+  short_description: "Encapsuler l’audit sans dupliquer ses moteurs métier"
+  default_prompt: "Utilise $optivos-audit-plugin pour définir une capacité du plugin audit et ses contrôles de lignée."

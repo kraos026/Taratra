@@ -27,6 +27,8 @@ jobs:
       - run: npm run format:check
       - run: npm run typecheck
       - run: npm test
+      - name: Verify isolated Hermes zero-fee policy and durable queue
+        run: python3 -m unittest discover -s scripts/hermes-free-pilot -p 'test_*.py'
       - run: npm run build
 
   database-security:

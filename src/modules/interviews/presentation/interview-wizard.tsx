@@ -51,7 +51,19 @@ type InterviewView = {
   questions: Question[];
 };
 
-export function InterviewWizard({ companyId }: { companyId: string }) {
+export type InterviewTransport = (url: string, init?: RequestInit) => Promise<Response>;
+export function InterviewWizard({
+  companyId,
+  transport,
+  backHref,
+  nextStepHref,
+}: {
+  companyId: string;
+  transport?: InterviewTransport;
+  backHref?: string;
+  nextStepHref?: string | null;
+}) {
+  const request = transport ?? fetch;
   const [view, setView] = useState<InterviewView | null>(null);
   const [value, setValue] = useState("");
   const [confidence, setConfidence] = useState<"confirmed" | "uncertain">("confirmed");
@@ -69,7 +81,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
       : null;
 
   useEffect(() => {
-    fetch(`/api/companies/${companyId}/interviews`)
+    request(`/api/companies/${companyId}/interviews`)
       .then(async (response) => {
         if (response.status === 404) return null;
         return readView(response);
@@ -82,13 +94,13 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
         setMessage(error instanceof Error ? error.message : "Impossible de charger l’entretien"),
       )
       .finally(() => setBusy(false));
-  }, [companyId]);
+  }, [companyId, request]);
 
   async function startInterview() {
     setBusy(true);
     setMessage("Démarrage…");
     try {
-      const response = await fetch(`/api/companies/${companyId}/interviews`, { method: "POST" });
+      const response = await request(`/api/companies/${companyId}/interviews`, { method: "POST" });
       setView(await readView(response));
       setMessage("");
     } catch (error) {
@@ -103,7 +115,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
     setBusy(true);
     setMessage("Enregistrement…");
     try {
-      const response = await fetch(`/api/interviews/${view.session.id}/${path}`, {
+      const response = await request(`/api/interviews/${view.session.id}/${path}`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: body ? JSON.stringify(body) : undefined,
@@ -142,7 +154,7 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
       <header className="space-y-2">
         <Link
           className="inline-flex min-h-11 items-center text-sm text-blue-300"
-          href={`/companies/${companyId}/automation-audit`}
+          href={backHref ?? `/companies/${companyId}/automation-audit`}
         >
           ← Retour à l’audit
         </Link>
@@ -287,19 +299,28 @@ export function InterviewWizard({ companyId }: { companyId: string }) {
               </p>
             )}
             {readOnly ? (
-              <Link
-                className="opt-primary inline-flex min-h-11 items-center rounded-xl px-4 py-3 text-sm font-semibold"
-                href={`/companies/${companyId}/automation-audit`}
-              >
-                Voir la suite de l’audit
-              </Link>
+              nextStepHref === null ? (
+                <p className="text-sm text-slate-300">
+                  Entretien validé. Les réponses sont conservées ; l’analyse et les résultats seront
+                  disponibles après leur raccordement.
+                </p>
+              ) : (
+                <Link
+                  className="opt-primary inline-flex min-h-11 items-center rounded-xl px-4 py-3 text-sm font-semibold"
+                  href={nextStepHref ?? `/companies/${companyId}/automation-audit`}
+                >
+                  Voir la suite de l’audit
+                </Link>
+              )
             ) : (
               <Button
                 disabled={!view.progress.readyForProcessMapping || busy}
                 onClick={() => act(view.session.status === "completed" ? "validate" : "complete")}
               >
                 {view.session.status === "completed"
-                  ? "Valider l’entretien et continuer"
+                  ? nextStepHref === null
+                    ? "Valider l’entretien"
+                    : "Valider l’entretien et continuer"
                   : "Terminer l’entretien"}
               </Button>
             )}

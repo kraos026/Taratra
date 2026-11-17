@@ -1,0 +1,4 @@
+interface:
+  display_name: "Optivos — workflows nodaux"
+  short_description: "Concevoir le canevas et séparer édition et exécution"
+  default_prompt: "Utilise $optivos-nodal-workflows pour préparer le prochain contrat ou lot du système nodal."

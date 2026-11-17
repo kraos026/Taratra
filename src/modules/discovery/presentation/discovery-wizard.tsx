@@ -36,7 +36,17 @@ type Session = {
   answers: { step: Step; valueJson: unknown }[];
 };
 type Draft = Record<string, string>;
-export function DiscoveryWizard({ companyId }: { companyId: string }) {
+export type DiscoveryTransport = (url: string, init?: RequestInit) => Promise<Response>;
+export function DiscoveryWizard({
+  companyId,
+  transport,
+  nextStepHref,
+}: {
+  companyId: string;
+  transport?: DiscoveryTransport;
+  nextStepHref?: string | null;
+}) {
+  const request = transport ?? fetch;
   const [session, setSession] = useState<Session | null>(null);
   const [step, setStep] = useState<Step>("company");
   const [draft, setDraft] = useState<Draft>({});
@@ -44,7 +54,7 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
   const [message, setMessage] = useState("");
   const index = steps.indexOf(step);
   useEffect(() => {
-    fetch(`/api/companies/${companyId}/discovery`)
+    request(`/api/companies/${companyId}/discovery`)
       .then(async (r) => {
         if (r.status === 404) return null;
         if (!r.ok) throw new Error("Impossible de charger la découverte");
@@ -64,12 +74,12 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
         setMessage(e instanceof Error ? e.message : "Erreur");
         setBusy(false);
       });
-  }, [companyId]);
+  }, [companyId, request]);
   const progress = useMemo(() => Math.round(((index + 1) / steps.length) * 100), [index]);
   async function persistAnswers(): Promise<Session | null> {
     if (!session || session.status === "validated") return null;
     setMessage("Enregistrement…");
-    const response = await fetch(`/api/discovery-sessions/${session.id}`, {
+    const response = await request(`/api/discovery-sessions/${session.id}`, {
       method: "PATCH",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
@@ -114,7 +124,7 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
       saved = await persistAnswers();
       if (!saved) return;
       setMessage("Validation…");
-      const response = await fetch(`/api/discovery-sessions/${saved.id}/validate`, {
+      const response = await request(`/api/discovery-sessions/${saved.id}/validate`, {
         method: "POST",
       });
       if (!response.ok) {
@@ -125,7 +135,11 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
       }
       const value = ((await response.json()) as { data: Session }).data;
       setSession(value);
-      setMessage("Compréhension validée. Vous pouvez poursuivre vers l’entretien.");
+      setMessage(
+        nextStepHref === null
+          ? "Compréhension validée. Vos informations sont conservées."
+          : "Compréhension validée. Vous pouvez poursuivre vers l’entretien.",
+      );
     } catch {
       setMessage(
         saved
@@ -139,7 +153,7 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
   async function startDiscovery() {
     setBusy(true);
     setMessage("Démarrage…");
-    fetch(`/api/companies/${companyId}/discovery`, { method: "POST" })
+    request(`/api/companies/${companyId}/discovery`, { method: "POST" })
       .then(async (r) => {
         if (!r.ok) throw new Error("Impossible de démarrer la découverte");
         return ((await r.json()) as { data: Session }).data;
@@ -260,12 +274,19 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
             </Button>
           )}
           {readOnly ? (
-            <Link
-              className="opt-primary inline-flex items-center rounded-xl px-4 py-3 text-sm font-semibold"
-              href={`/companies/${companyId}/interview`}
-            >
-              Continuer vers l’entretien
-            </Link>
+            nextStepHref === null ? (
+              <p className="text-sm text-slate-300">
+                Les informations sont validées. La suite du parcours sera disponible après son
+                raccordement.
+              </p>
+            ) : (
+              <Link
+                className="opt-primary inline-flex items-center rounded-xl px-4 py-3 text-sm font-semibold"
+                href={nextStepHref ?? `/companies/${companyId}/interview`}
+              >
+                Continuer vers l’entretien
+              </Link>
+            )
           ) : index < steps.length - 1 ? (
             <Button
               className="opt-primary"
@@ -276,7 +297,9 @@ export function DiscoveryWizard({ companyId }: { companyId: string }) {
             </Button>
           ) : (
             <Button className="opt-primary" disabled={busy || readOnly} onClick={validate}>
-              Valider et continuer vers l’interview
+              {nextStepHref === null
+                ? "Valider les informations"
+                : "Valider et continuer vers l’interview"}
             </Button>
           )}
         </div>

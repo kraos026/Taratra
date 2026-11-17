@@ -1,4 +1,4 @@
-import type { PrismaDiscoveryRepository } from "../infrastructure/prisma-discovery-repository";
+import type { DiscoveryRepository } from "./discovery-repository";
 import type { DiscoveryPayload } from "./discovery-schemas";
 import {
   DiscoveryForbiddenError,
@@ -7,7 +7,7 @@ import {
 } from "../domain/discovery-errors";
 export class DiscoveryService {
   constructor(
-    private readonly repo: PrismaDiscoveryRepository,
+    private readonly repo: DiscoveryRepository,
     private readonly userId: string,
   ) {}
   private async context() {

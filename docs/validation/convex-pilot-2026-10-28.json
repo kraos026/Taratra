@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "sourceCommit": "7dc37058326f67326d3c596092e36dc2dee04607",
+  "deployment": "beaming-ermine-530",
+  "scope": "Auth / Organization / Company / legacy questionnaire / Discovery / adaptive interview",
+  "applicationFullyMigrated": false,
+  "paidModelCalls": 0,
+  "localTargetedTestsPassed": 317,
+  "validation": [
+    {
+      "name": "audit-http-validation",
+      "completed": true,
+      "commit": null,
+      "finishedAt": "2026-10-28T05:30:29.633Z",
+      "checks": {
+        "canonical_24_question_catalogue": true,
+        "internal_catalogue_installer_not_public": true,
+        "new_audit_has_no_simulated_answers": true,
+        "mandatory_answers_required": true,
+        "invalid_answer_rejected": true,
+        "invalid_answer_has_no_partial_write": true,
+        "canonical_progress_100_and_24_answers": true,
+        "foreign_audit_list_isolated": true,
+        "foreign_audit_read_denied": true,
+        "foreign_audit_write_denied": true,
+        "real_audit_completed": true,
+        "real_audit_validated": true,
+        "validated_answers_locked": true,
+        "validated_audit_cannot_be_reopened": true,
+        "validated_audit_persists_after_reconnection": true,
+        "anonymous_audit_read_denied": true
+      }
+    },
+    {
+      "name": "audit-browser-validation",
+      "completed": true,
+      "commit": "4e38577f0d4209afce0968979f41b5cc6f51e2a5",
+      "finishedAt": "2026-10-28T05:33:47.583Z",
+      "checks": {
+        "real_audit_created_in_browser": true,
+        "incomplete_audit_refused_in_browser": true,
+        "blank_number_never_becomes_zero": true,
+        "all_24_answers_saved_through_ui": true,
+        "real_response_summary": true,
+        "validation_locks_answers": true,
+        "deep_link_reload_and_read_only_state": true,
+        "mobile_no_horizontal_overflow": true,
+        "no_runtime_errors": true
+      }
+    },
+    {
+      "name": "discovery-http-validation",
+      "completed": true,
+      "commit": null,
+      "finishedAt": "2026-10-28T07:10:34.933Z",
+      "checks": {
+        "start_is_idempotent": true,
+        "new_discovery_has_no_invented_answers": true,
+        "incomplete_discovery_cannot_validate": true,
+        "two_concurrent_edits_have_one_winner": true,
+        "conflict_does_not_duplicate_answers": true,
+        "cross_tenant_read_denied": true,
+        "cross_tenant_write_denied": true,
+        "six_real_steps_completed": true,
+        "discovery_validated": true,
+        "validated_context_locked": true,
+        "validated_discovery_survives_reconnection": true,
+        "anonymous_read_denied": true
+      }
+    },
+    {
+      "name": "discovery-browser-validation",
+      "completed": true,
+      "commit": "a7ba501ea1b3a40d374ecaefcf9a818dfd0a71dc",
+      "finishedAt": "2026-10-28T07:16:59.794Z",
+      "checks": {
+        "canonical_wizard_started": true,
+        "six_steps_saved_and_validated_in_browser": true,
+        "real_convex_records_confirmed": true,
+        "saved_values_and_lock_survive_reload": true,
+        "mobile_no_horizontal_overflow": true,
+        "no_link_to_unmigrated_interview": true,
+        "validated_discovery_survives_reconnection": true,
+        "no_browser_runtime_error": true
+      }
+    },
+    {
+      "name": "interview-http-validation",
+      "completed": true,
+      "commit": null,
+      "finishedAt": "2026-10-28T07:32:54.832Z",
+      "checks": {
+        "new_interview_uses_canonical_questions_without_fake_answers": true,
+        "start_is_idempotent": true,
+        "catalogue_installer_is_private": true,
+        "incomplete_interview_rejected": true,
+        "invoice_answer_enables_conditional_questions": true,
+        "changed_branch_removes_inapplicable_answers": true,
+        "obsolete_edit_rejected": true,
+        "reviewed_document_provenance_persisted": true,
+        "uncertainty_reduces_canonical_confidence": true,
+        "cross_tenant_read_denied": true,
+        "cross_tenant_write_denied": true,
+        "genuine_answers_make_interview_ready": true,
+        "interview_completed": true,
+        "interview_validated": true,
+        "validated_interview_cannot_be_reopened": true,
+        "validated_answers_locked": true,
+        "interview_survives_reconnection": true,
+        "anonymous_read_denied": true
+      }
+    },
+    {
+      "name": "interview-browser-validation",
+      "completed": true,
+      "commit": "7dc37058326f67326d3c596092e36dc2dee04607",
+      "finishedAt": "2026-10-28T07:36:41.455Z",
+      "checks": {
+        "real_link_from_validated_discovery": true,
+        "no_prefilled_answers": true,
+        "questions_answered_through_existing_wizard": true,
+        "canonical_progress_and_confidence_confirmed": true,
+        "completed_validated_and_read_only": true,
+        "validation_survives_reload": true,
+        "mobile_no_horizontal_overflow": true,
+        "no_link_to_unmigrated_results": true,
+        "validated_interview_survives_reconnection": true,
+        "no_browser_runtime_errors": true
+      }
+    }
+  ]
+}

@@ -6,10 +6,10 @@ import {
   AuditSectionMismatchError,
   AuditStateError,
 } from "../domain/audit-errors";
-import type { PrismaAuditRepository } from "../infrastructure/prisma-audit-repository";
+import type { AuditRepository } from "./audit-repository";
 export class AuditService {
   constructor(
-    private readonly repository: PrismaAuditRepository,
+    private readonly repository: AuditRepository,
     private readonly userId: string,
   ) {}
   private async context() {
@@ -22,7 +22,7 @@ export class AuditService {
     if (c.role === "viewer") throw new AuditForbiddenError();
     return c;
   }
-  async list(query: Parameters<PrismaAuditRepository["list"]>[1]) {
+  async list(query: Parameters<AuditRepository["list"]>[1]) {
     const c = await this.context();
     const [items, total] = await this.repository.list(c.organizationId, query);
     return {
